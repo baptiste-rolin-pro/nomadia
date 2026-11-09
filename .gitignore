@@ -1,0 +1,29 @@
+# dépendances
+/node_modules
+
+# build Next.js
+/.next/
+/out/
+/build
+next-env.d.ts
+*.tsbuildinfo
+
+# base locale PGlite, emails capturés, journaux
+/.data/
+
+# tests
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# environnement (ne jamais versionner les secrets)
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# divers
+.DS_Store
+npm-debug.log*
+*.pem
