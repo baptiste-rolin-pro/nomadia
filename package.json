@@ -20,6 +20,8 @@
     "db:migrate": "tsx scripts/db-migrate.ts",
     "db:seed": "tsx --conditions=react-server scripts/db-seed.ts",
     "db:reset": "tsx scripts/db-reset.ts",
+    "db:deploy": "npm run db:migrate && npm run db:seed",
+    "vercel-build": "npm run db:deploy && next build",
     "setup": "npm run db:migrate && npm run db:seed",
     "check": "npm run typecheck && npm run lint && npm run test && npm run build",
     "links:check": "tsx scripts/check-external-links.ts",

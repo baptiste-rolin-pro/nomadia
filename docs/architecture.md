@@ -21,9 +21,12 @@ src/
     auth/                 Better Auth (serveur), client, session
     db/                   schéma Drizzle et client (PGlite ou PostgreSQL)
     jobs.ts, mail.ts, audit.ts, viewer.ts, security.ts
+    demo-site.ts          mode « démonstration publique » (NOMADIA_PUBLIC_SIGNUP), adresses fictives
+    demo-accounts.ts      comptes de démonstration (seed + page de connexion)
   proxy.ts                redirection optimiste des zones privées (pas un contrôle d'accès)
 drizzle/                  migrations SQL (seul chemin de migration)
-scripts/                  migrate, seed, reset, préparation e2e, vérification des liens, outils d'images
+scripts/                  migrate, seed, reset, préparation e2e, vérification des liens, outils d'images (lib/ : chargement de .env.local)
+vercel.json               build Vercel (migrations + seed + next build) et Vercel Cron
 tests/unit, tests/e2e     Vitest, Playwright
 ```
 
@@ -33,12 +36,12 @@ Rendu : pages éditoriales statiques (ISR 1 h pour celles qui affichent des date
 
 | Décision | Raison |
 | --- | --- |
-| PostgreSQL via **PGlite** en local, `pg` en exploitation | Environnement local reproductible sans Docker ; même dialecte et mêmes migrations qu'en production. Limite : un seul processus par dossier de données. |
+| PostgreSQL via **PGlite** en local, `pg` en exploitation | Environnement local reproductible sans Docker ; même dialecte et mêmes migrations qu'en production. Limite : un seul processus par dossier de données. PGlite migre au premier accès ; PostgreSQL **jamais au démarrage** : `npm run db:migrate` au build Vercel, sous verrou consultatif (connexion directe). Pool serverless : 5 connexions par instance, inactives fermées après 10 s, TLS vérifié, Neon « pooled » pour l'application. |
 | **Drizzle ORM** + drizzle-kit | Un seul ORM, un seul chemin de migrations (`drizzle/`), requêtes typées. |
-| **Better Auth** (adaptateur Drizzle) | Solution éprouvée : mots de passe hachés, sessions en base renouvelées (7 j, mise à jour quotidienne), vérification d'adresse, réinitialisation, limitation de débit. |
+| **Better Auth** (adaptateur Drizzle) | Solution éprouvée : mots de passe hachés, sessions en base renouvelées (7 j, mise à jour quotidienne), vérification d'adresse, réinitialisation, limitation de débit. Sessions enregistrées sans IP ni user-agent. Mode démonstration publique (`NOMADIA_PUBLIC_SIGNUP=false`, défaut) : inscription, réinitialisation par email et modification du compte partagé fermées côté serveur (`disabledPaths` + crochet `before` + `disableSignUp`). |
 | Adaptateurs fournisseurs par verticale | Le mode DEMO utilise la même logique de domaine (Bookable, tunnel, statuts) que SANDBOX/LIVE. |
 | Prestataire de paiement simulé avec événements signés | Permet de démontrer idempotence, déduplication et ordre des événements sans clé ni carte. |
-| File de tâches en base (`jobs`) exécutée à la demande | Réconciliation, émission différée, remboursement sans processus supplémentaire ; `/api/jobs/run` pour un ordonnanceur externe. |
+| File de tâches en base (`jobs`) exécutée à la demande | Réconciliation, émission différée, remboursement sans processus supplémentaire (compatible serverless : rien ne s'exécute après la réponse). La page de réservation se rafraîchit et exécute les tâches de son dossier ; `/api/jobs/run` (Vercel Cron quotidien avec `CRON_SECRET`, ou ordonnanceur externe) balaie le reste. Bail de 15 min : une tâche « running » abandonnée redevient exécutable (comparer-échanger sur statut + tentatives) ; un traitement fournisseur interrompu passe en « inconnu » puis réconciliation. |
 | Motion uniquement dans le planificateur | Budget JavaScript de l'accueil ; animations CSS ailleurs. |
 
 ## Modèle de données (tables)
@@ -80,6 +83,8 @@ Ordre encaissement / réservation en DEMO : la plateforme encaisse d'abord (mod�
 - Redirections post-connexion limitées aux chemins internes.
 - Routes JSON mutantes : vérification de l'en-tête `Origin` + cookies `SameSite=Lax`.
 - En-têtes : `X-Content-Type-Options`, `Referrer-Policy`, `X-Frame-Options: DENY`, `Permissions-Policy`.
+- Site de démonstration public : aucune collecte de donnée personnelle par l'application (README, « Site de démonstration public ») ; actions serveur du profil, des voyageurs enregistrés et du contact refusées ; email de contact d'une réservation limité aux domaines réservés (RFC 2606 / 6761).
+- Garde-fous Vercel (`VERCEL` défini) : `BETTER_AUTH_SECRET` et `DATABASE_URL` obligatoires (production et aperçus) ; boîte mail de test et `NOMADIA_AUTH_RATE_LIMIT=off` interdites en production Vercel ; URL publique par défaut tirée des variables système Vercel.
 - Garde-fous de configuration : en production, secret d'authentification et secret des événements de paiement de démonstration (`DEMO_WEBHOOK_SECRET`) obligatoires ; boîte mail de test et désactivation de la limitation de débit interdites. Hors production, sans `DEMO_WEBHOOK_SECRET`, le secret est aléatoire par processus et le webhook HTTP de démonstration est fermé (404) ; il l'est aussi quand aucun service n'est en mode DEMO.
 
 ## Conservation des données (à valider)

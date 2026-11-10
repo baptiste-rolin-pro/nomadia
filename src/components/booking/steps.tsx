@@ -39,6 +39,7 @@ export function TravelersStep({
   needsBirthDate,
   saved,
   loggedIn,
+  sharedDemo = false,
 }: {
   bookingId: string;
   types: TravelerInput["type"][];
@@ -47,6 +48,8 @@ export function TravelersStep({
   needsBirthDate: boolean;
   saved: { id: string; firstName: string; lastName: string; birthDate: string | null }[];
   loggedIn: boolean;
+  /** Site de démonstration public : adresse fictive obligatoire, aucun voyageur enregistré dans le compte partagé. */
+  sharedDemo?: boolean;
 }) {
   const [state, action] = useActionState<ActionState, FormData>(saveTravelersAction, {});
   const [values, setValues] = useState(types.map((type, i) => ({ type, firstName: initial[i]?.firstName ?? "", lastName: initial[i]?.lastName ?? "", birthDate: initial[i]?.birthDate ?? "" })));
@@ -104,7 +107,7 @@ export function TravelersStep({
                 <input
                   id={`t${i}-${field}`}
                   name={`t${i}.${field}`}
-                  autoComplete={i === 0 ? (field === "firstName" ? "given-name" : "family-name") : "off"}
+                  autoComplete={i === 0 && !sharedDemo ? (field === "firstName" ? "given-name" : "family-name") : "off"}
                   className="field-input"
                   value={v[field]}
                   onChange={(e) => setValues((all) => all.map((x, j) => (j === i ? { ...x, [field]: e.target.value } : x)))}
@@ -128,7 +131,7 @@ export function TravelersStep({
                   id={`t${i}-birth`}
                   type="date"
                   name={`t${i}.birthDate`}
-                  autoComplete={i === 0 ? "bday" : "off"}
+                  autoComplete={i === 0 && !sharedDemo ? "bday" : "off"}
                   className="field-input"
                   value={v.birthDate}
                   onChange={(e) => setValues((all) => all.map((x, j) => (j === i ? { ...x, birthDate: e.target.value } : x)))}
@@ -153,9 +156,23 @@ export function TravelersStep({
         <label htmlFor="contactEmail" className="text-sm font-semibold">
           Email de contact pour la confirmation
         </label>
-        <input id="contactEmail" name="contactEmail" type="email" autoComplete="email" defaultValue={contactEmail} className="field-input mt-1.5" required />
-        <p className="mt-1 text-xs text-ink-soft">En local, l&apos;email est capturé dans la boîte de test et n&apos;est pas envoyé.</p>
-        {loggedIn ? (
+        <input
+          id="contactEmail"
+          name="contactEmail"
+          type="email"
+          autoComplete={sharedDemo ? "off" : "email"}
+          defaultValue={contactEmail}
+          placeholder={sharedDemo ? "voyageur@exemple.test" : undefined}
+          aria-describedby="contactEmail-hint"
+          className="field-input mt-1.5"
+          required
+        />
+        <p id="contactEmail-hint" className="mt-1 text-xs text-ink-soft">
+          {sharedDemo
+            ? "Adresse fictive obligatoire (domaine .test, .example ou example.com). Aucun email n'est envoyé par cette démonstration."
+            : "En local, l'email est capturé dans la boîte de test et n'est pas envoyé."}
+        </p>
+        {loggedIn && !sharedDemo ? (
           <label className="mt-4 flex items-start gap-2 text-sm">
             <input type="checkbox" name="saveToAccount" className="mt-0.5 size-4 accent-[var(--color-forest)]" />
             <span>J&apos;accepte que ces voyageurs (nom, prénom, date de naissance) soient enregistrés dans mon compte pour mes prochaines réservations. Facultatif, modifiable dans mon profil.</span>

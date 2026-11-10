@@ -114,7 +114,45 @@ export function SignUpForm({ devMailbox }: { devMailbox: boolean }) {
   );
 }
 
-export function SignInForm({ returnTo, devMailbox }: { returnTo: string | null; devMailbox: boolean }) {
+export interface DemoAccountCredential {
+  label: string;
+  description: string;
+  email: string;
+  password: string;
+}
+
+/** Comptes de démonstration partagés (identifiants de test publics) : affichés et utilisables en un clic. */
+function DemoAccounts({ accounts, onUse }: { accounts: DemoAccountCredential[]; onUse: (a: DemoAccountCredential) => void }) {
+  return (
+    <section aria-labelledby="demo-accounts-title" className="mb-6 rounded-[var(--radius-lg)] border border-line bg-white p-4">
+      <h2 id="demo-accounts-title" className="font-semibold">
+        Comptes de démonstration
+      </h2>
+      <ul className="mt-3 space-y-3 text-sm">
+        {accounts.map((a) => (
+          <li key={a.email} className="flex flex-wrap items-center justify-between gap-3" data-testid="demo-account">
+            <div className="min-w-0">
+              <p className="font-semibold">
+                {a.label} <span className="font-normal text-ink-soft">— {a.description}</span>
+              </p>
+              <p className="break-all">
+                Identifiant : <code className="rounded bg-ivory-deep px-1">{a.email}</code>
+              </p>
+              <p className="break-all">
+                Mot de passe (test) : <code className="rounded bg-ivory-deep px-1">{a.password}</code>
+              </p>
+            </div>
+            <button type="button" onClick={() => onUse(a)} className="min-h-10 rounded-[var(--radius-md)] border border-forest px-3 font-semibold text-forest hover:bg-forest-soft">
+              Utiliser le compte {a.label.toLowerCase()}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+export function SignInForm({ returnTo, devMailbox, demoAccounts = null }: { returnTo: string | null; devMailbox: boolean; demoAccounts?: DemoAccountCredential[] | null }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -143,6 +181,17 @@ export function SignInForm({ returnTo, devMailbox }: { returnTo: string | null; 
   };
 
   return (
+    <>
+    {demoAccounts?.length ? (
+      <DemoAccounts
+        accounts={demoAccounts}
+        onUse={(a) => {
+          setEmail(a.email);
+          setPassword(a.password);
+          setFormError("");
+        }}
+      />
+    ) : null}
     <form onSubmit={onSubmit} className="space-y-4">
       {formError ? (
         <p role="alert" className="rounded-[var(--radius-md)] bg-danger-soft p-3 text-sm font-medium text-danger">
@@ -164,13 +213,16 @@ export function SignInForm({ returnTo, devMailbox }: { returnTo: string | null; 
       ) : null}
       <TextField id="email" label="Adresse email" type="email" autoComplete="email" value={email} onChange={setEmail} />
       <TextField id="password" label="Mot de passe" type="password" autoComplete="current-password" value={password} onChange={setPassword} />
-      <div className="flex justify-end text-sm">
-        <Link href="/mot-de-passe-oublie" className="font-semibold text-forest underline underline-offset-4">
-          Mot de passe oublié ?
-        </Link>
-      </div>
+      {demoAccounts ? null : (
+        <div className="flex justify-end text-sm">
+          <Link href="/mot-de-passe-oublie" className="font-semibold text-forest underline underline-offset-4">
+            Mot de passe oublié ?
+          </Link>
+        </div>
+      )}
       <Submit pending={pending}>Se connecter</Submit>
     </form>
+    </>
   );
 }
 

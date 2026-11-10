@@ -3,11 +3,14 @@ import { requireUser } from "@/lib/auth/session";
 import { db } from "@/lib/db";
 import { savedTravelers } from "@/lib/db/schema";
 import { formatCivilDate } from "@/lib/dates";
+import { sharedDemoAccounts } from "@/lib/demo-site";
 import { AddTravelerForm, NameForm } from "@/components/account/forms";
+import { Notice } from "@/components/ui/misc";
 import { deleteTravelerAction } from "@/app/compte/actions";
 
 export default async function ProfilePage() {
   const user = await requireUser("/compte/profil");
+  const shared = sharedDemoAccounts();
   const travelers = await (await db()).select().from(savedTravelers).where(eq(savedTravelers.userId, user.id));
   return (
     <div className="space-y-10">
@@ -15,7 +18,18 @@ export default async function ProfilePage() {
         <h2 id="profile-title" className="font-serif text-2xl">
           Profil
         </h2>
-        <NameForm name={user.name} />
+        {shared ? (
+          <>
+            <p className="text-sm">
+              Nom affiché : <strong>{user.name}</strong>
+            </p>
+            <Notice tone="info" title="Compte de démonstration partagé">
+              Le nom, l&apos;adresse email et le mot de passe de ce compte ne sont pas modifiables : tous les visiteurs l&apos;utilisent.
+            </Notice>
+          </>
+        ) : (
+          <NameForm name={user.name} />
+        )}
         <p className="text-sm">
           Adresse email : <strong>{user.email}</strong> {user.emailVerified ? "(confirmée)" : "(non confirmée)"}
         </p>
@@ -46,7 +60,13 @@ export default async function ProfilePage() {
         ) : (
           <p className="text-sm">Aucun voyageur enregistré.</p>
         )}
-        <AddTravelerForm />
+        {shared ? (
+          <Notice tone="info" title="Enregistrement de voyageurs désactivé sur le site de démonstration">
+            Ce compte est partagé entre tous les visiteurs : aucune donnée de voyageur n&apos;y est conservée.
+          </Notice>
+        ) : (
+          <AddTravelerForm />
+        )}
       </section>
     </div>
   );

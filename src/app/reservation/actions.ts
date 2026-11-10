@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getViewer, guestTokenFor, GUEST_COOKIE_PREFIX } from "@/lib/viewer";
+import { secureCookies } from "@/lib/env";
 import {
   BookingError,
   GUEST_LINK_TTL_DAYS,
@@ -52,7 +53,7 @@ export async function startBookingAction(_prev: ActionState, form: FormData): Pr
       (await cookies()).set(`${GUEST_COOKIE_PREFIX}${res.bookingId}`, res.guestToken, {
         httpOnly: true,
         sameSite: "lax",
-        secure: (process.env.NOMADIA_SITE_URL ?? "").startsWith("https"),
+        secure: secureCookies(),
         path: "/",
         maxAge: GUEST_LINK_TTL_DAYS * 86400,
       });

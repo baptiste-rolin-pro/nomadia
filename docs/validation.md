@@ -2,7 +2,7 @@
 
 Toutes les vérifications ci-dessous ont été **réellement exécutées** le 2026-11-09 sur Windows 11, Node.js 26.13, npm 11.20, Chromium (Playwright 1.65). Rien n'est déclaré réussi sans exécution.
 
-Dernière passe : **durcissement des paiements** après revue indépendante (voir la section dédiée). Les cinq premières lignes du tableau sont les résultats de cette passe ; les trois dernières datent de la passe initiale et n'ont pas été relancées.
+Dernière passe : **préparation du déploiement Vercel / démonstration publique** (2026-11-10, voir la section dédiée). Les cinq premières lignes du tableau sont les résultats de cette passe ; les trois dernières datent de la passe initiale et n'ont pas été relancées.
 
 ## Résultats
 
@@ -10,12 +10,20 @@ Dernière passe : **durcissement des paiements** après revue indépendante (voi
 | --- | --- | --- |
 | Types | `npx tsc --noEmit` | OK, 0 erreur, code de sortie 0 (TypeScript 5.9, `strict` + `noUncheckedIndexedAccess`) |
 | Lint | `npx eslint .` | OK, 0 erreur, 0 avertissement, code de sortie 0 |
-| Tests métier et intégration | `npx vitest run` | **56/56** (5 fichiers), code de sortie 0 |
-| Build de production | `npx next build` | OK, 60 pages générées, aucun avertissement, code de sortie 0 |
-| Parcours | `npx playwright test` | **24/24** (1,3 min), code de sortie 0 ; passe initiale : 24/24 sur deux exécutions consécutives |
+| Tests métier et intégration | `npx vitest run` | **73/73** (7 fichiers), code de sortie 0 (passe précédente : 56/56) |
+| Build de production | `npx next build` | OK, 59 pages générées (`/contact` devient dynamique), aucun avertissement, code de sortie 0 |
+| Parcours | `npx playwright test` | **29/29** (1,1 min) sur deux serveurs (28 « demo-publique » + 1 « inscription-ouverte »), code de sortie 0 (passe précédente : 24/24) |
 | Serveur de développement | `npx next dev` + requêtes HTTP | Passe initiale : 200 sur `/`, `/destinations/rome`, `/api/auth/get-session` (accès base), `/voyage/nouveau`, `/api/search/hotels`, `/dev/boite-mail` |
 | Base locale | `npm run db:reset` | Passe initiale : migrations + seed OK (2 comptes, 3 voyages de référence) |
 | Liens externes | `npm run links:check` | Passe initiale : 68 liens, **0 en erreur** ; 15 réponses 403 de protections anti-robot (sites de compagnies/loueurs, capetown.travel, visitnorway.com) à contrôler manuellement dans un navigateur |
+
+## Préparation Vercel + Neon, démonstration publique sans donnée personnelle (2026-11-10)
+
+- **Tests unitaires ajoutés** : `tests/unit/public-demo.test.ts` (11 tests : inscription fermée par défaut ; garde-fous Vercel `BETTER_AUTH_SECRET` / `DATABASE_URL` / boîte mail / limitation de débit ; URL publique par défaut ; adresses fictives ; chaîne PostgreSQL `verify-full` et identifiants préservés ; inscription refusée en HTTP (404) et par `auth.api` (403) sans écriture ; réinitialisation, renvoi de vérification refusés sans email capturé ; connexion du compte de démonstration avec session sans IP ni user-agent ; changement de mot de passe / email / nom, suppression, sessions refusés ; contact refusé sans écriture ; inscription et réinitialisation acceptées avec `NOMADIA_PUBLIC_SIGNUP=true`) et `tests/unit/jobs-serverless.test.ts` (6 tests : email réel refusé, aucun voyageur enregistré ; tunnel jusqu'à l'émission par consultations successives ; tâche abandonnée reprise après le bail et une seule fois sous concurrence ; échec définitif après 5 tentatives ; traitement fournisseur interrompu => inconnu => réconciliation sans seconde réservation ; `/api/jobs/run` 401 / GET `CRON_SECRET` / POST jeton).
+- **Parcours ajoutés** : `tests/e2e/public-demo.spec.ts` (5 tests sur la configuration Vercel : avertissements, identifiants affichés et utilisables, pages fermées, API fermées, profil et contact fermés, réservation complète avec email réel refusé puis adresse fictive) ; le parcours d'inscription est déplacé dans `tests/e2e/signup-open.spec.ts` (serveur `NOMADIA_PUBLIC_SIGNUP=true`).
+- **Scripts** sur une base PGlite jetable : `db:migrate` puis `db:seed` trois fois (créé ; déjà à jour ; mot de passe resynchronisé après changement de `DEMO_USER_PASSWORD`) ; `db:reset` refusé avec une URL PostgreSQL ; `db:migrate` / `db:seed` refusés sur Vercel sans base.
+- **Chemin node-postgres (sans Neon)** : aucune `DATABASE_URL` dans `.env.local`, donc test Neon non exécuté. À la place, pont TCP « protocole PostgreSQL » vers PGlite (script jetable hors dépôt, sérialisation par transaction comme PgBouncer en mode transaction, sans TLS) : `db:migrate` ×2 (2 migrations, puis aucune), `db:seed` ×2 (créé puis déjà à jour) avec verrou consultatif ; `next start` avec `DATABASE_URL` : 11/11 parcours (`account-booking` + `public-demo` : connexion par compte de démonstration, tunnel complet jusqu'à « Billets émis », double clic sans double paiement, remboursement après réservation refusée). Contrôle en base : 10 sessions, 0 avec IP ou user-agent ; 0 message de contact ; 0 voyageur enregistré ; 0 email de contact non fictif ; toutes les tâches `done`.
+- **Non vérifié** : Neon réel (TLS `verify-full`, PgBouncer, réveil après suspension, latence), sérialisation réelle de deux migrations simultanées (le pont partage une seule session), déploiement Vercel (build, région, Cron, variables système).
 
 ## Durcissement des paiements (revue indépendante, 2026-11-09)
 
@@ -74,7 +82,7 @@ Navigateur intégré, serveur de production local : accueil en 375 px (hero, ban
 
 ## Limites restantes / à vérifier
 
-- Adaptateur Duffel et chemin PostgreSQL (`DATABASE_URL`) écrits mais non testés (ni jeton, ni serveur PostgreSQL disponibles). Cela inclut la prise atomique de l'étape de paiement (transaction) et l'index partiel, vérifiés uniquement sur PGlite.
+- Adaptateur Duffel écrit mais non testé (aucun jeton). Chemin PostgreSQL (`DATABASE_URL`) exécuté le 2026-11-10 avec node-postgres à travers un pont local vers PGlite (migrations, seed, parcours complets) mais **jamais contre un vrai serveur PostgreSQL ni Neon** : TLS, PgBouncer, concurrence réelle entre connexions (la prise atomique de l'étape de paiement et l'index partiel n'ont été exercés que sur une session PGlite).
 - Paiement : une tentative interrompue entre la prise de l'étape et la création du paiement (arrêt du processus) laisse le dossier « paiement en cours » sans paiement ; aucune réconciliation automatique (comportement antérieur, inchangé). La validation de l'authentification bancaire (3-D Secure simulé) ne revérifie pas l'échéance du devis : le paiement a été créé pendant sa validité.
 - `npx vitest run` affiche un avertissement Vite préexistant (`__dirname` dans `vitest.config.mts`, chargeur de configuration natif à venir) ; sans effet sur les résultats.
 - Pas de test sur Firefox/WebKit ni sur appareil mobile réel ; lecteurs d'écran non testés (contrôles ARIA vérifiés par les tests et le code).

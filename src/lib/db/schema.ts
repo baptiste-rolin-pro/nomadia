@@ -345,6 +345,8 @@ export const jobs = pgTable(
     status: text("status").notNull().default("pending"), // pending | done | failed
     runAfter: ts("run_after").notNull(),
     attempts: integer("attempts").notNull().default(0),
+    /** Reprises après expiration du bail (exécution abandonnée), indépendantes des relances normales. */
+    leaseExpirations: integer("lease_expirations").notNull().default(0),
     lastError: text("last_error"),
     createdAt: ts("created_at").notNull().defaultNow(),
     updatedAt: ts("updated_at").notNull().defaultNow(),

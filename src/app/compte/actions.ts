@@ -12,14 +12,19 @@ import { prefixedId } from "@/lib/security";
 import { isCivilDate } from "@/lib/dates";
 import { nowMs } from "@/lib/clock";
 import { audit } from "@/lib/audit";
+import { sharedDemoAccounts } from "@/lib/demo-site";
 
 export interface FormState {
   ok?: string;
   error?: string;
 }
 
+/** Comptes de démonstration partagés : l'identité du compte et les voyageurs enregistrés ne sont pas modifiables. */
+const SHARED_ACCOUNT_LOCKED = "Désactivé sur le site de démonstration : ce compte est partagé entre tous les visiteurs.";
+
 export async function updateNameAction(_p: FormState, form: FormData): Promise<FormState> {
   await requireUser("/compte/profil");
+  if (sharedDemoAccounts()) return { error: SHARED_ACCOUNT_LOCKED };
   const name = String(form.get("name") ?? "").trim();
   if (name.length < 2 || name.length > 80) return { error: "Nom invalide (2 à 80 caractères)." };
   const auth = await getAuth();
@@ -37,6 +42,7 @@ const travelerSchema = z.object({
 
 export async function addTravelerAction(_p: FormState, form: FormData): Promise<FormState> {
   const user = await requireUser("/compte/profil");
+  if (sharedDemoAccounts()) return { error: SHARED_ACCOUNT_LOCKED };
   const parsed = travelerSchema.safeParse(Object.fromEntries(form.entries()));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Données invalides." };
   const database = await db();

@@ -12,6 +12,7 @@ import { BOOKING_SCENARIOS } from "@/lib/providers/scenarios";
 import { civilDateOf, formatCivilDate, formatLocalTime } from "@/lib/dates";
 import { formatMoney } from "@/lib/money";
 import { nowMs } from "@/lib/clock";
+import { sharedDemoAccounts } from "@/lib/demo-site";
 import { db } from "@/lib/db";
 import { savedTravelers } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -74,7 +75,8 @@ export default async function ReservationPage({ params }: { params: Promise<{ id
   const paymentStatus = booking.paymentStatus as PaymentStatus;
   const pending = ["pending", "unknown"].includes(providerStatus) || paymentStatus === "refund_requested" || (booking.vertical === "flights" && providerStatus === "confirmed") || paymentStatus === "processing";
   const preview = ["confirmed", "ticketed"].includes(providerStatus) ? await cancellationPreview(id, viewer, guest).catch(() => null) : null;
-  const saved = viewer.user ? await (await db()).select().from(savedTravelers).where(eq(savedTravelers.userId, viewer.user.id)) : [];
+  const shared = sharedDemoAccounts();
+  const saved = viewer.user && !shared ? await (await db()).select().from(savedTravelers).where(eq(savedTravelers.userId, viewer.user.id)) : [];
   const types = expectedTravelerTypes(bookable.travelers);
   const days = bookable.vertical === "cars" ? rentalDays(bookable.start, bookable.end) : 1;
 
@@ -152,6 +154,12 @@ export default async function ReservationPage({ params }: { params: Promise<{ id
               <h2 id="step-title" className="mb-4 font-serif text-heading">
                 {bookable.travelers.kind === "driver" ? "Conducteur principal" : bookable.travelers.kind === "guests" ? "Voyageurs principaux" : "Passagers"}
               </h2>
+              {demo || shared ? (
+                <Notice tone="warning" className="mb-4" title="Démonstration : n'entrez aucune donnée personnelle réelle">
+                  Utilisez des noms et une date de naissance fictifs (par exemple Camille Durand, née le 4 mai 1991)
+                  {shared ? " et une adresse email fictive en .test ou example.com. Les comptes de démonstration sont partagés : ces informations peuvent être vues par les autres visiteurs." : "."}
+                </Notice>
+              ) : null}
               <p className="mb-4 text-sm text-ink-soft">Saisissez les noms exactement comme sur les pièces d&apos;identité. Ces données servent uniquement à cette réservation.</p>
               <TravelersStep
                 bookingId={booking.id}
@@ -161,6 +169,7 @@ export default async function ReservationPage({ params }: { params: Promise<{ id
                 needsBirthDate={bookable.travelers.kind !== "guests"}
                 saved={saved.map((s) => ({ id: s.id, firstName: s.firstName, lastName: s.lastName, birthDate: s.birthDate }))}
                 loggedIn={!!viewer.user}
+                sharedDemo={shared}
               />
             </section>
           ) : null}

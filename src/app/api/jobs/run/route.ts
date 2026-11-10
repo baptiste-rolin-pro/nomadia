@@ -5,11 +5,24 @@ import { safeEqual } from "@/lib/security";
 
 export const dynamic = "force-dynamic";
 
-/** Point d'appel pour un ordonnanceur externe (cron). Désactivé sans NOMADIA_JOB_RUNNER_TOKEN. */
-export async function POST(request: Request) {
-  const token = env().NOMADIA_JOB_RUNNER_TOKEN;
-  const auth = request.headers.get("authorization") ?? "";
-  if (!token || !safeEqual(auth, `Bearer ${token}`)) return new NextResponse(null, { status: 401 });
+/**
+ * Exécution des tâches dues par un ordonnanceur (filet de sécurité : le tunnel de réservation exécute déjà
+ * les tâches de chaque dossier à la consultation). Jeton `Authorization: Bearer <secret>` :
+ * - CRON_SECRET : envoyé automatiquement par Vercel Cron (requête GET, voir vercel.json) ;
+ * - NOMADIA_JOB_RUNNER_TOKEN : ordonnanceur externe (GET ou POST).
+ * Désactivé (401) si aucun des deux n'est configuré. Idempotent : chaque tâche est prise par une seule instance.
+ */
+function authorized(request: Request): boolean {
+  const e = env();
+  const header = request.headers.get("authorization") ?? "";
+  return [e.CRON_SECRET, e.NOMADIA_JOB_RUNNER_TOKEN].some((secret) => !!secret && safeEqual(header, `Bearer ${secret}`));
+}
+
+async function run(request: Request) {
+  if (!authorized(request)) return new NextResponse(null, { status: 401 });
   const processed = await runDueJobs({}, 50);
   return NextResponse.json({ processed });
 }
+
+export const GET = run;
+export const POST = run;

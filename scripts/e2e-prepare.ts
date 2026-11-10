@@ -1,4 +1,8 @@
-/** Recrée la base de test des parcours (PGlite dédiée) : suppression, migrations, seed. */
+/**
+ * Recrée la base de test des parcours (PGlite dédiée) : suppression, migrations, seed.
+ * DATABASE_URL / DATABASE_URL_UNPOOLED sont forcées à vide pour les sous-processus : même si `.env.local`
+ * contient une base PostgreSQL (Neon), les tests de parcours ne la touchent jamais.
+ */
 import { rm } from "node:fs/promises";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -8,7 +12,7 @@ async function main() {
   if (!dir.includes(".data")) throw new Error(`Dossier inattendu : ${dir}`);
   await rm(dir, { recursive: true, force: true });
   for (const script of ["db:migrate", "db:seed"]) {
-    const r = spawnSync(`npm run ${script}`, { stdio: "inherit", shell: true, env: { ...process.env, PGLITE_DATA_DIR: dir } });
+    const r = spawnSync(`npm run ${script}`, { stdio: "inherit", shell: true, env: { ...process.env, PGLITE_DATA_DIR: dir, DATABASE_URL: "", DATABASE_URL_UNPOOLED: "" } });
     if (r.status !== 0) process.exit(r.status ?? 1);
   }
 }

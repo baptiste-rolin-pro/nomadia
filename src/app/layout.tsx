@@ -46,7 +46,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </a>
         {demo ? (
           <div role="note" className="no-print bg-ink px-4 py-2 text-center text-[0.8rem] font-medium text-white">
-            Démonstration — aucune réservation ni aucun paiement réel. Offres, prix et prestataires fictifs.
+            Démonstration — aucune réservation ni aucun paiement réel. Offres, prix et prestataires fictifs.{" "}
+            <strong className="font-semibold">N&apos;entrez aucune donnée personnelle réelle</strong> (nom, email, date de naissance) : utilisez des valeurs fictives.
           </div>
         ) : null}
         <SiteHeader />

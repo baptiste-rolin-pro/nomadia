@@ -13,7 +13,7 @@ import { nowMs } from "@/lib/clock";
 import { prefixedId } from "@/lib/security";
 import { bookingOpsFor } from "@/lib/providers/registry";
 import { ProviderError, type Bookable, type ProviderBookingResult, type TravelerInput, type Vertical } from "@/lib/providers/types";
-import { enqueueJob, type JobType } from "@/lib/jobs";
+import { RUNNING_LEASE_MS, enqueueJob, type JobType } from "@/lib/jobs";
 import { requestDemoRefund, settleDemoRefund } from "@/lib/payments/demo-psp";
 import { sendEmail } from "@/lib/mail";
 import { audit } from "@/lib/audit";
@@ -112,11 +112,33 @@ async function onFailed(booking: BookingRow, message: string) {
   await audit({ actorType: "system", action: "booking.failed", entityType: "booking", entityId: booking.id });
 }
 
+/** Issue inconnue : statut « unknown », incident, réconciliation planifiée (jamais de nouvel achat automatique). */
+async function markOutcomeUnknown(bookingId: string, detail: string, result: Record<string, unknown>): Promise<void> {
+  const database = await db();
+  await database.update(bookingAttempts).set({ status: "unknown", result, completedAt: new Date(nowMs()) }).where(eq(bookingAttempts.idempotencyKey, bookingIdempotencyKey(bookingId)));
+  await database.update(bookings).set({ providerStatus: "unknown", step: "processing", updatedAt: new Date(nowMs()) }).where(eq(bookings.id, bookingId));
+  await database.insert(incidents).values({ id: prefixedId("inc"), bookingId, kind: "provider_outcome_unknown", status: "open", detail, createdAt: new Date(nowMs()) });
+  await enqueueJob("reconcile_booking", `reconcile:${bookingId}`, { bookingId }, RECONCILE_DELAY_MS);
+  await audit({ actorType: "system", action: "booking.outcome_unknown", entityType: "booking", entityId: bookingId });
+}
+
 export async function processProviderBooking(bookingId: string): Promise<void> {
   const booking = await loadBooking(bookingId);
   if (!booking) return;
   if (booking.providerStatus === "unknown") {
     await reconcileBooking(bookingId);
+    return;
+  }
+  if (booking.providerStatus === "pending" && booking.updatedAt.getTime() < nowMs() - RUNNING_LEASE_MS) {
+    // Traitement interrompu après la prise du dossier (fonction serverless arrêtée, tâche reprise après expiration
+    // du bail) : l'appel fournisseur a pu aboutir ou non. Passage atomique à « inconnu » puis réconciliation.
+    const database = await db();
+    const taken = await database
+      .update(bookings)
+      .set({ providerStatus: "unknown", updatedAt: new Date(nowMs()) })
+      .where(and(eq(bookings.id, bookingId), eq(bookings.providerStatus, "pending")))
+      .returning({ id: bookings.id });
+    if (taken.length) await markOutcomeUnknown(bookingId, "Traitement fournisseur interrompu avant sa fin : vérification auprès du fournisseur.", { code: "INTERRUPTED" });
     return;
   }
   if (booking.providerStatus !== "not_started") return;
@@ -154,11 +176,7 @@ export async function processProviderBooking(bookingId: string): Promise<void> {
     return onConfirmed({ ...booking, providerStatus: "pending" }, result);
   } catch (err) {
     if (err instanceof ProviderError && (err.code === "TIMEOUT" || err.code === "UNAVAILABLE")) {
-      await database.update(bookingAttempts).set({ status: "unknown", result: { code: err.code, message: err.message }, completedAt: new Date(nowMs()) }).where(eq(bookingAttempts.idempotencyKey, key));
-      await database.update(bookings).set({ providerStatus: "unknown", step: "processing", updatedAt: new Date(nowMs()) }).where(eq(bookings.id, bookingId));
-      await database.insert(incidents).values({ id: prefixedId("inc"), bookingId, kind: "provider_outcome_unknown", status: "open", detail: err.message, createdAt: new Date(nowMs()) });
-      await enqueueJob("reconcile_booking", `reconcile:${bookingId}`, { bookingId }, RECONCILE_DELAY_MS);
-      await audit({ actorType: "system", action: "booking.outcome_unknown", entityType: "booking", entityId: bookingId });
+      await markOutcomeUnknown(bookingId, err.message, { code: err.code, message: err.message });
       return;
     }
     await database.update(bookingAttempts).set({ status: "failed", result: { message: err instanceof Error ? err.message : "erreur" }, completedAt: new Date(nowMs()) }).where(eq(bookingAttempts.idempotencyKey, key));

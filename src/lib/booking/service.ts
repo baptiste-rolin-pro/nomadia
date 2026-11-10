@@ -17,6 +17,7 @@ import { isBookingScenario } from "@/lib/providers/scenarios";
 import { completeDemoAuthentication, createDemoPayment } from "@/lib/payments/demo-psp";
 import { enqueueJob, runDueJobs } from "@/lib/jobs";
 import { audit } from "@/lib/audit";
+import { FICTITIOUS_EMAIL_MESSAGE, isFictitiousEmail, sharedDemoAccounts } from "@/lib/demo-site";
 import type { Viewer } from "@/lib/viewer";
 import type { BookingRow } from "@/lib/booking/processing";
 
@@ -175,7 +176,10 @@ export async function saveTravelers(
   const view = await requireView(bookingId, viewer, guestToken);
   assertEditable(view.booking);
   const issues = validateTravelers(view.bookable.travelers, input.travelers);
+  const shared = sharedDemoAccounts();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.contactEmail)) issues.push({ index: -1, field: "general", message: "Adresse email de contact invalide." });
+  // Site de démonstration public : aucune adresse réelle n'est acceptée (domaines réservés RFC 2606 / 6761).
+  else if (shared && !isFictitiousEmail(input.contactEmail)) issues.push({ index: -1, field: "general", message: FICTITIOUS_EMAIL_MESSAGE });
   if (issues.length) return { issues };
   const database = await db();
   const clean = input.travelers.map((t) => ({ type: t.type, firstName: t.firstName.trim(), lastName: t.lastName.trim(), birthDate: t.birthDate || null }));
@@ -192,7 +196,8 @@ export async function saveTravelers(
       dedupeKey: `guest-link:${bookingId}:${sha256(input.contactEmail.trim().toLowerCase())}`,
     });
   }
-  if (input.saveToAccount && viewer.user) {
+  // Comptes de démonstration partagés : jamais de voyageurs enregistrés (visibles de tous les visiteurs).
+  if (input.saveToAccount && viewer.user && !shared) {
     for (const t of clean) {
       await database.insert(savedTravelers).values({ id: prefixedId("trv"), userId: viewer.user.id, firstName: t.firstName, lastName: t.lastName, birthDate: t.birthDate, consentAt: new Date(nowMs()), createdAt: new Date(nowMs()) });
     }

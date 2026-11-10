@@ -1,14 +1,16 @@
 /**
  * Réinitialise la base PGlite locale (suppression du dossier de données), puis migrations et seed.
- * Refuse d'agir sur une base PostgreSQL distante (DATABASE_URL) par sécurité.
+ * Refuse d'agir sur une base PostgreSQL (DATABASE_URL / DATABASE_URL_UNPOOLED, y compris depuis `.env.local`)
+ * par sécurité : une base distante n'est jamais supprimée par ce script.
  */
+import { scriptDatabaseUrl } from "./lib/script-env";
 import { rm } from "node:fs/promises";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 
 async function main() {
-  if (process.env.DATABASE_URL) {
-    console.error("db:reset est réservé à la base PGlite locale. Retirez DATABASE_URL.");
+  if (scriptDatabaseUrl()) {
+    console.error("db:reset est réservé à la base PGlite locale. Retirez DATABASE_URL / DATABASE_URL_UNPOOLED (environnement et .env.local).");
     process.exit(1);
   }
   const dir = path.resolve(process.cwd(), process.env.PGLITE_DATA_DIR ?? ".data/pglite");

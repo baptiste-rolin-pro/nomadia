@@ -2,6 +2,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { getCurrentUser, type CurrentUser } from "@/lib/auth/session";
 import { opaqueId, sha256 } from "@/lib/security";
+import { secureCookies } from "@/lib/env";
 
 /**
  * Identité du visiteur : utilisateur authentifié et/ou brouillon anonyme.
@@ -28,7 +29,7 @@ export async function ensureAnonHash(): Promise<string> {
   let anon = jar.get(ANON_COOKIE)?.value;
   if (!anon) {
     anon = opaqueId(24);
-    jar.set(ANON_COOKIE, anon, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production" && (process.env.NOMADIA_SITE_URL ?? "").startsWith("https"), path: "/", maxAge: 60 * 60 * 24 * 90 });
+    jar.set(ANON_COOKIE, anon, { httpOnly: true, sameSite: "lax", secure: secureCookies(), path: "/", maxAge: 60 * 60 * 24 * 90 });
   }
   return sha256(anon);
 }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { devMailboxEnabled } from "@/lib/mail";
 import { safeReturnPath } from "@/lib/auth/session";
+import { demoCredentials, sharedDemoAccounts, SHARED_ACCOUNT_NOTICE } from "@/lib/demo-site";
 import { SignInForm } from "@/components/auth/auth-forms";
 import { Notice } from "@/components/ui/misc";
 
@@ -10,22 +11,31 @@ export const dynamic = "force-dynamic";
 
 export default async function SignInPage({ searchParams }: { searchParams: Promise<{ retour?: string; reinitialise?: string }> }) {
   const { retour, reinitialise } = await searchParams;
+  const shared = sharedDemoAccounts();
   return (
     <>
       <h1 className="font-serif text-title">Se connecter</h1>
       <p className="mb-8 mt-3 text-ink-soft">Accédez à vos voyages, réservations et favoris.</p>
-      {reinitialise ? (
+      {reinitialise && !shared ? (
         <Notice tone="success" className="mb-6" title="Mot de passe modifié">
           Connectez-vous avec votre nouveau mot de passe.
         </Notice>
       ) : null}
-      <SignInForm returnTo={safeReturnPath(retour)} devMailbox={devMailboxEnabled()} />
-      <p className="mt-6 text-sm">
-        Pas encore de compte ?{" "}
-        <Link href="/inscription" className="font-semibold text-forest underline underline-offset-4">
-          Créer un compte
-        </Link>
-      </p>
+      {shared ? (
+        <Notice tone="warning" className="mb-6" title="Site de démonstration : comptes partagés">
+          <p>La création de compte est désactivée. Connectez-vous avec l&apos;un des comptes de démonstration ci-dessous (identifiants de test, publics).</p>
+          <p className="mt-1">{SHARED_ACCOUNT_NOTICE}</p>
+        </Notice>
+      ) : null}
+      <SignInForm returnTo={safeReturnPath(retour)} devMailbox={devMailboxEnabled()} demoAccounts={shared ? demoCredentials() : null} />
+      {shared ? null : (
+        <p className="mt-6 text-sm">
+          Pas encore de compte ?{" "}
+          <Link href="/inscription" className="font-semibold text-forest underline underline-offset-4">
+            Créer un compte
+          </Link>
+        </p>
+      )}
     </>
   );
 }

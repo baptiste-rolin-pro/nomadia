@@ -1,18 +1,24 @@
 /**
- * Données de démonstration :
- * - deux comptes (voyageur et administrateur) avec adresse vérifiée ;
- * - trois voyages de référence aux dates relatives (toujours futures après `npm run db:reset`) :
+ * Données de démonstration — idempotent, sans risque à relancer (chaque déploiement Vercel l'exécute) :
+ * - deux comptes (voyageur et administrateur) à l'adresse vérifiée, sur le domaine réservé `.test` : créés s'ils
+ *   manquent ; rôle, adresse vérifiée et mot de passe resynchronisés avec DEMO_USER_PASSWORD / DEMO_ADMIN_PASSWORD
+ *   (valeurs de TEST publiques, voir .env.example) ;
+ * - trois voyages de référence du compte voyageur, recréés uniquement s'ils manquent (ou sont vides), aux dates
+ *   relatives à la date du seed :
  *   1. couple, aller-retour Paris–Lisbonne, 4 nuits, voiture facultative ;
  *   2. famille avec enfant à Rome, chambre familiale au tarif remboursable ;
  *   3. Reykjavik avec arrivée tardive et location dont l'horaire impose une correction explicite.
- * Mots de passe : DEMO_USER_PASSWORD / DEMO_ADMIN_PASSWORD (valeurs de test, voir .env.example).
+ * Sur PostgreSQL, l'ensemble s'exécute sous le verrou consultatif partagé avec db:migrate (seeds simultanés
+ * sérialisés). Les migrations doivent avoir été appliquées (npm run db:migrate).
  * Exécuter avec la condition « react-server » (voir package.json) : les modules serveur sont importés.
  */
+import { assertDatabaseConfigured, describeTarget, scriptDatabaseUrl } from "./lib/script-env";
 import path from "node:path";
-import { eq } from "drizzle-orm";
-import { hashPassword } from "better-auth/crypto";
-import { closeDatabase, getDatabase } from "../src/lib/db/client";
-import { account, preferences, user } from "../src/lib/db/schema";
+import { and, eq } from "drizzle-orm";
+import { hashPassword, verifyPassword } from "better-auth/crypto";
+import { closeDatabase, getDatabase, withPostgresLock, type Database } from "../src/lib/db/client";
+import { account, preferences, tripItems, trips, user } from "../src/lib/db/schema";
+import { DEMO_ADMIN, DEMO_USER, demoPasswords } from "../src/lib/demo-accounts";
 import { today } from "../src/lib/clock";
 import { addDays } from "../src/lib/dates";
 import { generateFlightOffers } from "../src/lib/providers/demo/flights";
@@ -20,45 +26,65 @@ import { buildRateOffer } from "../src/lib/providers/demo/hotels";
 import { buildCarOffer } from "../src/lib/providers/demo/cars";
 import { addItemToTrip, createTrip, setTripItemStatus } from "../src/lib/planner/service";
 
-const DEMO_USER = { id: "usr_demo_voyageur", name: "Camille (démo)", email: "voyageur@nomadia.test" };
-const DEMO_ADMIN = { id: "usr_demo_admin", name: "Admin (démo)", email: "admin@nomadia.test" };
+type DemoAccount = typeof DEMO_USER | typeof DEMO_ADMIN;
 
-async function upsertUser(u: { id: string; name: string; email: string }, password: string, role: string) {
-  const database = await getDatabase(opts());
-  const existing = await database.select().from(user).where(eq(user.email, u.email)).limit(1);
-  if (existing.length) return false;
+/** Crée ou resynchronise un compte de démonstration. Renvoie l'identifiant réel (adresse = clé naturelle). */
+async function ensureDemoUser(database: Database, u: DemoAccount, password: string): Promise<{ id: string; created: boolean; passwordReset: boolean }> {
   const now = new Date();
-  await database.insert(user).values({ id: u.id, name: u.name, email: u.email, emailVerified: true, role, createdAt: now, updatedAt: now });
-  await database.insert(account).values({ id: `acc_${u.id}`, accountId: u.id, providerId: "credential", userId: u.id, password: await hashPassword(password), createdAt: now, updatedAt: now });
-  await database.insert(preferences).values({ userId: u.id }).onConflictDoNothing();
+  const inserted = await database
+    .insert(user)
+    .values({ id: u.id, name: u.name, email: u.email, emailVerified: true, role: u.role, createdAt: now, updatedAt: now })
+    .onConflictDoNothing()
+    .returning({ id: user.id });
+  const row = (await database.select().from(user).where(eq(user.email, u.email)).limit(1))[0];
+  if (!row) throw new Error(`Compte de démonstration introuvable après insertion : ${u.email}`);
+  if (row.name !== u.name || row.role !== u.role || !row.emailVerified) {
+    await database.update(user).set({ name: u.name, role: u.role, emailVerified: true, updatedAt: now }).where(eq(user.id, row.id));
+  }
+  const credential = (await database.select().from(account).where(and(eq(account.userId, row.id), eq(account.providerId, "credential"))).limit(1))[0];
+  let passwordReset = false;
+  if (!credential) {
+    await database.insert(account).values({ id: `acc_${row.id}`, accountId: row.id, providerId: "credential", userId: row.id, password: await hashPassword(password), createdAt: now, updatedAt: now }).onConflictDoNothing();
+  } else if (!credential.password || !(await verifyPassword({ hash: credential.password, password }))) {
+    await database.update(account).set({ password: await hashPassword(password), updatedAt: now }).where(eq(account.id, credential.id));
+    passwordReset = true;
+  }
+  await database.insert(preferences).values({ userId: row.id }).onConflictDoNothing();
+  return { id: row.id, created: inserted.length > 0, passwordReset };
+}
+
+/**
+ * Un voyage de référence est considéré présent s'il existe (même titre, compte voyageur) avec au moins une
+ * prestation. Un voyage vide (seed interrompu, prestations retirées) est supprimé puis recréé.
+ */
+async function referenceTripMissing(database: Database, ownerId: string, title: string): Promise<boolean> {
+  const existing = await database.select({ id: trips.id }).from(trips).where(and(eq(trips.ownerUserId, ownerId), eq(trips.title, title)));
+  for (const t of existing) {
+    const items = await database.select({ id: tripItems.id }).from(tripItems).where(eq(tripItems.tripId, t.id)).limit(1);
+    if (items.length) return false;
+  }
+  for (const t of existing) await database.delete(trips).where(eq(trips.id, t.id));
   return true;
 }
 
-function opts() {
-  return {
-    databaseUrl: process.env.DATABASE_URL,
-    pgliteDir: path.resolve(process.cwd(), process.env.PGLITE_DATA_DIR ?? ".data/pglite"),
-    migrationsFolder: path.resolve(process.cwd(), "drizzle"),
-  };
-}
-
-async function main() {
-  const userPassword = process.env.DEMO_USER_PASSWORD || "voyage-demo-2026";
-  const adminPassword = process.env.DEMO_ADMIN_PASSWORD || "admin-demo-2026";
-  const created = await upsertUser(DEMO_USER, userPassword, "user");
-  await upsertUser(DEMO_ADMIN, adminPassword, "admin");
-  if (!created) {
-    console.log("Comptes de démonstration déjà présents : voyages de référence non recréés (utilisez npm run db:reset).");
-    await closeDatabase();
-    return;
+async function seed(database: Database): Promise<string[]> {
+  const passwords = demoPasswords();
+  const report: string[] = [];
+  const demoUser = await ensureDemoUser(database, DEMO_USER, passwords.user);
+  const demoAdmin = await ensureDemoUser(database, DEMO_ADMIN, passwords.admin);
+  for (const [u, r] of [[DEMO_USER, demoUser], [DEMO_ADMIN, demoAdmin]] as const) {
+    report.push(`${u.email} : ${r.created ? "créé" : r.passwordReset ? "mot de passe resynchronisé" : "déjà à jour"}`);
   }
-  const viewer = { user: { id: DEMO_USER.id, name: DEMO_USER.name, email: DEMO_USER.email, emailVerified: true, role: "user" }, anonHash: null };
-  const owner = { userId: DEMO_USER.id, anonHash: null };
+
+  const ownerId = demoUser.id;
+  const viewer = { user: { id: ownerId, name: DEMO_USER.name, email: DEMO_USER.email, emailVerified: true, role: "user" }, anonHash: null };
+  const owner = { userId: ownerId, anonHash: null };
   const t = today();
   const now = Math.floor(Date.now() / 1000);
+  let createdTrips = 0;
 
   // 1. Couple — Lisbonne, 4 nuits, voiture facultative
-  {
+  if (await referenceTripMissing(database, ownerId, "Lisbonne à deux")) {
     const dep = addDays(t, 45);
     const ret = addDays(t, 49);
     const id = await createTrip({ title: "Lisbonne à deux", destinationSlug: "lisbonne", startDate: dep, endDate: ret, adults: 2, childrenAges: [], budgetTarget: 150000, notes: "Voyage de référence n° 1 (démonstration)." }, owner);
@@ -69,10 +95,11 @@ async function main() {
     await addItemToTrip(id, hotel.id, viewer);
     const car = buildCarOffer({ pu: "lis-apt-dl", do: "lis-apt-dl", m: "eco", pl: `${addDays(dep, 1)}T10:00`, rl: `${addDays(ret, 0)}T08:30`, age: 34, res: "FR", pre: true, t: now });
     await addItemToTrip(id, car.id, viewer);
+    createdTrips += 1;
   }
 
   // 2. Famille — Rome, enfant de 7 ans, tarif remboursable
-  {
+  if (await referenceTripMissing(database, ownerId, "Rome en famille")) {
     const dep = addDays(t, 60);
     const ret = addDays(t, 66);
     const id = await createTrip({ title: "Rome en famille", destinationSlug: "rome", startDate: dep, endDate: ret, adults: 2, childrenAges: [7], budgetTarget: 300000, notes: "Voyage de référence n° 2 (démonstration)." }, owner);
@@ -81,13 +108,13 @@ async function main() {
     await addItemToTrip(id, flight.id, viewer);
     const hotel = buildRateOffer({ h: "rom-corte-trastevere", r: "quad", p: "flex", ci: dep, co: ret, rooms: [{ adults: 2, childrenAges: [7] }], t: now });
     await addItemToTrip(id, hotel.id, viewer);
-    const trips = await (await getDatabase(opts())).query.tripItems.findMany();
-    const hotelItem = trips.find((i) => i.tripId === id && i.vertical === "hotels");
+    const hotelItem = (await database.select().from(tripItems).where(and(eq(tripItems.tripId, id), eq(tripItems.vertical, "hotels"))).limit(1))[0];
     if (hotelItem) await setTripItemStatus(id, hotelItem.id, "to_book", viewer);
+    createdTrips += 1;
   }
 
   // 3. Reykjavik — arrivée tardive, location à corriger explicitement
-  {
+  if (await referenceTripMissing(database, ownerId, "Islande : arrivée tardive")) {
     const dep = addDays(t, 75);
     const ret = addDays(t, 80);
     const id = await createTrip({ title: "Islande : arrivée tardive", destinationSlug: "reykjavik", startDate: dep, endDate: ret, adults: 2, childrenAges: [], budgetTarget: null, notes: "Voyage de référence n° 3 (démonstration) : vol arrivant vers minuit, agence fermée." }, owner);
@@ -99,15 +126,29 @@ async function main() {
     await addItemToTrip(id, hotel.id, viewer);
     const car = buildCarOffer({ pu: "kef-apt-dl", do: "kef-apt-dl", m: "4x4", pl: arrival, rl: `${ret}T10:00`, age: 30, res: "FR", pre: true, t: now });
     await addItemToTrip(id, car.id, viewer);
+    createdTrips += 1;
   }
 
-  console.log("Données de démonstration créées : 2 comptes, 3 voyages de référence.");
-  console.log(`Comptes : ${DEMO_USER.email} et ${DEMO_ADMIN.email} (mots de passe : variables DEMO_USER_PASSWORD / DEMO_ADMIN_PASSWORD ou valeurs par défaut documentées dans .env.example).`);
-  await closeDatabase();
+  report.push(`voyages de référence : ${createdTrips} créé(s), ${3 - createdTrips} déjà présent(s)`);
+  return report;
 }
 
-main().catch(async (err) => {
-  console.error(err);
+async function main() {
+  const url = scriptDatabaseUrl();
+  assertDatabaseConfigured(url, "db:seed");
+  const pgliteDir = path.resolve(process.cwd(), process.env.PGLITE_DATA_DIR ?? ".data/pglite");
+  const migrationsFolder = path.resolve(process.cwd(), "drizzle");
+  // Ouvre la connexion partagée (singleton) AVANT les services : ils réutilisent la même base.
+  const run = async () => seed(await getDatabase({ databaseUrl: url, pgliteDir, migrationsFolder }));
+  const report = url ? await withPostgresLock(url, run) : await run();
+  await closeDatabase();
+  console.log(`Seed de démonstration (${describeTarget(url, pgliteDir)}) :\n- ${report.join("\n- ")}`);
+}
+
+main().catch(async (err: unknown) => {
+  const message = err instanceof Error ? err.message : String(err);
+  console.error("db:seed a échoué :", message);
+  if (/relation .* does not exist/.test(message)) console.error("Schéma absent : exécutez d'abord npm run db:migrate.");
   await closeDatabase().catch(() => undefined);
   process.exit(1);
 });
