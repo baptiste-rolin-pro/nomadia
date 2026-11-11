@@ -1,0 +1,1 @@
+ALTER TABLE "jobs" ADD COLUMN "lease_expirations" integer DEFAULT 0 NOT NULL;
