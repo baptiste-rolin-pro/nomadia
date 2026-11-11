@@ -10,6 +10,8 @@ import { SiteFooter } from "@/components/layout/site-footer";
 import { ConsentBanner } from "@/components/layout/consent";
 import { DemoNoticeHost } from "@/components/layout/demo-notice";
 import { RevealObserver } from "@/components/layout/reveal-observer";
+import { IntroLoader } from "@/components/layout/intro-loader";
+import { introLoaderInlineScript } from "@/lib/intro-loader";
 
 const fraunces = Fraunces({ subsets: ["latin"], variable: "--font-fraunces", display: "swap", axes: ["opsz"] });
 const instrument = Instrument_Sans({ subsets: ["latin"], variable: "--font-instrument", display: "swap" });
@@ -41,8 +43,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         {/* Active les révélations progressives uniquement si JavaScript s'exécute. */}
         <script dangerouslySetInnerHTML={{ __html: "document.documentElement.classList.add('js')" }} />
+        {/* Écran d'accueil « avion » : décidé avant le premier rendu (une fois par session, jamais sans JavaScript). */}
+        <script dangerouslySetInnerHTML={{ __html: introLoaderInlineScript() }} />
       </head>
       <body className="min-h-dvh">
+        <IntroLoader />
         <a href="#contenu" className="sr-only z-[var(--z-toast)] rounded-[var(--radius-md)] bg-white px-4 py-2 font-semibold text-ink focus:not-sr-only focus:fixed focus:left-3 focus:top-3">
           Aller au contenu
         </a>

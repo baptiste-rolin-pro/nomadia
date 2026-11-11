@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { PHOTOS, PHOTO_CHANGES } from "@/lib/content/photos";
 import { getDestination } from "@/lib/content/destinations";
+import { HERO_VIDEO } from "@/lib/content/hero-video";
 import { Breadcrumbs } from "@/components/ui/misc";
 
-export const metadata: Metadata = { title: "Crédits photographiques", description: "Auteurs, licences et sources des photographies utilisées sur Nomadia.", alternates: { canonical: "/credits" } };
+export const metadata: Metadata = { title: "Crédits photographiques", description: "Auteurs, licences et sources des photographies et de la vidéo utilisées sur Nomadia.", alternates: { canonical: "/credits" } };
 
 export default function CreditsPage() {
   return (
@@ -35,6 +36,23 @@ export default function CreditsPage() {
           </li>
         ))}
       </ul>
+      <section aria-labelledby="credits-video" className="mt-14 max-w-3xl">
+        <h2 id="credits-video" className="font-serif text-heading">Vidéo de l&apos;accueil</h2>
+        <p className="mt-3 text-sm text-ink-soft">
+          Image d&apos;illustration : un littoral vu du ciel. Elle ne représente aucune des destinations proposées.
+        </p>
+        <p className="mt-2 text-sm">
+          « {HERO_VIDEO.credit.title} » — {HERO_VIDEO.credit.author} —{" "}
+          <a href={HERO_VIDEO.credit.licenseUrl} rel="license noopener" target="_blank" className="underline">
+            {HERO_VIDEO.credit.license}
+          </a>{" "}
+          —{" "}
+          <a href={HERO_VIDEO.credit.sourceUrl} rel="noopener" target="_blank" className="underline">
+            source ({HERO_VIDEO.credit.platform})
+          </a>
+          . Modifications : {HERO_VIDEO.credit.changes}
+        </p>
+      </section>
     </div>
   );
 }

@@ -2,7 +2,40 @@
 
 Toutes les vérifications ci-dessous ont été **réellement exécutées** le 2026-11-09 sur Windows 11, Node.js 26.13, npm 11.20, Chromium (Playwright 1.65). Rien n'est déclaré réussi sans exécution.
 
-Dernière passe : **préparation du déploiement Vercel / démonstration publique** (2026-11-10, voir la section dédiée). Les cinq premières lignes du tableau sont les résultats de cette passe ; les trois dernières datent de la passe initiale et n'ont pas été relancées.
+Dernière passe : **hero vidéo, écran d'accueil « avion », moteur remonté** (2026-11-11, branche `feat/hero-video`, section dédiée ci-dessous). Le tableau « Résultats » date de la passe « préparation Vercel » (2026-11-10) ; les trois dernières lignes datent de la passe initiale et n'ont pas été relancées.
+
+## Hero vidéo, écran d'accueil, moteur remonté (2026-11-11)
+
+Exécuté sur Windows 11, Node.js 26.13, Chromium (Playwright 1.65), après arrêt de tout serveur (aucun processus sur `.data/pglite`, aucun port 3000 / 3005 / 3100 / 3101 occupé avant et après).
+
+| Vérification | Commande | Résultat |
+| --- | --- | --- |
+| Types | `npx tsc --noEmit` | OK, code de sortie 0 |
+| Lint | `npx eslint .` | OK, 0 erreur, 0 avertissement |
+| Tests unitaires | `npx vitest run` | **107/107** (11 fichiers ; +22 : `tests/unit/intro-loader.test.ts`, script en ligne exécuté avec un document simulé et une horloge contrôlée — durée minimale, plafond, `load` déjà passé, Échap / clic / molette / toucher, déjà vu, mouvement réduit, onglet masqué, stockage bloqué ou en lecture seule, version sérialisée ; `tests/unit/hero-video.test.ts`, règles de lecture, choix du fichier, présence et poids des fichiers livrés, crédit) |
+| Build | `npx next build` | OK, 59 pages, aucun avertissement |
+| Parcours | `npx playwright test` | **50/50** en 2,7 min (+12). `intro-loader.spec.ts` : première visite (écran au-dessus d'une page rendue, ni fenêtre ni bannière dessus, fin entre 1,5 et 3,6 s, puis fenêtre de démonstration, puis bannière cookies, LCP = affiche, ni au rechargement ni sur `/vols` dans la même session) ; mouvement réduit (aucun écran) ; Échap et clic (fermé avant la durée minimale, page dessous non activée) ; sessionStorage bloqué (aucun écran, aucune erreur). `hero.spec.ts` : ordinateur (source posée après `load`, lecture muette en boucle, pause / lecture du bouton avec arrêt des animations CSS, pause hors écran et onglet masqué) ; économiseur de données ; mouvement réduit ; mobile et tablette tactiles (aucune requête vidéo, bouton pause du décor) ; moteur dans la première vue à 1440 × 900, 768 × 1024, 375 × 812 sans chevauchement, trajet animé sans recouvrir de texte. Sans JavaScript (`navigation.spec.ts`) : ni écran ni vidéo ni bouton, titre visible. |
+
+**Tests existants non ralentis** : les parcours importent désormais `test` de `tests/e2e/fixtures.ts`, qui marque l'écran d'accueil comme déjà vu dans chaque contexte (sessionStorage, que `storageState` ne couvre pas). Durée cumulée des 38 parcours existants : 95,1 s, contre 97,0 s lors de la passe précédente.
+
+**Poids** (`next start` local, octets transférés) :
+
+| Ressource | Mesure |
+| --- | --- |
+| JavaScript initial de l'accueil (gzip, 12 fichiers, même méthode qu'avant : HTML puis chaque `<script src>` avec `Accept-Encoding: gzip`) | **195,9 Ko** (200 565 octets) ; 194,5 Ko avant la passe — budget ~200 Ko respecté |
+| HTML de l'accueil (gzip) | 25,7 Ko (dont l'écran d'accueil, le script en ligne ≈ 1 Ko et le trajet animé) |
+| Affiche (image LCP), `/_next/image` qualité 70 | AVIF 11,0 / 18,5 / 39,5 / 57,4 / 78,2 Ko en 640 / 828 / 1280 / 1600 / 1920 px ; WebP 22,0 → 135,4 Ko ; JPEG 22,8 → 171,7 Ko ; source JPEG 219,6 Ko |
+| Vidéo (ordinateur seulement, après `load`) | WebM 1080p 2 878 931 o ; MP4 1080p 2 766 106 o ; WebM 720p 1 635 057 o ; MP4 720p 1 846 853 o. Un seul fichier téléchargé par visite (Chromium : WebM 1080p à 1440 px) ; 0 octet sur mobile, tablette, mouvement réduit, économiseur de données, sans JavaScript |
+
+**LCP** (Chromium sans interface, 1440 × 900, écran d'accueil affiché) : élément = affiche du hero (`<img>` AVIF 1600 px), à 0,40–0,51 s sur trois mesures ; premier rendu (écran d'accueil et page dessous) à 0,28–0,40 s. L'écran d'accueil n'est jamais retenu comme LCP (fond uni et petit texte). Chronologie mesurée : écran posé à 0,1 s, `load` à 0,5 s, fondu à 1,5 s, fin à 1,93 s, fenêtre de démonstration à 2,26 s, bannière cookies après sa fermeture.
+
+**Lecture des fichiers** : les quatre variantes lues en boucle dans Edge (H.264 et VP9) : 1920 × 1080 ou 1280 × 720, 8 s, 229 images en 9 s, aucune donnée audio décodée.
+
+**Contraste du hero** : texte masqué, capture, luminance du pixel le plus clair sous chaque ligne de texte, comparée au blanc ; sur ordinateur, cinq images de la vidéo (0, 2, 4, 6, 7,5 s), ailleurs l'affiche. Minimums : titre 4,77:1 (1440 px), 5,17:1 (768 px), 5,39:1 (375 px) ; surtitre 5,05:1 ; texte d'introduction 6,13:1 ; crédit 6,99:1 ; logo et liens de l'en-tête 5,80:1. Une première version du voile donnait 3,9:1 pour le surtitre : voile renforcé et surtitre en blanc pur.
+
+**Inspection visuelle** (navigateur intégré, `next start`, 375 / 768 / 1440 px) : écran d'accueil, vidéo en lecture (WebM 1080p à 1440 px, aucune source à 768 et 375 px), position du moteur (mesures ci-dessus), ordre écran → fenêtre de démonstration → bannière cookies, absence de débordement horizontal. Le panneau du navigateur intégré était masqué pendant une partie de l'inspection : ses captures montraient alors des images en retard ; les états ont été confirmés par lecture du DOM et par des captures Chromium sans interface (écran d'accueil, fondu, fenêtre, mouvement réduit à 1440 et 375 px — le navigateur intégré n'émule pas le mouvement réduit).
+
+**Non vérifié** : Safari / Firefox (choix et lecture de la vidéo dans la page, `offset-path`, `animation-timeline`), appareils mobiles réels, lecteur d'écran, mesures terrain (LCP / INP / CLS) et sous limitation réseau, comportement de la vidéo sur Vercel (en-têtes de cache des fichiers de `public/videos`, servis ici avec `Cache-Control: public, max-age=0`).
 
 ## Résultats
 
@@ -56,12 +89,12 @@ Serveur de production local (`next start`), tailles **transférées compressées
 
 | Page | HTML | JavaScript initial |
 | --- | --- | --- |
-| `/` | 22 Ko | **191 Ko** (13 fichiers, framework inclus) — budget 200 Ko respecté. Remesuré le 2026-11-11 (même méthode, 12 fichiers) : 204,0 Ko avant la passe « accueil immersif » (au-dessus du budget depuis la préparation Vercel), **194,5 Ko** après (client d'authentification de l'en-tête chargé après l'hydratation, animations en CSS) ; `/vols` 204,2 Ko, `/connexion` 202,2 Ko, `/voyage/nouveau` 189,4 Ko |
+| `/` | 22 Ko (25,7 Ko après la passe « hero vidéo ») | **191 Ko** (13 fichiers, framework inclus) — budget 200 Ko respecté. Remesuré le 2026-11-11 (même méthode, 12 fichiers) : 204,0 Ko avant la passe « accueil immersif » (au-dessus du budget depuis la préparation Vercel), **194,5 Ko** après (client d'authentification de l'en-tête chargé après l'hydratation, animations en CSS) ; `/vols` 204,2 Ko, `/connexion` 202,2 Ko, `/voyage/nouveau` 189,4 Ko. Passe « hero vidéo » : **195,9 Ko** |
 | `/destinations/lisbonne` | 14 Ko | 197 Ko |
 | `/vols?…` (résultats) | 12 Ko | 208 Ko |
 | `/connexion` | 10 Ko | 199 Ko |
 
-Image LCP de l'accueil (AVIF qualité 70) : 25 Ko à 828 px (mobile), 102 Ko à 1920 px — sous le budget de 250 Ko. Cartes : 19–30 Ko.
+Image LCP de l'accueil (AVIF qualité 70) : 25 Ko à 828 px (mobile), 102 Ko à 1920 px — sous le budget de 250 Ko. Cartes : 19–30 Ko. Depuis la passe « hero vidéo », l'image LCP est l'affiche de la vidéo : 18,5 Ko à 828 px, 78,2 Ko à 1920 px (AVIF).
 
 **Problème corrigé** : première mesure de l'accueil à 290 Ko de JavaScript. Corrections : Motion retiré de l'accueil (transition CSS pour les ambiances, −50 Ko), validation Zod chargée au moment de la soumission (−38 Ko), formulaires Vols / Hôtels / Voitures chargés à l'ouverture de leur onglet.
 

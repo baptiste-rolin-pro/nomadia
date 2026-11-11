@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { DEMO_ADMIN, DEMO_USER, dismissCookies, inDays, login } from "./helpers";
 
 /**
