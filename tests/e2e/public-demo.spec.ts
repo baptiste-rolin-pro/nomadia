@@ -10,7 +10,10 @@ import { DEMO_ADMIN, DEMO_USER, dismissCookies, inDays, login } from "./helpers"
 test("connexion : avertissement, identifiants de démonstration affichés et utilisables en un clic", async ({ page }) => {
   await page.goto("/connexion");
   await dismissCookies(page);
-  await expect(page.getByRole("note").filter({ hasText: "N'entrez aucune donnée personnelle réelle" })).toBeVisible();
+  // Plus de bandeau sur toutes les pages (remplacé par la fenêtre « À propos de la démo ») ; l'avertissement du formulaire reste.
+  await expect(page.getByRole("note")).toHaveCount(0);
+  await expect(page.getByText("Site de démonstration : comptes partagés")).toBeVisible();
+  await expect(page.getByText(/n'indiquez aucune donnée personnelle réelle/)).toBeVisible();
   const accounts = page.getByTestId("demo-account");
   await expect(accounts).toHaveCount(2);
   await expect(accounts.first()).toContainText(DEMO_USER.email);

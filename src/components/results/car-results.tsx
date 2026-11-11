@@ -97,7 +97,7 @@ export function CarResults({ tripId }: { tripId: string | null }) {
             {data.facets.closedAgencies} offre{data.facets.closedAgencies > 1 ? "s" : ""} concernent des agences fermées à l&apos;heure choisie. Elles restent affichées avec une proposition d&apos;horaire : rien n&apos;est modifié sans votre accord.
           </p>
         ) : null}
-        {!data && loading ? <SkeletonList /> : null}
+        {!data && loading ? <SkeletonList label="Recherche des voitures disponibles…" /> : null}
         {data && data.total === 0 ? <EmptyState title="Aucune offre pour ces critères">Les agences de démonstration se trouvent aux aéroports et centres-villes de Lisbonne, Rome et Reykjavik/Keflavík.</EmptyState> : null}
         {data && data.total > 0 && data.filteredTotal === 0 ? <EmptyState title="Aucune voiture ne correspond aux filtres" action={<button type="button" onClick={reset} className="font-semibold text-forest underline">Réinitialiser les filtres</button>} /> : null}
         <ul className={`space-y-4 transition-opacity ${loading ? "opacity-60" : ""}`}>

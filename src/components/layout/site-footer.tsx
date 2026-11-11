@@ -2,8 +2,9 @@ import Link from "next/link";
 import { siteConfig } from "@/lib/config/site";
 import { DESTINATIONS } from "@/lib/content/destinations";
 import { ManageCookiesButton } from "@/components/layout/consent";
+import { DemoNoticeButton } from "@/components/layout/demo-notice";
 
-export function SiteFooter() {
+export function SiteFooter({ demo = false }: { demo?: boolean }) {
   const columns = [
     {
       title: "Destinations",
@@ -41,9 +42,11 @@ export function SiteFooter() {
         <div>
           <p className="font-serif text-3xl text-white">{siteConfig.name}</p>
           <p className="mt-4 max-w-xs text-sm leading-relaxed">{siteConfig.promise}</p>
-          <p className="mt-6 max-w-xs rounded-[var(--radius-md)] border border-white/20 p-3 text-xs leading-relaxed">
-            Version de démonstration : les offres, prix et réservations sont fictifs. Aucun paiement réel n&apos;est effectué.
-          </p>
+          {demo ? (
+            <DemoNoticeButton className="mt-5 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-white underline decoration-white/40 underline-offset-4 hover:decoration-white">
+              À propos de la démo
+            </DemoNoticeButton>
+          ) : null}
         </div>
         {columns.map((col) => (
           <nav key={col.title} aria-label={col.title}>

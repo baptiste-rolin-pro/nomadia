@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
 import { today } from "@/lib/clock";
-import { addDays } from "@/lib/dates";
 import { getPlace } from "@/lib/content/places";
+import { hotelSuggestions } from "@/lib/search/suggestions";
+import { SuggestionGrid } from "@/components/search/suggestion-grid";
 import { decodeRooms } from "@/lib/search/params";
 import { SEARCH_SCENARIOS } from "@/lib/providers/scenarios";
 import { modeFor } from "@/lib/providers/registry";
@@ -26,11 +26,6 @@ export default async function HotelsPage({ searchParams }: { searchParams: Promi
   const place = raw.dest ? getPlace(raw.dest) : undefined;
   const tripId = raw.voyage ?? null;
   const formKey = new URLSearchParams(Object.entries(raw).filter((e): e is [string, string] => typeof e[1] === "string")).toString();
-  const examples = [
-    { label: "Lisbonne, 4 nuits pour 2 adultes", q: { dest: "city:LIS", arr: addDays(t, 45), dep: addDays(t, 49), ch: "2" } },
-    { label: "Rome en famille (2 adultes, enfant de 7 ans)", q: { dest: "city:ROM", arr: addDays(t, 60), dep: addDays(t, 66), ch: "2-7" } },
-    { label: "Reykjavik, deux chambres", q: { dest: "city:REK", arr: addDays(t, 75), dep: addDays(t, 80), ch: "2|1" } },
-  ];
   return (
     <div className="container-page pt-8">
       <Breadcrumbs items={[{ href: "/", label: "Accueil" }, { label: "Hôtels" }]} />
@@ -50,18 +45,14 @@ export default async function HotelsPage({ searchParams }: { searchParams: Promi
             <HotelResults />
           </Suspense>
         ) : (
-          <div>
-            <h2 className="font-serif text-2xl">Exemples de recherches de démonstration</h2>
-            <ul className="mt-4 space-y-2">
-              {examples.map((e) => (
-                <li key={e.label}>
-                  <Link href={`/hotels?${new URLSearchParams(e.q)}`} className="font-semibold text-forest underline underline-offset-4">
-                    {e.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <SuggestionGrid
+            id="suggestions-hotels"
+            eyebrow="Idées de séjour"
+            title="Suggestions d'hébergements"
+            intro="Des séjours préremplis à Lisbonne, Rome et Reykjavik, les villes couvertes par les offres de démonstration. Dates, chambres et voyageurs restent modifiables."
+            items={hotelSuggestions(t)}
+            cta="Voir les hébergements"
+          />
         )}
         {hasSearch && modeFor("hotels") === "demo" ? <DemoScenarioLinks scenarios={SEARCH_SCENARIOS} /> : null}
       </div>

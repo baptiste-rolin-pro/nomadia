@@ -48,7 +48,7 @@ Les emails (vérification d'adresse, réinitialisation, confirmation) ne sont **
 | Voyageurs enregistrés, formulaire de contact | désactivés (pages et actions serveur) | actifs |
 | Email de contact d'une réservation | **adresse fictive obligatoire** (domaines réservés `.test`, `.example`, `.invalid`, `.localhost`, `example.com/.net/.org`), vérifiée côté serveur | libre |
 
-Dans les deux modes : bandeau « N'entrez aucune donnée personnelle réelle » sur toutes les pages, avertissement dans l'étape « voyageurs » du tunnel, sessions enregistrées **sans adresse IP ni user-agent** (la limitation de débit utilise l'IP en mémoire seulement), mesure d'audience sans donnée personnelle et soumise au consentement.
+Dans les deux modes : fenêtre « Bienvenue sur la démo de Nomadia » à la première visite (aucun paiement réel, prix et prestataires fictifs, comptes partagés, aucune donnée personnelle réelle ; fermeture mémorisée par navigateur, réouverture par le bouton « Démo » de l'en-tête ou « À propos de la démo » du pied de page), avertissement dans l'étape « voyageurs » du tunnel et sur `/connexion`, sessions enregistrées **sans adresse IP ni user-agent** (la limitation de débit utilise l'IP en mémoire seulement), mesure d'audience sans donnée personnelle et soumise au consentement.
 
 Reste saisi par les visiteurs : noms et dates de naissance des voyageurs d'une réservation, titres et notes des voyages. Sur les comptes partagés, ces saisies sont **visibles des autres visiteurs** (avertissement affiché). Hors application : Vercel et Neon tiennent leurs propres journaux techniques (adresses IP des requêtes HTTP, connexions à la base) selon leurs politiques.
 

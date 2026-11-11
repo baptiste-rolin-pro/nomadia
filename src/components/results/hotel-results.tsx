@@ -108,7 +108,7 @@ export function HotelResults() {
         <ActiveFilters chips={chips} onReset={reset} />
         <SearchError error={error} network={network} onRetry={retry} />
         {showMap && data ? <HotelsMap hotels={data.items.map((r) => ({ id: r.hotel.id, name: r.hotel.name, lat: r.hotel.lat, lng: r.hotel.lng, price: formatMoney(r.cheapest.price.total), neighborhood: r.hotel.neighborhood }))} /> : null}
-        {!data && loading ? <SkeletonList /> : null}
+        {!data && loading ? <SkeletonList label="Recherche des hébergements…" /> : null}
         {data && data.total === 0 ? (
           <EmptyState title="Aucun hébergement pour ces critères">Les hébergements de démonstration couvrent Lisbonne, Rome et Reykjavik. Vérifiez aussi l&apos;occupation demandée par chambre.</EmptyState>
         ) : null}

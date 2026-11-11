@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
 import { today } from "@/lib/clock";
-import { addDays } from "@/lib/dates";
 import { getPlace } from "@/lib/content/places";
+import { flightSuggestions } from "@/lib/search/suggestions";
+import { SuggestionGrid } from "@/components/search/suggestion-grid";
 import { parseFlightSearch } from "@/lib/search/params";
 import { SEARCH_SCENARIOS } from "@/lib/providers/scenarios";
 import { modeFor } from "@/lib/providers/registry";
@@ -32,11 +32,6 @@ export default async function FlightsPage({ searchParams }: { searchParams: Prom
   const hasSearch = !!(raw.o && raw.d);
   const tripId = raw.voyage ?? null;
   const formKey = sp.toString();
-  const examples: { label: string; q: Record<string, string> }[] = [
-    { label: "Paris → Lisbonne, 4 nuits (couple)", q: { o: "city:PAR", d: "city:LIS", type: "ar", dep: addDays(t, 45), ret: addDays(t, 49), adt: "2" } },
-    { label: "Paris → Rome en famille", q: { o: "city:PAR", d: "city:ROM", type: "ar", dep: addDays(t, 60), ret: addDays(t, 66), adt: "2", chd: "7" } },
-    { label: "Paris → Reykjavik, arrivée tardive", q: { o: "airport:CDG", d: "airport:KEF", type: "ar", dep: addDays(t, 75), ret: addDays(t, 80), adt: "2" } },
-  ];
   return (
     <div className="container-page pt-8">
       <Breadcrumbs items={[{ href: "/", label: "Accueil" }, { label: "Vols" }]} />
@@ -69,19 +64,15 @@ export default async function FlightsPage({ searchParams }: { searchParams: Prom
             <FlightResults tripId={tripId} />
           </Suspense>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2">
-            <div>
-              <h2 className="font-serif text-2xl">Exemples de recherches de démonstration</h2>
-              <ul className="mt-4 space-y-2">
-                {examples.map((e) => (
-                  <li key={e.label}>
-                    <Link href={`/vols?${new URLSearchParams(e.q)}`} className="font-semibold text-forest underline underline-offset-4">
-                      {e.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
+          <div className="space-y-8">
+            <SuggestionGrid
+              id="suggestions-vols"
+              eyebrow="Idées de départ"
+              title="Suggestions de vols"
+              intro="Des recherches préremplies sur les trajets couverts par les offres de démonstration, datées à partir d'aujourd'hui. Vous pourrez ajuster chaque critère dans le formulaire."
+              items={flightSuggestions(t)}
+              cta="Voir les vols"
+            />
             <Notice title="Ce que vous verrez dans chaque résultat">
               Aéroports exacts, horaires locaux, durée, changement de jour, compagnie commercialisante et opérante, bagages inclus et prix total pour tous les voyageurs. Une recherche ne constitue pas une réservation.
             </Notice>

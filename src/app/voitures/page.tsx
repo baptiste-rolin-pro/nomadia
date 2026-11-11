@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
 import { today } from "@/lib/clock";
-import { addDays } from "@/lib/dates";
 import { getPlace } from "@/lib/content/places";
+import { carSuggestions } from "@/lib/search/suggestions";
+import { SuggestionGrid } from "@/components/search/suggestion-grid";
 import { SEARCH_SCENARIOS } from "@/lib/providers/scenarios";
 import { modeFor } from "@/lib/providers/registry";
 import { CarSearchForm } from "@/components/search/forms";
@@ -28,11 +28,6 @@ export default async function CarsPage({ searchParams }: { searchParams: Promise
   };
   const tripId = raw.voyage ?? null;
   const formKey = new URLSearchParams(Object.entries(raw).filter((e): e is [string, string] => typeof e[1] === "string")).toString();
-  const examples = [
-    { label: "Lisbonne aéroport, 4 jours", q: { pu: "airport:LIS", pud: addDays(t, 45), put: "12:00", dod: addDays(t, 49), dot: "10:00", age: "34" } },
-    { label: "Keflavík, arrivée à 23 h 55 (agences fermées)", q: { pu: "airport:KEF", pud: addDays(t, 75), put: "23:55", dod: addDays(t, 80), dot: "10:00", age: "30" } },
-    { label: "Rome Fiumicino, conducteur de 23 ans", q: { pu: "airport:FCO", pud: addDays(t, 60), put: "10:00", dod: addDays(t, 66), dot: "10:00", age: "23" } },
-  ];
   return (
     <div className="container-page pt-8">
       <Breadcrumbs items={[{ href: "/", label: "Accueil" }, { label: "Voitures" }]} />
@@ -52,18 +47,14 @@ export default async function CarsPage({ searchParams }: { searchParams: Promise
             <CarResults tripId={tripId} />
           </Suspense>
         ) : (
-          <div>
-            <h2 className="font-serif text-2xl">Exemples de recherches de démonstration</h2>
-            <ul className="mt-4 space-y-2">
-              {examples.map((e) => (
-                <li key={e.label}>
-                  <Link href={`/voitures?${new URLSearchParams(e.q)}`} className="font-semibold text-forest underline underline-offset-4">
-                    {e.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <SuggestionGrid
+            id="suggestions-voitures"
+            eyebrow="Idées de location"
+            title="Suggestions de locations"
+            intro="Des locations préremplies dans les agences couvertes par les offres de démonstration : aéroports de Lisbonne, Rome et Keflavík, centres de Lisbonne et Reykjavik."
+            items={carSuggestions(t)}
+            cta="Voir les voitures"
+          />
         )}
         {hasSearch && modeFor("cars") === "demo" ? <DemoScenarioLinks scenarios={SEARCH_SCENARIOS} /> : null}
       </div>

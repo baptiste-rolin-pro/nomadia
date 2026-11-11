@@ -4,9 +4,11 @@ import "./globals.css";
 import { siteConfig } from "@/lib/config/site";
 import { isIndexable, siteUrl } from "@/lib/env";
 import { anyDemoMode } from "@/lib/providers/registry";
+import { sharedDemoAccounts } from "@/lib/demo-site";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { ConsentBanner } from "@/components/layout/consent";
+import { DemoNoticeHost } from "@/components/layout/demo-notice";
 import { RevealObserver } from "@/components/layout/reveal-observer";
 
 const fraunces = Fraunces({ subsets: ["latin"], variable: "--font-fraunces", display: "swap", axes: ["opsz"] });
@@ -44,18 +46,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <a href="#contenu" className="sr-only z-[var(--z-toast)] rounded-[var(--radius-md)] bg-white px-4 py-2 font-semibold text-ink focus:not-sr-only focus:fixed focus:left-3 focus:top-3">
           Aller au contenu
         </a>
-        {demo ? (
-          <div role="note" className="no-print bg-ink px-4 py-2 text-center text-[0.8rem] font-medium text-white">
-            Démonstration — aucune réservation ni aucun paiement réel. Offres, prix et prestataires fictifs.{" "}
-            <strong className="font-semibold">N&apos;entrez aucune donnée personnelle réelle</strong> (nom, email, date de naissance) : utilisez des valeurs fictives.
-          </div>
-        ) : null}
-        <SiteHeader />
+        <SiteHeader demo={demo} />
         <main id="contenu" tabIndex={-1} className="outline-none">
           {children}
         </main>
-        <SiteFooter />
-        <ConsentBanner />
+        <SiteFooter demo={demo} />
+        {/* Démonstration : fenêtre explicative à la première visite (puis bouton « Démo »), avant la bannière cookies. */}
+        <ConsentBanner afterDemoNotice={demo} />
+        {demo ? <DemoNoticeHost sharedAccounts={sharedDemoAccounts()} /> : null}
         <RevealObserver />
       </body>
     </html>

@@ -5,20 +5,31 @@ import { addDays, isCivilDate, nightsBetween, type CivilDate } from "@/lib/dates
 import { DateInput } from "@/components/search/fields";
 import { createTripAction, type TripFormState } from "@/app/voyage/actions";
 
-/** Création d'un voyage daté (aucune réservation). */
-export function TripForm({ today, destinations, initialDestination }: { today: CivilDate; destinations: { slug: string; name: string }[]; initialDestination?: string }) {
+export interface TripFormInitial {
+  destination?: string;
+  start?: CivilDate;
+  end?: CivilDate;
+  adults?: number;
+  children?: number;
+}
+
+/**
+ * Création d'un voyage daté (aucune réservation).
+ * Grille alignée en haut (`items-start`) : l'indication « n jours » sous « Fin du voyage » ne décale plus son champ.
+ */
+export function TripForm({ today, destinations, initial }: { today: CivilDate; destinations: { slug: string; name: string }[]; initial?: TripFormInitial }) {
   const [state, action, pending] = useActionState<TripFormState, FormData>(createTripAction, { errors: {} });
-  const [start, setStart] = useState(addDays(today, 30));
-  const [end, setEnd] = useState(addDays(today, 35));
+  const [start, setStart] = useState(initial?.start ?? addDays(today, 30));
+  const [end, setEnd] = useState(initial?.end ?? addDays(today, 35));
   const days = isCivilDate(start) && isCivilDate(end) ? nightsBetween(start, end) + 1 : 0;
   return (
     <form action={action} noValidate aria-label="Créer un voyage" className="space-y-4">
-      <div className="grid items-end gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid items-start gap-4 md:grid-cols-2 lg:grid-cols-4">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="trip-dest" className="text-sm font-semibold">
             Destination
           </label>
-          <select id="trip-dest" name="destination" className="field-input" defaultValue={initialDestination ?? ""}>
+          <select id="trip-dest" name="destination" className="field-input" defaultValue={initial?.destination ?? ""}>
             <option value="">Pas encore décidé</option>
             {destinations.map((d) => (
               <option key={d.slug} value={d.slug}>
@@ -36,13 +47,13 @@ export function TripForm({ today, destinations, initialDestination }: { today: C
             <label htmlFor="trip-adults" className="text-sm font-semibold">
               Adultes
             </label>
-            <input id="trip-adults" name="adults" type="number" min={1} max={9} defaultValue={2} className="field-input" />
+            <input id="trip-adults" name="adults" type="number" min={1} max={9} defaultValue={initial?.adults ?? 2} className="field-input" />
           </div>
           <div className="flex flex-col gap-1.5">
             <label htmlFor="trip-children" className="text-sm font-semibold">
               Enfants
             </label>
-            <input id="trip-children" name="children" type="number" min={0} max={8} defaultValue={0} className="field-input" />
+            <input id="trip-children" name="children" type="number" min={0} max={8} defaultValue={initial?.children ?? 0} className="field-input" />
           </div>
         </div>
       </div>

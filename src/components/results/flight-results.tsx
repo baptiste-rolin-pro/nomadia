@@ -108,7 +108,7 @@ export function FlightResults({ tripId }: { tripId: string | null }) {
         </div>
         <ActiveFilters chips={chips} onReset={reset} />
         <SearchError error={error} network={network} onRetry={retry} />
-        {!data && loading ? <SkeletonList /> : null}
+        {!data && loading ? <SkeletonList label="Recherche des vols…" /> : null}
         {data && data.total === 0 ? (
           <EmptyState title="Aucune offre pour ces critères">
             Les offres de démonstration couvrent les vols depuis la France vers Lisbonne, Rome (Fiumicino) et Reykjavik (Keflavík). Essayez par exemple Paris → Lisbonne.

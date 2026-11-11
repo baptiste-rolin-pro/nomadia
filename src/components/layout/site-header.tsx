@@ -1,20 +1,24 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Menu, UserRound, X } from "lucide-react";
 import { mainNav, siteConfig } from "@/lib/config/site";
-import { authClient } from "@/lib/auth/client";
+import { DemoNoticeButton } from "@/components/layout/demo-notice";
+
+// Session lue après l'hydratation (client d'authentification hors du JavaScript initial).
+const SessionBridge = dynamic(() => import("@/components/layout/session-bridge"), { ssr: false });
 
 /**
  * En-tête : superposé au hero sur l'accueil (transparent), fond lisible dès le défilement.
  * Hauteur fixe => aucun saut de mise en page. Menu mobile en <dialog> natif (focus piégé, Échap).
+ * En démonstration, un bouton « Démo » discret rouvre la fenêtre d'explication.
  */
-export function SiteHeader() {
+export function SiteHeader({ demo = false }: { demo?: boolean }) {
   const pathname = usePathname();
-  const { data: session } = authClient.useSession();
-  const user = session?.user ? { name: session.user.name } : null;
+  const [user, setUser] = useState<{ name: string } | null>(null);
   const overlay = pathname === "/";
   const [scrolled, setScrolled] = useState(false);
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -41,10 +45,23 @@ export function SiteHeader() {
         transparent ? "bg-transparent" : "bg-ivory/95 shadow-[0_1px_0_var(--color-line)] backdrop-blur-sm"
       }`}
     >
+      <SessionBridge onChange={setUser} />
       <div className="container-page flex h-full items-center justify-between gap-4">
-        <Link href="/" className={`font-serif text-2xl font-semibold tracking-tight ${transparent ? "text-white" : "text-forest"}`} aria-label={`${siteConfig.name} — accueil`}>
-          {siteConfig.name}
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link href="/" className={`font-serif text-2xl font-semibold tracking-tight ${transparent ? "text-white" : "text-forest"}`} aria-label={`${siteConfig.name} — accueil`}>
+            {siteConfig.name}
+          </Link>
+          {demo ? (
+            <DemoNoticeButton
+              label="Démo : à propos de ce site de démonstration"
+              className={`inline-flex min-h-8 items-center rounded-full border px-2.5 text-[0.72rem] font-semibold uppercase tracking-[0.12em] transition-colors ${
+                transparent ? "border-white/55 text-white hover:bg-white/15" : "border-terracotta/45 text-terracotta hover:bg-terracotta-soft"
+              }`}
+            >
+              Démo
+            </DemoNoticeButton>
+          ) : null}
+        </div>
         <nav aria-label="Navigation principale" className="hidden lg:block">
           <ul className="flex items-center gap-1">
             {mainNav.map((item) => {

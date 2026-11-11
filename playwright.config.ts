@@ -23,6 +23,15 @@ const common = {
   NOMADIA_AUTH_RATE_LIMIT: "off",
 };
 
+/**
+ * Fenêtre « À propos de la démo » déjà fermée (clé de src/lib/demo-notice.ts) : les parcours ne la voient pas.
+ * tests/e2e/demo-notice.spec.ts repart d'un navigateur vierge pour la tester.
+ */
+const demoNoticeSeen = (origin: string) => ({
+  cookies: [],
+  origins: [{ origin, localStorage: [{ name: "nomadia:demo-notice", value: "vu-v1" }] }],
+});
+
 export default defineConfig({
   testDir: "tests/e2e",
   timeout: 60_000,
@@ -38,8 +47,8 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   projects: [
-    { name: "demo-publique", testIgnore: /signup-open\.spec\.ts/, use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${PORT}` } },
-    { name: "inscription-ouverte", testMatch: /signup-open\.spec\.ts/, use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${OPEN_PORT}` } },
+    { name: "demo-publique", testIgnore: /signup-open\.spec\.ts/, use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${PORT}`, storageState: demoNoticeSeen(`http://localhost:${PORT}`) } },
+    { name: "inscription-ouverte", testMatch: /signup-open\.spec\.ts/, use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${OPEN_PORT}`, storageState: demoNoticeSeen(`http://localhost:${OPEN_PORT}`) } },
   ],
   webServer: [
     {

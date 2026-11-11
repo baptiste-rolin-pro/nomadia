@@ -45,6 +45,7 @@
   --shadow-panel: 0 2px 6px rgb(20 43 42 / 0.06), 0 24px 60px -30px rgb(20 43 42 / 0.45);
 
   --ease-out-soft: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-enter: cubic-bezier(0.22, 1, 0.36, 1);
   --animate-hero-in: hero-in 900ms var(--ease-out-soft) both;
   --animate-fade-up: fade-up 320ms var(--ease-out-soft) both;
 
@@ -182,16 +183,52 @@
     box-shadow: 0 0 0 1px var(--color-danger);
   }
   .media-zoom img {
-    transition: transform 700ms var(--ease-out-soft);
+    transition: transform 600ms var(--ease-out-soft);
   }
   .group:hover .media-zoom img,
   .group:focus-visible .media-zoom img,
   .group:focus-within .media-zoom img {
-    transform: scale(1.045);
+    transform: scale(1.03);
+  }
+  /* Carte liée : légère élévation (2 px) au survol (pointeur fin) et au focus clavier. */
+  .card-lift {
+    transition:
+      transform 180ms var(--ease-out-soft),
+      box-shadow 180ms var(--ease-out-soft);
+  }
+  .card-lift:focus-visible {
+    transform: translateY(-2px);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .card-lift:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 18px 32px -24px rgb(20 43 42 / 0.45);
+    }
+  }
+  /* Indice « ouvrir » d'une carte photo : toujours visible au toucher, glisse en place au survol. */
+  .card-cue {
+    transition:
+      transform 200ms var(--ease-out-soft),
+      background-color 200ms var(--ease-out-soft);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .card-cue {
+      transform: translate(-3px, 3px);
+    }
+    .group:hover .card-cue,
+    .group:focus-visible .card-cue {
+      transform: none;
+      background-color: var(--color-white);
+      color: var(--color-ink);
+    }
   }
 }
 
-/* Révélations éditoriales : invisibles uniquement si JS est actif, jamais bloquées (repli CSS à 2,5 s). */
+/*
+ * Révélations éditoriales, une fois par bloc : invisibles seulement si JavaScript est actif.
+ * Repli CSS à 2,5 s tant que le script n'a pas pris la main (`html.reveal-ready`, posé par RevealObserver) :
+ * si le JavaScript échoue, rien ne reste caché.
+ */
 .js .reveal {
   opacity: 0;
   transform: translateY(18px);
@@ -199,6 +236,9 @@
     opacity var(--duration-reveal) var(--ease-out-soft),
     transform var(--duration-reveal) var(--ease-out-soft);
   animation: reveal-fallback 1ms 2.5s forwards;
+}
+.js.reveal-ready .reveal:not(.is-visible) {
+  animation: none;
 }
 .js .reveal.is-visible {
   opacity: 1;
@@ -228,6 +268,179 @@
   }
   to {
     transform: translateY(9vh) scale(1.06);
+  }
+}
+
+/*
+ * Entrée du hero, une seule fois au chargement, sans JavaScript (CSS seul) : la photo se pose (1,06 → 1),
+ * le titre monte mot à mot hors de masques, puis le texte et le moteur de recherche apparaissent.
+ * La photo n'est jamais masquée ; le titre est lisible en ~1,1 s ; mouvement réduit : tout est immobile.
+ */
+.hero-settle {
+  animation: hero-settle 1600ms var(--ease-enter) both;
+}
+@keyframes hero-settle {
+  from {
+    transform: scale(1.06);
+  }
+  to {
+    transform: none;
+  }
+}
+.hero-word-mask {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+  padding-block: 0.06em 0.12em;
+  margin-block: -0.06em -0.12em;
+}
+.hero-word {
+  display: inline-block;
+  animation: hero-word 760ms var(--ease-enter) both;
+  animation-delay: calc(60ms + var(--i, 0) * 45ms);
+}
+@keyframes hero-word {
+  from {
+    transform: translateY(108%);
+  }
+  to {
+    transform: none;
+  }
+}
+.hero-rise {
+  animation: hero-rise 720ms var(--ease-enter) both;
+}
+@keyframes hero-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Motif « avion sur trajet en pointillés » (chargement, fenêtre de démonstration, itinéraires). */
+@layer components {
+  /* Dans la couche « components » : les utilitaires (absolute, hidden…) peuvent le repositionner. */
+  .flight-path {
+    position: relative;
+    display: inline-block;
+    flex: none;
+  }
+}
+.flight-path__svg {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+.flight-path__plane {
+  position: absolute;
+  left: 0;
+  top: 0;
+  offset-rotate: auto 45deg;
+  offset-anchor: center;
+  /* Au repos : juste avant le point d'arrivée (sans le recouvrir). */
+  offset-distance: 93%;
+}
+.flight-path--loop .flight-path__plane {
+  animation: flight-loop 2.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+.flight-path--loop .flight-path__trail {
+  animation: flight-trail 1.5s linear infinite;
+}
+.flight-path--once .flight-path__plane {
+  animation: flight-once 1.7s var(--ease-enter) 180ms both;
+}
+/* Itinéraires de l'accueil : le vol attend que le bloc entre dans l'écran. */
+.js .reveal:not(.is-visible) .flight-path--once .flight-path__plane {
+  animation-play-state: paused;
+}
+@keyframes flight-loop {
+  0% {
+    offset-distance: 0%;
+    opacity: 0;
+  }
+  12%,
+  88% {
+    opacity: 1;
+  }
+  100% {
+    offset-distance: 100%;
+    opacity: 0;
+  }
+}
+@keyframes flight-once {
+  from {
+    offset-distance: 0%;
+  }
+  to {
+    offset-distance: 93%;
+  }
+}
+@keyframes flight-trail {
+  to {
+    stroke-dashoffset: -15;
+  }
+}
+/* Chargement : n'apparaît qu'après 150 ms pour ne pas clignoter lors d'une navigation rapide. */
+.plane-loader {
+  animation: plane-loader-in 220ms ease 150ms both;
+}
+@keyframes plane-loader-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Fenêtre « À propos de la démo » : fondu + 10 px à l'ouverture. */
+.demo-notice[open] {
+  animation: demo-notice-in 340ms var(--ease-enter) both;
+}
+.demo-notice[open]::backdrop {
+  animation: plane-loader-in 340ms ease both;
+}
+@keyframes demo-notice-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Itinéraires de l'accueil : fondu croisé des photographies. */
+.route-photo {
+  transition: opacity 600ms var(--ease-out-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-settle,
+  .hero-word,
+  .hero-rise,
+  .plane-loader,
+  .demo-notice[open],
+  .demo-notice[open]::backdrop {
+    animation: none !important;
+  }
+  .flight-path__plane,
+  .flight-path__trail {
+    animation-name: none !important;
+  }
+  .flight-path--loop .flight-path__plane {
+    offset-distance: 58%;
+  }
+  .card-lift,
+  .card-lift:hover,
+  .card-lift:focus-visible,
+  .card-cue {
+    transform: none !important;
   }
 }
 

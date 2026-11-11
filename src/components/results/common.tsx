@@ -3,6 +3,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { Loader2, RotateCcw, SlidersHorizontal, X } from "lucide-react";
 import { Notice } from "@/components/ui/misc";
+import { PlaneLoader } from "@/components/ui/plane-loader";
 import type { SearchErrorBody } from "@/components/results/use-search";
 
 export function FilterGroup({ title, children }: { title: string; children: ReactNode }) {
@@ -155,12 +156,16 @@ export function LoadMore({ shown, total, onMore }: { shown: number; total: numbe
   );
 }
 
-export function SkeletonList({ count = 3 }: { count?: number }) {
+/** Premier chargement des résultats : avion de marque (décoratif, le statut ci-dessus annonce déjà la recherche) + gabarits. */
+export function SkeletonList({ count = 3, label }: { count?: number; label: string }) {
   return (
-    <ul aria-hidden className="space-y-4">
-      {Array.from({ length: count }, (_, i) => (
-        <li key={i} className="h-40 animate-pulse rounded-[var(--radius-lg)] bg-white/70" />
-      ))}
-    </ul>
+    <div className="space-y-4">
+      <PlaneLoader label={label} announce={false} className="rounded-[var(--radius-lg)] bg-white/70 py-7" />
+      <ul aria-hidden className="space-y-4">
+        {Array.from({ length: count }, (_, i) => (
+          <li key={i} className="h-40 animate-pulse rounded-[var(--radius-lg)] bg-white/70" />
+        ))}
+      </ul>
+    </div>
   );
 }

@@ -56,7 +56,7 @@ Serveur de production local (`next start`), tailles **transférées compressées
 
 | Page | HTML | JavaScript initial |
 | --- | --- | --- |
-| `/` | 22 Ko | **191 Ko** (13 fichiers, framework inclus) — budget 200 Ko respecté |
+| `/` | 22 Ko | **191 Ko** (13 fichiers, framework inclus) — budget 200 Ko respecté. Remesuré le 2026-11-11 (même méthode, 12 fichiers) : 204,0 Ko avant la passe « accueil immersif » (au-dessus du budget depuis la préparation Vercel), **194,5 Ko** après (client d'authentification de l'en-tête chargé après l'hydratation, animations en CSS) ; `/vols` 204,2 Ko, `/connexion` 202,2 Ko, `/voyage/nouveau` 189,4 Ko |
 | `/destinations/lisbonne` | 14 Ko | 197 Ko |
 | `/vols?…` (résultats) | 12 Ko | 208 Ko |
 | `/connexion` | 10 Ko | 199 Ko |

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useDemoNoticeOpen } from "@/lib/demo-notice";
 
 /**
  * Consentement aux traceurs non essentiels (mesure d'audience interne, sans donnée personnelle).
@@ -64,16 +65,21 @@ export function ManageCookiesButton({ className = "" }: { className?: string }) 
   );
 }
 
-export function ConsentBanner() {
+/**
+ * `afterDemoNotice` : en démonstration, la bannière attend la fermeture de la fenêtre « À propos de la démo »
+ * (les deux ne s'affichent jamais en même temps ; la fenêtre modale rendrait la bannière inerte).
+ */
+export function ConsentBanner({ afterDemoNotice = false }: { afterDemoNotice?: boolean }) {
   const decided = useSyncExternalStore(
     subscribe,
     () => readConsent() !== null,
     () => true,
   );
+  const demoNoticeOpen = useDemoNoticeOpen(afterDemoNotice);
   const [forcedOpen, setForcedOpen] = useState(false);
   const [details, setDetails] = useState(false);
   const regionRef = useRef<HTMLDivElement>(null);
-  const open = forcedOpen || !decided;
+  const open = (forcedOpen || !decided) && !demoNoticeOpen;
 
   useEffect(() => {
     const onOpen = () => {

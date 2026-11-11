@@ -153,7 +153,8 @@ export function HotelSearchForm({ today, initial, extraQuery }: { today: CivilDa
 
   return (
     <form onSubmit={onSubmit} noValidate aria-label="Recherche d'hôtels" className="space-y-4">
-      <div className="grid items-end gap-4 md:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1.2fr]">
+      {/* Aligné en haut : l'indication « n nuits » sous « Départ » ne décale pas son champ. */}
+      <div className="grid items-start gap-4 md:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1.2fr]">
         <PlaceCombobox id="ht-dest" label="Destination" value={destination} onChange={setDestination} kinds={["city"]} error={errors.destination} placeholder="Ville" />
         <DateInput id="ht-in" label="Arrivée" value={checkIn} onChange={setCheckIn} min={today} max={max} error={errors.checkIn} />
         <DateInput id="ht-out" label="Départ" value={checkOut} onChange={setCheckOut} min={isCivilDate(checkIn) ? addDays(checkIn, 1) : today} max={max} error={errors.checkOut} hint={nights > 0 ? `${nights} nuit${nights > 1 ? "s" : ""}` : undefined} />
