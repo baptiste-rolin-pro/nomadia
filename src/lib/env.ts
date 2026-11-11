@@ -7,6 +7,9 @@ const bool = z
   .enum(["true", "false", "1", "0", ""])
   .optional()
   .transform((v) => v === "true" || v === "1");
+/** Variable vide (`NOM=` dans un fichier .env) traitée comme absente. */
+const blankAsUndefined = (v: unknown) => (v === "" ? undefined : v);
+const intSetting = (min: number, max: number, fallback: number) => z.preprocess(blankAsUndefined, z.coerce.number().int().min(min).max(max).default(fallback));
 
 const schema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
@@ -40,6 +43,20 @@ const schema = z.object({
   /** Mots de passe des comptes de démonstration (valeurs de TEST, affichées sur la page de connexion en mode démo). */
   DEMO_USER_PASSWORD: z.string().min(10).optional(),
   DEMO_ADMIN_PASSWORD: z.string().min(10).optional(),
+  /**
+   * Assistant de recherche (API Anthropic, src/lib/assistant). SECRET. Sans clé : l'assistant s'affiche
+   * « indisponible » et le reste du site fonctionne normalement. Seule source d'identifiants utilisée par le serveur.
+   */
+  ANTHROPIC_API_KEY: z.preprocess(blankAsUndefined, z.string().min(1).optional()),
+  /** Demandes à l'assistant par visiteur (empreinte de l'adresse IP) et par heure, fenêtre fixe. */
+  NOMADIA_ASSISTANT_IP_HOURLY_LIMIT: intSetting(1, 1000, 20),
+  /** Plafond global de demandes à l'assistant par jour UTC, tous visiteurs confondus ; 0 ferme l'assistant. */
+  NOMADIA_ASSISTANT_DAILY_LIMIT: intSetting(0, 100_000, 300),
+  /**
+   * « e2e » : modèle simulé (src/lib/assistant/mock.ts) pour les tests de parcours, sans appel réseau.
+   * Interdit sur Vercel et lorsque NOMADIA_SITE_ENV=production.
+   */
+  NOMADIA_ASSISTANT_MOCK: z.preprocess(blankAsUndefined, z.enum(["off", "e2e"]).default("off")),
 });
 
 export type ServerEnv = z.infer<typeof schema> & {
@@ -101,6 +118,9 @@ export function env(): ServerEnv {
   }
   if ((isProdSite || vercelProduction) && value.NOMADIA_DEV_MAILBOX) {
     throw new Error("NOMADIA_DEV_MAILBOX ne peut pas être activé en production (ni sur le déploiement de production Vercel).");
+  }
+  if (value.NOMADIA_ASSISTANT_MOCK !== "off" && (isProdSite || onVercel)) {
+    throw new Error("NOMADIA_ASSISTANT_MOCK est réservé aux tests locaux : interdit sur Vercel et lorsque NOMADIA_SITE_ENV=production.");
   }
   if (onVercel && !value.DATABASE_URL) {
     // Le système de fichiers des fonctions Vercel n'est pas persistant : PGlite y perdrait toutes les données.

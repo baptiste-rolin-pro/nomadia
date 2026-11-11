@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-type Params = { destination?: string; debut?: string; fin?: string; adultes?: string; enfants?: string; idee?: string };
+type Params = { destination?: string; debut?: string; fin?: string; adultes?: string; enfants?: string; idee?: string; origine?: string };
 
 /** Préremplissage depuis l'URL (idées de voyage, pages destination) ; toute valeur invalide est ignorée. */
 function initialFromParams(p: Params, t: string): TripFormInitial {
@@ -49,6 +49,10 @@ export default async function NewTripPage({ searchParams }: { searchParams: Prom
       {applied ? (
         <Notice role="status" className="mt-6" title={`Idée appliquée : ${applied.title}`}>
           Le formulaire est prérempli. Vérifiez les dates et les voyageurs, puis créez le voyage : rien n&apos;est enregistré avant.
+        </Notice>
+      ) : params.origine === "assistant" ? (
+        <Notice role="status" className="mt-6" title="Formulaire prérempli par l'assistant">
+          Vérifiez la destination, les dates et les voyageurs, puis créez le voyage : rien n&apos;est enregistré avant.
         </Notice>
       ) : null}
       <div className="mt-6 rounded-[var(--radius-xl)] bg-white p-6 shadow-[var(--shadow-card)]">

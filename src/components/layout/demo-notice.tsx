@@ -9,7 +9,7 @@ import { useIntroDone } from "@/lib/intro-state";
 const DemoNoticeDialog = dynamic(() => import("@/components/layout/demo-notice-dialog"), { ssr: false });
 
 /**
- * Monte la fenêtre de démonstration à la première visite ou quand un bouton « Démo » la rouvre.
+ * Monte la fenêtre de démonstration à la première visite ou quand le lien « À propos de la démo » la rouvre.
  * Première visite : seulement après l'écran d'accueil « avion » (ordre : écran, fenêtre, bannière cookies).
  */
 export function DemoNoticeHost({ sharedAccounts }: { sharedAccounts: boolean }) {
@@ -18,7 +18,7 @@ export function DemoNoticeHost({ sharedAccounts }: { sharedAccounts: boolean }) 
   return open && introDone ? <DemoNoticeDialog sharedAccounts={sharedAccounts} onDismiss={dismissDemoNotice} /> : null;
 }
 
-/** Bouton discret qui rouvre la fenêtre (en-tête, pied de page). */
+/** Bouton discret qui rouvre la fenêtre (pied de page). */
 export function DemoNoticeButton({ children, className = "", label }: { children: ReactNode; className?: string; label?: string }) {
   return (
     <button type="button" aria-haspopup="dialog" aria-label={label} className={className} onClick={(e) => openDemoNotice(e.currentTarget)}>

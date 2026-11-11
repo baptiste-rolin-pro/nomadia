@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { BedDouble, CarFront, Map, Plane } from "lucide-react";
+import { BedDouble, CarFront, Map, Plane, Sparkles } from "lucide-react";
 import type { CivilDate } from "@/lib/dates";
 import dynamic from "next/dynamic";
 import { TripForm } from "@/components/search/trip-form";
@@ -11,17 +11,28 @@ const loading = () => <p className="py-6 text-sm text-ink-soft">Chargement du fo
 const FlightSearchForm = dynamic(() => import("@/components/search/forms").then((m) => m.FlightSearchForm), { loading });
 const HotelSearchForm = dynamic(() => import("@/components/search/forms").then((m) => m.HotelSearchForm), { loading });
 const CarSearchForm = dynamic(() => import("@/components/search/forms").then((m) => m.CarSearchForm), { loading });
+// Assistant (texte libre interprété par /api/assistant) : fragment chargé à l'ouverture de son onglet. Un seul
+// point d'import (affichage et préchargement) : un seul fragment JavaScript.
+const loadAssistantPanel = () => import("@/components/home/assistant-panel");
+const AssistantPanel = dynamic(loadAssistantPanel, { loading: () => <p className="py-6 text-sm text-ink-soft">Chargement de l&apos;assistant…</p> });
 
-type TabId = "voyage" | "vols" | "hotels" | "voitures";
+type TabId = "voyage" | "vols" | "hotels" | "voitures" | "assistant";
 
 const TABS: { id: TabId; label: string; icon: ReactNode }[] = [
   { id: "voyage", label: "Mon voyage", icon: <Map aria-hidden className="size-4" /> },
   { id: "vols", label: "Vols", icon: <Plane aria-hidden className="size-4" /> },
   { id: "hotels", label: "Hôtels", icon: <BedDouble aria-hidden className="size-4" /> },
   { id: "voitures", label: "Voitures", icon: <CarFront aria-hidden className="size-4" /> },
+  { id: "assistant", label: "Assistant", icon: <Sparkles aria-hidden className="size-4" /> },
 ];
 
-/** Moteur principal : onglets ARIA (flèches gauche/droite, Début/Fin), champs propres à chaque service. */
+/** Préchargement au survol ou au focus d'un onglet (formulaires ou assistant). */
+function preload(id: TabId) {
+  if (id === "assistant") void loadAssistantPanel();
+  else if (id !== "voyage") void import("@/components/search/forms");
+}
+
+/** Moteur principal : onglets ARIA (flèches gauche/droite, Début/Fin), champs propres à chaque service, assistant. */
 export function SearchPanel({ today, destinations }: { today: CivilDate; destinations: { slug: string; name: string }[] }) {
   const [active, setActiveState] = useState<TabId>("voyage");
   const [visited, setVisited] = useState<TabId[]>(["voyage"]);
@@ -63,8 +74,8 @@ export function SearchPanel({ today, destinations }: { today: CivilDate; destina
               aria-controls={`${baseId}-panel-${tab.id}`}
               tabIndex={selected ? 0 : -1}
               onClick={() => setActive(tab.id)}
-              onPointerEnter={() => tab.id !== "voyage" && void import("@/components/search/forms")}
-              onFocus={() => tab.id !== "voyage" && void import("@/components/search/forms")}
+              onPointerEnter={() => preload(tab.id)}
+              onFocus={() => preload(tab.id)}
               onKeyDown={(e) => onKeyDown(e, i)}
               className={`relative -mb-px inline-flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-4 text-sm font-semibold transition-colors ${
                 selected ? "border-terracotta text-ink" : "border-transparent text-ink-soft hover:text-ink"
@@ -87,6 +98,7 @@ export function SearchPanel({ today, destinations }: { today: CivilDate; destina
           {tab.id === "vols" && visited.includes("vols") ? <FlightSearchForm today={today} /> : null}
           {tab.id === "hotels" && visited.includes("hotels") ? <HotelSearchForm today={today} /> : null}
           {tab.id === "voitures" && visited.includes("voitures") ? <CarSearchForm today={today} /> : null}
+          {tab.id === "assistant" && visited.includes("assistant") ? <AssistantPanel active={active === "assistant"} /> : null}
         </div>
       ))}
     </div>

@@ -32,7 +32,8 @@ export const DEMO_CARRIERS: Record<string, Carrier> = {
 
 /** Aéroports de destination couverts par les offres de démonstration. */
 export const DEMO_FLIGHT_DESTINATIONS = ["LIS", "FCO", "KEF"];
-const FRENCH_ORIGINS = ["CDG", "ORY", "LYS", "MRS", "NCE", "BOD", "NTE", "TLS"];
+/** Aéroports français de départ couverts par les offres de démonstration (et l'inverse au retour). */
+export const FRENCH_ORIGINS = ["CDG", "ORY", "LYS", "MRS", "NCE", "BOD", "NTE", "TLS"];
 
 const HUBS: Record<string, string[]> = {
   LIS: ["MAD"],

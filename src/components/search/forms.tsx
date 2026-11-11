@@ -10,6 +10,7 @@ import { CABIN_LABELS, type Cabin, type RoomOccupancy } from "@/lib/providers/ty
 import { PlaceCombobox, type PlaceValue } from "@/components/search/place-combobox";
 import { FlightTravelersPicker, RoomsPicker, type FlightTravelers } from "@/components/search/travelers";
 import { describedBy } from "@/components/ui/field";
+import { RESIDENCES } from "@/lib/search/residences";
 
 // ---------------------------------------------------------------------------
 
@@ -169,18 +170,6 @@ export function HotelSearchForm({ today, initial, extraQuery }: { today: CivilDa
 }
 
 // ---------------------------------------------------------------------------
-
-const RESIDENCES: [string, string][] = [
-  ["FR", "France"],
-  ["BE", "Belgique"],
-  ["CH", "Suisse"],
-  ["LU", "Luxembourg"],
-  ["CA", "Canada"],
-  ["DE", "Allemagne"],
-  ["ES", "Espagne"],
-  ["IT", "Italie"],
-  ["GB", "Royaume-Uni"],
-];
 
 export function CarSearchForm({
   today,

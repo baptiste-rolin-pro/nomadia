@@ -28,6 +28,7 @@
     "e2e:prepare": "tsx scripts/e2e-prepare.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "1.8.0",
     "@electric-sql/pglite": "0.5.16",
     "better-auth": "1.7.18",
     "drizzle-orm": "0.45.4",

@@ -15,6 +15,7 @@ src/
     content/              destinations, guides, annuaires, lieux, photos (contenu éditorial versionné)
     providers/            types communs, registre, adaptateurs DEMO / Duffel, offre normalisée « Bookable »
     search/               paramètres (Zod, chargés à la demande côté client), requêtes, filtres et tris
+    assistant/            assistant de l'accueil : outils stricts, prompt, validation et chemins, limitation de débit, client simulé
     planner/              service des voyages, analyse (timeline, budget, alertes)
     booking/              tunnel (service), traitement fournisseur, statuts, prix, voyageurs
     payments/             prestataire de paiement simulé, signature et gestion des événements
@@ -43,6 +44,7 @@ Rendu : pages éditoriales statiques (ISR 1 h pour celles qui affichent des date
 | Prestataire de paiement simulé avec événements signés | Permet de démontrer idempotence, déduplication et ordre des événements sans clé ni carte. |
 | File de tâches en base (`jobs`) exécutée à la demande | Réconciliation, émission différée, remboursement sans processus supplémentaire (compatible serverless : rien ne s'exécute après la réponse). La page de réservation se rafraîchit et exécute les tâches de son dossier ; `/api/jobs/run` (Vercel Cron quotidien avec `CRON_SECRET`, ou ordonnanceur externe) balaie le reste. Bail de 15 min : une tâche « running » abandonnée redevient exécutable (comparer-échanger sur statut + tentatives) ; un traitement fournisseur interrompu passe en « inconnu » puis réconciliation. |
 | Motion uniquement dans le planificateur | Budget JavaScript de l'accueil ; animations CSS ailleurs. |
+| Assistant : le modèle choisit des **outils**, le serveur construit les **liens** | Le modèle (Claude, API Anthropic) ne produit que des identifiants de lieux, des dates et des nombres ; le serveur les revalide avec les schémas de recherche du site et construit lui-même les chemins. Aucune URL ni aucun texte libre du modèle n'est suivi par le navigateur. |
 
 ## Modèle de données (tables)
 
@@ -51,6 +53,7 @@ Rendu : pages éditoriales statiques (ISR 1 h pour celles qui affichent des date
 - **Voyages** : `trips` (propriétaire utilisateur OU empreinte SHA-256 d'un cookie anonyme ; dates civiles `date` ; budget en centimes ; marge de transfert), `trip_items` (verticale, statut, référence d'offre, instantané serveur, montants, validité du devis), `favorites`.
 - **Réservation** : `quotes` (devis : montants, instantané de l'offre et des conditions, échéance, devis précédent, acceptation d'un changement de prix), `bookings` (étape, statuts **séparés** : `payment_status`, `provider_status`, `document_status` ; propriétaire ou jeton invité haché + expiration ; scénario démo), `booking_attempts` (clé d'idempotence unique par type), `payments` (clé d'idempotence unique, identifiant prestataire unique), `received_events` (unicité source + identifiant d'événement), `jobs` (clé unique), `incidents`, `documents`, `demo_provider_records` (mémoire du fournisseur simulé).
 - **Exploitation** : `audit_log` (sans données personnelles), `email_outbox` (déduplication par clé métier), `analytics_events` (sans données personnelles, dédupliqués), `contact_messages`.
+- **Assistant** : `assistant_rate_limits` (clé = `ip:<HMAC de l'adresse IP>:<heure>` ou `day:<AAAA-MM-JJ>`, compteur, échéance ; aucune adresse IP en clair, aucun texte saisi ; migration `drizzle/0003_assistant_rate_limits.sql`).
 
 ### Règles
 
@@ -76,6 +79,34 @@ Offre (recherche) ──► startBooking : reprice fournisseur ──► devis (
 ```
 
 Ordre encaissement / réservation en DEMO : la plateforme encaisse d'abord (modèle « solde » de type agrégateur aérien), puis réserve ; compensation par remboursement en cas d'échec. Hôtels « paiement à l'établissement » et voitures « paiement à l'agence » : aucun encaissement. En exploitation, l'ordre doit suivre le contrat de chaque fournisseur (voir providers.md).
+
+## Assistant de l'accueil (flux)
+
+```
+Onglet « Assistant » (fragment chargé à l'ouverture de l'onglet, ≈ 3,7 Ko gz ; GET /api/assistant => disponible ?)
+   ──► POST /api/assistant { text ≤ 500, previous?: { request, question } }
+        1. configuration : sans ANTHROPIC_API_KEY (ni simulation) => 503 « indisponible », rien n'est consommé
+        2. origine (en-tête Origin = site) sinon 403 ; corps ≤ 4 Ko, schéma strict, sinon 400
+        3. quotas en base (assistant_rate_limits, partagés entre instances) : visiteur/heure puis plafond/jour => 429 + Retry-After
+        4. UNE requête au modèle (client.beta.messages.create), pas de boucle :
+             outils stricts (ordre figé) → système stable [consignes + référentiel lieux/destinations, cache_control]
+             → système variable [date du jour, horizon, 1er jour des mois] → message <demande>…</demande>
+             claude-opus-5-5, effort « low », réflexion adaptative, max_tokens 4096, tool_choice auto,
+             fallbacks « default » (bêta server-side-fallback-2026-07-01), délai 20 s, 1 nouvelle tentative
+        5. interprétation : refus => message fixe ; aucun outil => message fixe (texte du modèle non affiché) ;
+             ask_clarification => question nettoyée (sans lien, ≤ 300 caractères) ;
+             sinon chaque appel : schéma Zod strict (propriété en plus refusée) → schéma de recherche du site
+             → fenêtre de dates (passé, 330 jours) → chemin construit par le serveur → relu par l'analyseur de la page
+             (identique, sinon refus). Une étape invalide => toute la demande revient en question (rien n'est retiré en silence).
+   ◄── { status: "ok", result: actions[≤4] | clarification | out_of_scope } ou { status: "error", code, message (français) }
+Navigateur : n'accepte que des chemins internes connus (/vols, /hotels, /voitures, /voyage/nouveau, /destinations/…) ;
+   1 action => « Voici ce que j'ai compris » puis ouverture après 2,2 s (« Rester ici » annule) ;
+   plusieurs => plan en étapes, un lien par étape ; question => champ « Votre réponse », tour précédent renvoyé.
+```
+
+- Actions possibles : recherche de vols, d'hébergements ou de voitures préremplie, fiche destination, formulaire « Organiser mon voyage » prérempli (`origine=assistant` affiche un avis ; le voyage n'est créé qu'à la validation du formulaire). Aucune réservation, aucun paiement, aucune modification de compte.
+- Le texte saisi n'est ni stocké ni journalisé : les journaux d'erreur ne contiennent que la classe d'erreur du SDK, le statut, le type, le code et l'identifiant de requête.
+- Mode simulé (`NOMADIA_ASSISTANT_MOCK=e2e`, tests de parcours) : même requête, même validation, réponse produite localement par `src/lib/assistant/mock.ts` ; refusé sur Vercel et en production.
 
 ## Sécurité
 
