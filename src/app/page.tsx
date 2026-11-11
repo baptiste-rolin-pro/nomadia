@@ -8,7 +8,10 @@ import { GUIDES } from "@/lib/content/guides";
 import { photo } from "@/lib/content/photos";
 import { siteConfig } from "@/lib/config/site";
 import { homeRoutes } from "@/lib/search/suggestions";
+import { HERO_VIDEO } from "@/lib/content/hero-video";
 import { SearchPanel } from "@/components/home/search-panel";
+import { HeroMotionToggle, HeroVideo } from "@/components/home/hero-video";
+import { HeroRoute } from "@/components/home/hero-route";
 import { AmbiancePicker } from "@/components/home/ambiance-picker";
 import { CarnetPreview } from "@/components/home/carnet-preview";
 import { RouteExplorer } from "@/components/home/route-explorer";
@@ -22,7 +25,6 @@ const FEATURED = ["lisbonne", "reykjavik", "rome", "kyoto", "dolomites", "marrak
 const HERO_WORDS = ["Votre", "prochaine", "histoire", "s'écrit", "ailleurs."];
 
 export default function HomePage() {
-  const hero = photo("lofoten-1");
   const featured = FEATURED.map((s) => getDestination(s)!);
   const routes = homeRoutes(today()).map((r) => {
     const p = photo(r.photoId);
@@ -42,41 +44,56 @@ export default function HomePage() {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      {/* B. Hero immersif : entrée unique en CSS (photo qui se pose, titre mot à mot), parallaxe légère sur grand écran. */}
-      <section aria-labelledby="hero-title" className="relative -mt-[var(--header-height)] overflow-hidden bg-ink text-white">
-        <div className="hero-media absolute inset-0">
-          <div className="hero-settle absolute inset-0">
-            <Image src={hero.src} alt={hero.alt} fill priority fetchPriority="high" sizes="100vw" quality={70} className="object-cover object-[50%_72%] sm:object-[50%_60%]" />
+      {/*
+        B. Hero vidéo : l'affiche (image LCP, rendue côté serveur) est toujours là ; la vidéo ne s'y superpose qu'après
+        le chargement, sur ordinateur (voir HeroVideo). Habillage CSS/SVG : zoom lent, trajet animé, voile de lisibilité.
+        Le moteur de recherche (C) remonte sur le bas du hero de `--panel-overlap` (globals.css, `.hero-stack`).
+      */}
+      <div className="hero-stack">
+        <section aria-labelledby="hero-title" data-hero className="hero relative -mt-[var(--header-height)] overflow-hidden bg-ink text-white">
+          <div className="hero-media absolute inset-0">
+            <div className="hero-settle absolute inset-0">
+              <div className="hero-kenburns hero-anim absolute inset-0">
+                <Image src={HERO_VIDEO.poster.src} alt={HERO_VIDEO.poster.alt} fill priority fetchPriority="high" sizes="100vw" quality={70} className="hero-poster object-cover" />
+                <HeroVideo sources={HERO_VIDEO.sources} />
+              </div>
+            </div>
           </div>
-        </div>
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgb(20_43_42/0.55)_0%,rgb(20_43_42/0.15)_35%,rgb(20_43_42/0.65)_100%)]" aria-hidden />
-        <div className="container-page relative flex min-h-[min(92svh,58rem)] flex-col justify-end pb-10 pt-[calc(var(--header-height)+4rem)] sm:pb-14">
-          <p className="eyebrow hero-rise !text-white/90">Destinations, vols, hôtels et voitures</p>
-          <h1 id="hero-title" className="mt-4 max-w-4xl font-serif text-display text-balance">
-            {HERO_WORDS.map((word, i) => (
-              <Fragment key={word}>
-                <span className="hero-word-mask">
-                  <span className="hero-word" style={{ "--i": i } as CSSProperties}>
-                    {word}
+          <div aria-hidden className="hero-veil absolute inset-0" />
+          <HeroRoute className="absolute right-[max(var(--spacing-gutter),calc((100vw-82rem)/2+var(--spacing-gutter)))] top-[calc(var(--header-height)+3.25rem)] hidden xl:block" />
+          <div className="hero-content container-page relative flex flex-col justify-end">
+            <p className="eyebrow hero-rise !text-white">Destinations, vols, hôtels et voitures</p>
+            <h1 id="hero-title" className="hero-title mt-3 font-serif text-balance sm:mt-4">
+              {HERO_WORDS.map((word, i) => (
+                <Fragment key={word}>
+                  <span className="hero-word-mask">
+                    <span className="hero-word" style={{ "--i": i } as CSSProperties}>
+                      {word}
+                    </span>
                   </span>
-                </span>
-                {i < HERO_WORDS.length - 1 ? " " : null}
-              </Fragment>
-            ))}
-          </h1>
-          <p className="hero-rise mt-5 max-w-2xl text-lead text-white/90 [animation-delay:380ms]">
-            Trouvez l&apos;envie de partir, construisez un voyage daté et cohérent, puis réservez chaque prestation en sachant exactement ce que vous achetez.
-          </p>
-          <p className="hero-rise mt-8 text-xs text-white/75 [animation-delay:520ms]">
-            Photo : {hero.place} — {hero.author}, {hero.license}
-          </p>
-        </div>
-      </section>
+                  {i < HERO_WORDS.length - 1 ? " " : null}
+                </Fragment>
+              ))}
+            </h1>
+            <div className="mt-4 flex flex-col gap-4 sm:mt-5 lg:flex-row lg:items-end lg:justify-between lg:gap-10">
+              <p className="hero-rise max-w-2xl text-lead text-white [animation-delay:380ms]">
+                Trouvez l&apos;envie de partir, construisez un voyage daté et cohérent, puis réservez chaque prestation en sachant exactement ce que vous achetez.
+              </p>
+              <div className="hero-rise flex shrink-0 items-center justify-between gap-4 [animation-delay:520ms] lg:flex-col lg:items-end lg:gap-2">
+                <p className="text-xs text-white/85">
+                  Vidéo d&apos;illustration : {HERO_VIDEO.credit.author}, {HERO_VIDEO.credit.platform}
+                </p>
+                <HeroMotionToggle />
+              </div>
+            </div>
+          </div>
+        </section>
 
-      {/* C. Moteur principal */}
-      <section aria-label="Rechercher" className="hero-rise container-page relative z-10 -mt-6 [animation-delay:440ms] sm:-mt-10">
-        <SearchPanel today={today()} destinations={DESTINATIONS.map((d) => ({ slug: d.slug, name: d.name }))} />
-      </section>
+        {/* C. Moteur principal, remonté dans le hero (visible sans défiler à 1440 × 900 et 768 × 1024). */}
+        <section aria-label="Rechercher" className="hero-rise hero-panel container-page relative z-10 [animation-delay:440ms]">
+          <SearchPanel today={today()} destinations={DESTINATIONS.map((d) => ({ slug: d.slug, name: d.name }))} />
+        </section>
+      </div>
 
       {/* D. Destinations à explorer */}
       <section aria-labelledby="dest-title" className="container-page mt-section">

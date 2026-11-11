@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, markIntroSeen, test } from "./fixtures";
 import { dismissCookies, inDays } from "./helpers";
 
 /** Suggestions préremplies (vols, hôtels, voitures, voyage) et chargement « avion » (mouvement réduit compris). */
@@ -60,6 +60,7 @@ test("accueil : « Fin du voyage » aligné avec les autres champs à 375, 768 e
 test("chargement des résultats : avion animé, immobile en mouvement réduit, jamais bloquant", async ({ browser }) => {
   for (const reducedMotion of ["no-preference", "reduce"] as const) {
     const context = await browser.newContext({ reducedMotion });
+    await markIntroSeen(context);
     const page = await context.newPage();
     let release: () => void = () => {};
     const gate = new Promise<void>((resolve) => (release = resolve));

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useDemoNoticeOpen } from "@/lib/demo-notice";
+import { useIntroDone } from "@/lib/intro-state";
 
 /**
  * Consentement aux traceurs non essentiels (mesure d'audience interne, sans donnée personnelle).
@@ -68,6 +69,7 @@ export function ManageCookiesButton({ className = "" }: { className?: string }) 
 /**
  * `afterDemoNotice` : en démonstration, la bannière attend la fermeture de la fenêtre « À propos de la démo »
  * (les deux ne s'affichent jamais en même temps ; la fenêtre modale rendrait la bannière inerte).
+ * Dans tous les cas, elle attend la fin de l'écran d'accueil « avion » (première page de la session).
  */
 export function ConsentBanner({ afterDemoNotice = false }: { afterDemoNotice?: boolean }) {
   const decided = useSyncExternalStore(
@@ -76,10 +78,11 @@ export function ConsentBanner({ afterDemoNotice = false }: { afterDemoNotice?: b
     () => true,
   );
   const demoNoticeOpen = useDemoNoticeOpen(afterDemoNotice);
+  const introDone = useIntroDone();
   const [forcedOpen, setForcedOpen] = useState(false);
   const [details, setDetails] = useState(false);
   const regionRef = useRef<HTMLDivElement>(null);
-  const open = (forcedOpen || !decided) && !demoNoticeOpen;
+  const open = (forcedOpen || !decided) && !demoNoticeOpen && introDone;
 
   useEffect(() => {
     const onOpen = () => {

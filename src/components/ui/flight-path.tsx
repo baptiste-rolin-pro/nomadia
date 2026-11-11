@@ -8,6 +8,7 @@ import { Plane } from "lucide-react";
  * Mouvement réduit : avion immobile, aucun défilement des pointillés (voir globals.css).
  */
 const SIZES = {
+  lg: { w: 300, h: 96, d: "M12 82 C 86 8, 214 8, 288 82", from: [12, 82], to: [288, 82], plane: 28 },
   md: { w: 220, h: 72, d: "M10 60 C 64 6, 156 6, 210 60", from: [10, 60], to: [210, 60], plane: 22 },
   sm: { w: 168, h: 52, d: "M8 44 C 48 4, 120 4, 160 44", from: [8, 44], to: [160, 44], plane: 18 },
 } as const;

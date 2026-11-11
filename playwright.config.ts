@@ -26,6 +26,8 @@ const common = {
 /**
  * Fenêtre « À propos de la démo » déjà fermée (clé de src/lib/demo-notice.ts) : les parcours ne la voient pas.
  * tests/e2e/demo-notice.spec.ts repart d'un navigateur vierge pour la tester.
+ * L'écran d'accueil « avion » (sessionStorage, hors de portée de `storageState`) est marqué comme vu par
+ * tests/e2e/fixtures.ts (option `introSeen`, vraie par défaut) : les specs importent `test` depuis ce fichier.
  */
 const demoNoticeSeen = (origin: string) => ({
   cookies: [],

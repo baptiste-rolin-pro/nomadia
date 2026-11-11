@@ -3,14 +3,19 @@
 import dynamic from "next/dynamic";
 import type { ReactNode } from "react";
 import { dismissDemoNotice, openDemoNotice, useDemoNoticeOpen } from "@/lib/demo-notice";
+import { useIntroDone } from "@/lib/intro-state";
 
 // La fenêtre (texte, icônes, piège de focus) est un fragment chargé seulement quand elle s'ouvre.
 const DemoNoticeDialog = dynamic(() => import("@/components/layout/demo-notice-dialog"), { ssr: false });
 
-/** Monte la fenêtre de démonstration à la première visite ou quand un bouton « Démo » la rouvre. */
+/**
+ * Monte la fenêtre de démonstration à la première visite ou quand un bouton « Démo » la rouvre.
+ * Première visite : seulement après l'écran d'accueil « avion » (ordre : écran, fenêtre, bannière cookies).
+ */
 export function DemoNoticeHost({ sharedAccounts }: { sharedAccounts: boolean }) {
   const open = useDemoNoticeOpen(true);
-  return open ? <DemoNoticeDialog sharedAccounts={sharedAccounts} onDismiss={dismissDemoNotice} /> : null;
+  const introDone = useIntroDone();
+  return open && introDone ? <DemoNoticeDialog sharedAccounts={sharedAccounts} onDismiss={dismissDemoNotice} /> : null;
 }
 
 /** Bouton discret qui rouvre la fenêtre (en-tête, pied de page). */

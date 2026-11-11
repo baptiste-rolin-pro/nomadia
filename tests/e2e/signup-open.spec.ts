@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { dismissCookies, login } from "./helpers";
 
 /** Serveur « inscription-ouverte » (NOMADIA_PUBLIC_SIGNUP=true, boîte mail de test) : parcours complet conservé. */

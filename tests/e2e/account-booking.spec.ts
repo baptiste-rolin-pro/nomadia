@@ -1,4 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
+import { type Page } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { DEMO_ADMIN, dismissCookies, inDays, login } from "./helpers";
 
 // Inscription et vérification d'adresse : voir signup-open.spec.ts (serveur avec NOMADIA_PUBLIC_SIGNUP=true).

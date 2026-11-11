@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { dismissCookies, inDays } from "./helpers";
 
 test("vols : recherche, filtre, détail puis retour avec critères conservés", async ({ page }) => {

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { dismissCookies, noHorizontalOverflow } from "./helpers";
 
 const PAGES = ["/", "/destinations", "/destinations/lisbonne", "/destinations/lofoten", "/guides", "/guides/lire-un-prix-de-voyage", "/compagnies-aeriennes", "/compagnies-aeriennes/air-france", "/loueurs", "/loueurs/sixt", "/vols", "/hotels", "/voitures", "/voyage/nouveau", "/aide", "/contact", "/mentions-legales", "/conditions", "/confidentialite", "/cookies", "/credits", "/connexion", "/inscription", "/mot-de-passe-oublie", "/sitemap.xml", "/robots.txt"];
@@ -86,6 +86,11 @@ test("sans JavaScript, les sections éditoriales sont lisibles", async ({ browse
   const page = await context.newPage();
   await page.goto("/");
   await expect(page.getByRole("heading", { name: /Douze départs/ })).toBeVisible();
+  // Ni écran d'accueil « avion » ni vidéo : l'affiche et le titre du hero sont là, le moteur aussi.
+  await expect(page.getByTestId("intro-loader")).toBeHidden();
+  await expect(page.getByRole("heading", { level: 1, name: /Votre prochaine histoire/ })).toBeVisible();
+  await expect(page.getByTestId("hero-video")).not.toHaveAttribute("src");
+  await expect(page.getByTestId("hero-motion-toggle")).toBeHidden();
   await context.close();
 });
 

@@ -321,6 +321,241 @@
   }
 }
 
+/*
+ * Hero vidéo de l'accueil.
+ * Le moteur de recherche (`.hero-panel`) remonte sur le bas du hero de `--panel-overlap` ; le hero réserve
+ * cette hauteur (plus un espace) sous son contenu : le titre et le moteur ne se chevauchent jamais.
+ */
+.hero-stack {
+  --panel-overlap: 3.5rem;
+}
+.hero-content {
+  padding-top: calc(var(--header-height) + 1.75rem);
+  padding-bottom: calc(var(--panel-overlap) + 1.75rem);
+}
+.hero-panel {
+  margin-top: calc(var(--panel-overlap) * -1);
+}
+.hero-title {
+  font-size: clamp(2.45rem, 1.2rem + 4.4vw, 5.25rem);
+  line-height: 1.02;
+  max-width: 14em;
+  text-shadow: 0 1px 28px rgb(15 54 49 / 0.35);
+}
+@media (min-width: 640px) {
+  .hero-stack {
+    --panel-overlap: 6rem;
+  }
+  .hero-content {
+    padding-top: calc(var(--header-height) + 2.75rem);
+    padding-bottom: calc(var(--panel-overlap) + 2rem);
+  }
+}
+@media (min-width: 1024px) {
+  .hero-stack {
+    --panel-overlap: 14rem;
+  }
+  .hero-content {
+    min-height: min(76svh, 46rem);
+  }
+}
+.hero-poster,
+.hero-video {
+  object-position: 50% 50%;
+}
+.hero-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 900ms var(--ease-out-soft);
+}
+/* La vidéo n'apparaît qu'une fois sa première image lue (sinon l'affiche reste seule). */
+[data-hero][data-video="playing"] .hero-video {
+  opacity: 1;
+}
+/* Voile de lisibilité : en-tête (haut), titre (gauche), moteur (bas). Contrastes : docs/design-motion.md. */
+.hero-veil {
+  background:
+    linear-gradient(180deg, rgb(15 54 49 / 0.64) 0%, rgb(15 54 49 / 0.4) 24%, rgb(15 54 49 / 0.2) 55%, rgb(15 54 49 / 0.6) 100%),
+    linear-gradient(90deg, rgb(15 54 49 / 0.58) 0%, rgb(15 54 49 / 0.4) 45%, rgb(15 54 49 / 0) 80%);
+}
+@media (max-width: 1023px) {
+  .hero-veil {
+    background: linear-gradient(180deg, rgb(15 54 49 / 0.72) 0%, rgb(15 54 49 / 0.62) 30%, rgb(15 54 49 / 0.56) 70%, rgb(15 54 49 / 0.7) 100%);
+  }
+}
+/* Zoom lent (affiche et vidéo ensemble), seulement avec JavaScript : le bouton pause est alors disponible. */
+.js .hero-kenburns {
+  transform-origin: 62% 45%;
+  animation: hero-kenburns 24s ease-in-out infinite alternate;
+}
+@keyframes hero-kenburns {
+  from {
+    transform: none;
+  }
+  to {
+    transform: scale(1.07) translate3d(-1%, -0.6%, 0);
+  }
+}
+/* Trajet animé (xl) : un vol toutes les 9 s, l'arrivée change pendant que l'avion est invisible (4 × 9 s). */
+.hero-route {
+  width: 320px;
+  height: 210px;
+  color: var(--color-white);
+  text-shadow: 0 1px 12px rgb(15 54 49 / 0.55);
+  pointer-events: none;
+}
+.hero-route__plane {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 22px;
+  height: 22px;
+  offset-rotate: auto 45deg;
+  offset-anchor: center;
+  offset-distance: 72%;
+  filter: drop-shadow(0 1px 6px rgb(15 54 49 / 0.5));
+}
+.hero-route__ring {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+}
+.js .hero-route__plane {
+  animation: hero-flight 9s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+.js .hero-route__ring {
+  animation: hero-ring 9s ease-out infinite;
+}
+.js .hero-route__ticker {
+  animation: hero-ticker 36s var(--ease-enter) infinite;
+}
+@keyframes hero-flight {
+  0% {
+    offset-distance: 0%;
+    opacity: 0;
+  }
+  10%,
+  70% {
+    opacity: 1;
+  }
+  80%,
+  100% {
+    offset-distance: 100%;
+    opacity: 0;
+  }
+}
+@keyframes hero-ring {
+  0%,
+  74% {
+    transform: none;
+    opacity: 0;
+  }
+  77% {
+    opacity: 0.85;
+  }
+  96%,
+  100% {
+    transform: scale(3.2);
+    opacity: 0;
+  }
+}
+@keyframes hero-ticker {
+  0%,
+  21% {
+    transform: none;
+  }
+  23.5%,
+  46% {
+    transform: translateY(-20%);
+  }
+  48.5%,
+  71% {
+    transform: translateY(-40%);
+  }
+  73.5%,
+  96% {
+    transform: translateY(-60%);
+  }
+  98.5%,
+  100% {
+    transform: translateY(-80%);
+  }
+}
+/* Pause demandée (bouton) ou hero hors de l'écran : toutes les animations du décor s'arrêtent. */
+[data-hero][data-paused] .hero-anim,
+[data-hero][data-offscreen] .hero-anim {
+  animation-play-state: paused;
+}
+/* Bouton pause / lecture : seulement avec JavaScript (il pilote la vidéo) et si quelque chose bouge. */
+.hero-toggle {
+  display: none;
+}
+.js .hero-toggle {
+  display: inline-flex;
+}
+
+/*
+ * Écran d'accueil « avion » (première page de la session, voir lib/intro-loader.ts) : masqué par défaut, affiché
+ * par `html.intro` dès le premier rendu. Repli de sécurité : invisible après 4 s quoi qu'il arrive.
+ */
+.intro-loader {
+  display: none;
+}
+.intro .intro-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  color: var(--color-white);
+  background: radial-gradient(120% 90% at 50% 42%, #1c5a51 0%, var(--color-forest-deep) 55%, #0a2622 100%);
+  animation: intro-safety 1ms linear 4s forwards;
+}
+.intro-loader__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  animation: intro-inner 640ms var(--ease-enter) both;
+}
+.intro-loader__hint {
+  animation: plane-loader-in 300ms ease 800ms both;
+}
+.intro-out .intro-loader {
+  opacity: 0;
+  transition: opacity 420ms var(--ease-out-soft);
+}
+.intro-out .intro-loader__inner {
+  transform: translateY(-10px) scale(0.985);
+  transition: transform 420ms var(--ease-out-soft);
+}
+/* Le hero joue son entrée quand l'écran se retire (et non dessous, sans être vue). */
+.intro:not(.intro-out) :is(.hero-settle, .hero-word, .hero-rise) {
+  animation-play-state: paused;
+}
+@keyframes intro-inner {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes intro-safety {
+  to {
+    visibility: hidden;
+  }
+}
+
 /* Motif « avion sur trajet en pointillés » (chargement, fenêtre de démonstration, itinéraires). */
 @layer components {
   /* Dans la couche « components » : les utilitaires (absolute, hidden…) peuvent le repositionner. */
@@ -435,6 +670,20 @@
   }
   .flight-path--loop .flight-path__plane {
     offset-distance: 58%;
+  }
+  /* Hero : décor immobile (pas de zoom, avion posé sur le trajet, première arrivée), pas de bouton pause. */
+  .hero-kenburns,
+  .hero-route__plane,
+  .hero-route__ring,
+  .hero-route__ticker {
+    animation: none !important;
+  }
+  .hero-route__plane {
+    offset-distance: 72%;
+    opacity: 1;
+  }
+  .js .hero-toggle {
+    display: none;
   }
   .card-lift,
   .card-lift:hover,
