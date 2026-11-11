@@ -446,3 +446,22 @@ export const contactMessages = pgTable("contact_messages", {
   message: text("message").notNull(),
   createdAt: ts("created_at").notNull().defaultNow(),
 });
+
+// ---------------------------------------------------------------------------
+// Assistant (limitation de débit partagée entre instances serverless)
+// ---------------------------------------------------------------------------
+
+/**
+ * Compteurs à fenêtre fixe de l'assistant : `ip:<empreinte HMAC de l'adresse>:<heure>` (par visiteur) et
+ * `day:<AAAA-MM-JJ>` (plafond global). Aucune adresse IP en clair, aucun texte saisi ; lignes expirées
+ * supprimées au premier appel de chaque jour (src/lib/assistant/rate-limit.ts).
+ */
+export const assistantRateLimits = pgTable(
+  "assistant_rate_limits",
+  {
+    key: text("key").primaryKey(),
+    count: integer("count").notNull().default(0),
+    expiresAt: ts("expires_at").notNull(),
+  },
+  (t) => [index("assistant_rate_limits_expires").on(t.expiresAt)],
+);

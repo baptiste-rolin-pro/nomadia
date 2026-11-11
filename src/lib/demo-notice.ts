@@ -37,7 +37,7 @@ function browserStorage(): StorageLike | null {
   return typeof window === "undefined" ? null : window.localStorage;
 }
 
-// --- État partagé côté navigateur (fenêtre, bannière cookies, boutons « Démo ») ---------------------------
+// --- État partagé côté navigateur (fenêtre, bannière cookies, bouton « À propos de la démo ») ---------------------------
 
 let dismissed: boolean | null = null;
 let forcedOpen = false;
@@ -78,7 +78,7 @@ export function dismissDemoNotice() {
   emit();
 }
 
-/** Élément à refocaliser à la fermeture : le bouton « Démo » qui a rouvert la fenêtre, s'il y en a un. */
+/** Élément à refocaliser à la fermeture : le bouton « À propos de la démo » qui a rouvert la fenêtre, s'il y en a un. */
 export function demoNoticeOpener(): HTMLElement | null {
   return opener;
 }

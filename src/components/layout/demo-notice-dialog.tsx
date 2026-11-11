@@ -114,7 +114,7 @@ export default function DemoNoticeDialog({ sharedAccounts, onDismiss }: { shared
             Explorer la démo
           </button>
         </div>
-        <p className="mt-5 text-xs text-ink-soft">Ces informations restent accessibles depuis le bouton « Démo » de l&apos;en-tête.</p>
+        <p className="mt-5 text-xs text-ink-soft">Ces informations restent accessibles depuis le lien « À propos de la démo » du pied de page.</p>
       </div>
     </dialog>
   );

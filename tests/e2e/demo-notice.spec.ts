@@ -42,21 +42,25 @@ test("première visite : fenêtre accessible, puis bannière cookies, choix mém
   }
 });
 
-test("bouton « Démo » de l'en-tête et du pied de page : réouverture, fermeture, retour du focus", async ({ page }) => {
+test("lien « À propos de la démo » du pied de page : réouverture, fermeture, retour du focus ; plus de bouton dans l'en-tête", async ({ page }) => {
   await page.goto("/hotels");
   const dialog = page.getByRole("dialog", { name: NAME });
   await dialog.getByRole("button", { name: "Explorer la démo" }).click();
   await expect(dialog).toBeHidden();
   await dismissCookies(page);
 
-  const header = page.getByRole("button", { name: /^Démo/ });
-  await header.click();
-  await expect(dialog).toBeVisible();
-  await dialog.getByRole("button", { name: "Fermer" }).click();
-  await expect(dialog).toBeHidden();
-  await expect(header).toBeFocused();
+  // L'en-tête ne contient plus de bouton « Démo » (la fenêtre l'annonce déjà).
+  await expect(page.getByRole("banner").getByRole("button", { name: /Démo/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Démo/ })).toHaveCount(0);
 
   const footer = page.getByRole("button", { name: "À propos de la démo" });
+  await footer.click();
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText("« À propos de la démo » du pied de page");
+  await dialog.getByRole("button", { name: "Fermer" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(footer).toBeFocused();
+
   await footer.click();
   await expect(dialog).toBeVisible();
   await page.keyboard.press("Escape");
@@ -64,7 +68,7 @@ test("bouton « Démo » de l'en-tête et du pied de page : réouverture, fermet
   await expect(footer).toBeFocused();
 
   // Le lien vers les comptes de démonstration ferme la fenêtre et mène à la connexion.
-  await header.click();
+  await footer.click();
   await dialog.getByRole("link", { name: "Voir les comptes de démo" }).click();
   await expect(page).toHaveURL(/\/connexion/);
   await expect(page.getByRole("dialog", { name: NAME })).toHaveCount(0);

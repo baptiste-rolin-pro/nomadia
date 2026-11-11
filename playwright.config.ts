@@ -8,6 +8,9 @@ import { defineConfig, devices } from "@playwright/test";
  * - :3101 « inscription publique ouverte » (NOMADIA_PUBLIC_SIGNUP=true + boîte mail de test) — inscription,
  *   vérification d'adresse, reconnexion.
  * DATABASE_URL est forcée à vide : une base PostgreSQL de `.env.local` n'est jamais utilisée par ces tests.
+ * Assistant : ANTHROPIC_API_KEY forcée à vide (aucun appel réel). :3100 utilise le modèle simulé
+ * (NOMADIA_ASSISTANT_MOCK=e2e, refusé sur Vercel et en production) ; :3101 n'a ni clé ni simulation et montre
+ * l'assistant « indisponible » (tests/e2e/assistant-unavailable.spec.ts).
  */
 const PORT = 3100;
 const OPEN_PORT = 3101;
@@ -21,7 +24,9 @@ const common = {
   DEMO_ADMIN_PASSWORD: "admin-demo-2026",
   // Plusieurs connexions successives depuis la même adresse : limitation de débit désactivée pour les tests uniquement.
   NOMADIA_AUTH_RATE_LIMIT: "off",
+  ANTHROPIC_API_KEY: "",
 };
+const OPEN_SERVER_SPECS = /(signup-open|assistant-unavailable)\.spec\.ts/;
 
 /**
  * Fenêtre « À propos de la démo » déjà fermée (clé de src/lib/demo-notice.ts) : les parcours ne la voient pas.
@@ -49,8 +54,8 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   projects: [
-    { name: "demo-publique", testIgnore: /signup-open\.spec\.ts/, use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${PORT}`, storageState: demoNoticeSeen(`http://localhost:${PORT}`) } },
-    { name: "inscription-ouverte", testMatch: /signup-open\.spec\.ts/, use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${OPEN_PORT}`, storageState: demoNoticeSeen(`http://localhost:${OPEN_PORT}`) } },
+    { name: "demo-publique", testIgnore: OPEN_SERVER_SPECS, use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${PORT}`, storageState: demoNoticeSeen(`http://localhost:${PORT}`) } },
+    { name: "inscription-ouverte", testMatch: OPEN_SERVER_SPECS, use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${OPEN_PORT}`, storageState: demoNoticeSeen(`http://localhost:${OPEN_PORT}`) } },
   ],
   webServer: [
     {
@@ -58,7 +63,16 @@ export default defineConfig({
       url: `http://localhost:${PORT}/`,
       timeout: 180_000,
       reuseExistingServer: false,
-      env: { ...common, PGLITE_DATA_DIR: ".data/pglite-e2e", NOMADIA_SITE_URL: `http://localhost:${PORT}`, NOMADIA_PUBLIC_SIGNUP: "false", NOMADIA_DEV_MAILBOX: "false" },
+      env: {
+        ...common,
+        PGLITE_DATA_DIR: ".data/pglite-e2e",
+        NOMADIA_SITE_URL: `http://localhost:${PORT}`,
+        NOMADIA_PUBLIC_SIGNUP: "false",
+        NOMADIA_DEV_MAILBOX: "false",
+        NOMADIA_ASSISTANT_MOCK: "e2e",
+        // Tous les parcours partagent une adresse : limite par visiteur relevée (la limite elle-même est testée par Vitest).
+        NOMADIA_ASSISTANT_IP_HOURLY_LIMIT: "500",
+      },
       stdout: "pipe",
       stderr: "pipe",
     },
@@ -67,7 +81,7 @@ export default defineConfig({
       url: `http://localhost:${OPEN_PORT}/`,
       timeout: 180_000,
       reuseExistingServer: false,
-      env: { ...common, PGLITE_DATA_DIR: ".data/pglite-e2e-open", NOMADIA_SITE_URL: `http://localhost:${OPEN_PORT}`, NOMADIA_PUBLIC_SIGNUP: "true", NOMADIA_DEV_MAILBOX: "true" },
+      env: { ...common, PGLITE_DATA_DIR: ".data/pglite-e2e-open", NOMADIA_SITE_URL: `http://localhost:${OPEN_PORT}`, NOMADIA_PUBLIC_SIGNUP: "true", NOMADIA_DEV_MAILBOX: "true", NOMADIA_ASSISTANT_MOCK: "off" },
       stdout: "pipe",
       stderr: "pipe",
     },

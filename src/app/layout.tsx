@@ -51,12 +51,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <a href="#contenu" className="sr-only z-[var(--z-toast)] rounded-[var(--radius-md)] bg-white px-4 py-2 font-semibold text-ink focus:not-sr-only focus:fixed focus:left-3 focus:top-3">
           Aller au contenu
         </a>
-        <SiteHeader demo={demo} />
+        <SiteHeader />
         <main id="contenu" tabIndex={-1} className="outline-none">
           {children}
         </main>
         <SiteFooter demo={demo} />
-        {/* Démonstration : fenêtre explicative à la première visite (puis bouton « Démo »), avant la bannière cookies. */}
+        {/* Démonstration : fenêtre explicative à la première visite (puis lien « À propos de la démo » du pied de page), avant la bannière cookies. */}
         <ConsentBanner afterDemoNotice={demo} />
         {demo ? <DemoNoticeHost sharedAccounts={sharedDemoAccounts()} /> : null}
         <RevealObserver />
