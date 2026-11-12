@@ -1,15 +1,19 @@
 /**
- * Une demande à l'assistant = une seule requête au modèle (pas de boucle : le référentiel des lieux est dans
+ * REPLI de l'assistant : appelé seulement quand l'analyse locale (src/lib/assistant/parser) ne comprend pas la
+ * demande et qu'une clé est configurée (src/lib/assistant/service.ts).
+ * Une demande = une seule requête au modèle (pas de boucle : le référentiel des lieux est dans
  * le prompt, aucun outil de recherche de lieu n'est nécessaire). Le modèle répond par des appels d'outils ;
  * le serveur les valide et renvoie au navigateur une liste blanche d'actions avec des chemins qu'il a construits.
  * Le client du modèle est injecté : SDK officiel en exploitation, faux client dans les tests et le mode e2e.
  */
 import Anthropic from "@anthropic-ai/sdk";
 import type { CivilDate } from "@/lib/dates";
-import { buildAction, cleanQuestion, type ActionContext } from "@/lib/assistant/actions";
+import { cleanQuestion, resultFromCalls, type ActionContext } from "@/lib/assistant/actions";
 import { ASSISTANT_SYSTEM_PROMPT, volatileContext } from "@/lib/assistant/prompt";
 import { ASSISTANT_TOOLS, toolInputSchemas } from "@/lib/assistant/tools";
-import type { AssistantAction, AssistantErrorCode, AssistantResult } from "@/lib/assistant/types";
+import type { AssistantErrorCode, AssistantResult } from "@/lib/assistant/types";
+
+export { MAX_ACTIONS } from "@/lib/assistant/actions";
 
 type CreateParams = Anthropic.Beta.Messages.MessageCreateParamsNonStreaming;
 type Message = Anthropic.Beta.Messages.BetaMessage;
@@ -31,7 +35,6 @@ export const ASSISTANT_EFFORT = "low" as const;
 export const ASSISTANT_MAX_TOKENS = 4096;
 /** Repli côté serveur en cas de refus par les classifieurs de sécurité (modèle choisi par l'API selon la catégorie). */
 export const ASSISTANT_BETAS = ["server-side-fallback-2026-07-01"] as const;
-export const MAX_ACTIONS = 4;
 
 export interface AssistantInput {
   text: string;
@@ -104,22 +107,8 @@ export function interpretResponse(message: Message, ctx: ActionContext): Assista
     const question = parsed.success ? cleanQuestion(parsed.data.question) : "";
     return { type: "clarification", question: question || GENERIC_QUESTION };
   }
-  if (calls.length > MAX_ACTIONS) {
-    return { type: "clarification", question: `Je peux préparer ${MAX_ACTIONS} étapes au plus à la fois. Par quoi voulez-vous commencer ?` };
-  }
-
-  const actions: AssistantAction[] = [];
-  const problems: string[] = [];
-  for (const call of calls) {
-    const outcome = buildAction(call.name, call.input, ctx);
-    if (outcome.ok) actions.push(outcome.action);
-    else problems.push(`${outcome.step} : ${outcome.issues.join(" ")}`);
-  }
-  // Une étape invalide n'est jamais retirée en silence : la demande revient au visiteur.
-  if (problems.length) {
-    return { type: "clarification", question: cleanQuestion(`Je n'ai pas pu tout préparer. ${problems.join(" ")} Pouvez-vous préciser ?`) };
-  }
-  return { type: "actions", actions };
+  // Même validation et même construction des chemins que l'analyse locale (actions.ts).
+  return resultFromCalls(calls, ctx);
 }
 
 /**

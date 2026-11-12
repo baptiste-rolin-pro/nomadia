@@ -15,7 +15,7 @@ src/
     content/              destinations, guides, annuaires, lieux, photos (contenu éditorial versionné)
     providers/            types communs, registre, adaptateurs DEMO / Duffel, offre normalisée « Bookable »
     search/               paramètres (Zod, chargés à la demande côté client), requêtes, filtres et tris
-    assistant/            assistant de l'accueil : outils stricts, prompt, validation et chemins, limitation de débit, client simulé
+    assistant/            assistant de l'accueil : analyse locale (parser/), repli vers le modèle (outils stricts, prompt), validation et chemins communs, limitation de débit, client simulé
     planner/              service des voyages, analyse (timeline, budget, alertes)
     booking/              tunnel (service), traitement fournisseur, statuts, prix, voyageurs
     payments/             prestataire de paiement simulé, signature et gestion des événements
@@ -44,7 +44,7 @@ Rendu : pages éditoriales statiques (ISR 1 h pour celles qui affichent des date
 | Prestataire de paiement simulé avec événements signés | Permet de démontrer idempotence, déduplication et ordre des événements sans clé ni carte. |
 | File de tâches en base (`jobs`) exécutée à la demande | Réconciliation, émission différée, remboursement sans processus supplémentaire (compatible serverless : rien ne s'exécute après la réponse). La page de réservation se rafraîchit et exécute les tâches de son dossier ; `/api/jobs/run` (Vercel Cron quotidien avec `CRON_SECRET`, ou ordonnanceur externe) balaie le reste. Bail de 15 min : une tâche « running » abandonnée redevient exécutable (comparer-échanger sur statut + tentatives) ; un traitement fournisseur interrompu passe en « inconnu » puis réconciliation. |
 | Motion uniquement dans le planificateur | Budget JavaScript de l'accueil ; animations CSS ailleurs. |
-| Assistant : le modèle choisit des **outils**, le serveur construit les **liens** | Le modèle (Claude, API Anthropic) ne produit que des identifiants de lieux, des dates et des nombres ; le serveur les revalide avec les schémas de recherche du site et construit lui-même les chemins. Aucune URL ni aucun texte libre du modèle n'est suivi par le navigateur. |
+| Assistant : **analyse locale d'abord**, modèle seulement en repli ; dans les deux cas des **outils** validés, le serveur construit les **liens** | L'analyse locale déterministe (src/lib/assistant/parser) rend l'assistant gratuit et utilisable sans clé ; le modèle (Claude, API Anthropic) n'est appelé que pour les demandes qu'elle ne comprend pas, si la clé est configurée. L'une comme l'autre ne produisent que des identifiants de lieux, des dates et des nombres (mêmes formes d'entrée d'outils) ; le serveur les revalide avec les schémas de recherche du site et construit lui-même les chemins (un seul code : actions.ts). Aucune URL ni aucun texte libre du modèle n'est suivi par le navigateur. |
 
 ## Modèle de données (tables)
 
@@ -53,7 +53,7 @@ Rendu : pages éditoriales statiques (ISR 1 h pour celles qui affichent des date
 - **Voyages** : `trips` (propriétaire utilisateur OU empreinte SHA-256 d'un cookie anonyme ; dates civiles `date` ; budget en centimes ; marge de transfert), `trip_items` (verticale, statut, référence d'offre, instantané serveur, montants, validité du devis), `favorites`.
 - **Réservation** : `quotes` (devis : montants, instantané de l'offre et des conditions, échéance, devis précédent, acceptation d'un changement de prix), `bookings` (étape, statuts **séparés** : `payment_status`, `provider_status`, `document_status` ; propriétaire ou jeton invité haché + expiration ; scénario démo), `booking_attempts` (clé d'idempotence unique par type), `payments` (clé d'idempotence unique, identifiant prestataire unique), `received_events` (unicité source + identifiant d'événement), `jobs` (clé unique), `incidents`, `documents`, `demo_provider_records` (mémoire du fournisseur simulé).
 - **Exploitation** : `audit_log` (sans données personnelles), `email_outbox` (déduplication par clé métier), `analytics_events` (sans données personnelles, dédupliqués), `contact_messages`.
-- **Assistant** : `assistant_rate_limits` (clé = `ip:<HMAC de l'adresse IP>:<heure>` ou `day:<AAAA-MM-JJ>`, compteur, échéance ; aucune adresse IP en clair, aucun texte saisi ; migration `drizzle/0003_assistant_rate_limits.sql`).
+- **Assistant** : `assistant_rate_limits` (clé = `local:<HMAC de l'adresse IP>:<heure>` et `localday:<AAAA-MM-JJ>` pour l'analyse locale, `ip:<HMAC>:<heure>` et `day:<AAAA-MM-JJ>` pour le repli vers le modèle ; compteur, échéance ; aucune adresse IP en clair, aucun texte saisi ; migration `drizzle/0003_assistant_rate_limits.sql`, inchangée).
 
 ### Règles
 
@@ -82,31 +82,49 @@ Ordre encaissement / réservation en DEMO : la plateforme encaisse d'abord (mod�
 
 ## Assistant de l'accueil (flux)
 
+L'assistant fonctionne **sans clé** : une analyse locale déterministe en français est le chemin par défaut, gratuite ;
+le modèle Claude n'est qu'un **repli**, appelé seulement si l'analyse locale ne comprend pas la demande **et** si
+`ANTHROPIC_API_KEY` est configurée. Sans clé, rien n'est jamais envoyé à Anthropic.
+
 ```
-Onglet « Assistant » (fragment chargé à l'ouverture de l'onglet, ≈ 3,7 Ko gz ; GET /api/assistant => disponible ?)
-   ──► POST /api/assistant { text ≤ 500, previous?: { request, question } }
-        1. configuration : sans ANTHROPIC_API_KEY (ni simulation) => 503 « indisponible », rien n'est consommé
-        2. origine (en-tête Origin = site) sinon 403 ; corps ≤ 4 Ko, schéma strict, sinon 400
-        3. quotas en base (assistant_rate_limits, partagés entre instances) : visiteur/heure puis plafond/jour => 429 + Retry-After
-        4. UNE requête au modèle (client.beta.messages.create), pas de boucle :
+Onglet « Assistant » (fragment chargé à l'ouverture de l'onglet ; GET /api/assistant => { available: true, fallback })
+   ──► POST /api/assistant { text ≤ 500, previous?: { request (tours séparés par « \n↳ »), question } }
+        1. origine (en-tête Origin = site) sinon 403 ; corps ≤ 4 Ko, schéma strict, sinon 400
+        2. ANALYSE LOCALE (src/lib/assistant/parser, pur TypeScript, < 1 ms, aucun réseau) :
+             normalisation (minuscules, accents, apostrophes, tirets, nombres en lettres) → tentative d'injection
+             ou « réserve et paie » seul => message fixe → résidence → dates/durées/heures → voyageurs → conducteur
+             → cabine → lieux (référentiel + pays + codes d'aéroport, fautes de frappe, ambiguïtés) → rôles
+             (départ, destination, restitution) → services → UNE question si une information manque,
+             sinon entrées d'outils de MÊMES formes que tools.ts → resultFromCalls / buildAction (ci-dessous)
+           comprise (service ou lieu reconnu) ; une erreur inattendue de l'analyse vaut « non comprise » : quota local (compteur `local:`, 120/h par défaut) => réponse, engine « local »
+        3. non comprise, sans repli (pas de clé, ou plafond journalier à 0) : quota local => aide (2–3 exemples
+           + onglets classiques), engine « local » ; le client du modèle n'est pas construit
+        4. non comprise, avec repli : quotas du modèle (visiteur/heure puis plafond/jour) => 429 + Retry-After ;
+           UNE requête au modèle (client.beta.messages.create), pas de boucle :
              outils stricts (ordre figé) → système stable [consignes + référentiel lieux/destinations, cache_control]
              → système variable [date du jour, horizon, 1er jour des mois] → message <demande>…</demande>
              claude-opus-5-5, effort « low », réflexion adaptative, max_tokens 4096, tool_choice auto,
              fallbacks « default » (bêta server-side-fallback-2026-07-01), délai 20 s, 1 nouvelle tentative
-        5. interprétation : refus => message fixe ; aucun outil => message fixe (texte du modèle non affiché) ;
-             ask_clarification => question nettoyée (sans lien, ≤ 300 caractères) ;
-             sinon chaque appel : schéma Zod strict (propriété en plus refusée) → schéma de recherche du site
-             → fenêtre de dates (passé, 330 jours) → chemin construit par le serveur → relu par l'analyseur de la page
-             (identique, sinon refus). Une étape invalide => toute la demande revient en question (rien n'est retiré en silence).
-   ◄── { status: "ok", result: actions[≤4] | clarification | out_of_scope } ou { status: "error", code, message (français) }
+           interprétation : refus => message fixe ; aucun outil => message fixe (texte du modèle non affiché) ;
+             ask_clarification => question nettoyée (sans lien, ≤ 300 caractères) ; engine « ia »
+        Validation commune (actions.ts, analyse locale ET modèle) : schéma Zod strict (propriété en plus refusée)
+             → schéma de recherche du site → fenêtre de dates (passé, 330 jours) → chemin construit par le serveur
+             → relu par l'analyseur de la page (identique, sinon refus). Une étape invalide => toute la demande revient
+             en question (rien n'est retiré en silence).
+   ◄── { status: "ok", engine: "local" | "ia", result: actions[≤4] | clarification | out_of_scope | help }
+       ou { status: "error", code, message (français) }
 Navigateur : n'accepte que des chemins internes connus (/vols, /hotels, /voitures, /voyage/nouveau, /destinations/…) ;
    1 action => « Voici ce que j'ai compris » puis ouverture après 2,2 s (« Rester ici » annule) ;
-   plusieurs => plan en étapes, un lien par étape ; question => champ « Votre réponse », tour précédent renvoyé.
+   plusieurs => plan en étapes, un lien par étape ; question => champ « Votre réponse », tours précédents renvoyés ;
+   aide => exemples cliquables + boutons vers les onglets Mon voyage / Vols / Hôtels / Voitures ;
+   mention discrète « interprétée par Claude (Anthropic) » seulement quand engine = « ia ».
 ```
 
-- Actions possibles : recherche de vols, d'hébergements ou de voitures préremplie, fiche destination, formulaire « Organiser mon voyage » prérempli (`origine=assistant` affiche un avis ; le voyage n'est créé qu'à la validation du formulaire). Aucune réservation, aucun paiement, aucune modification de compte.
+- **Analyse locale** — lieux : villes, aéroports (noms et codes ; les codes qui sont aussi des mots, comme `PAR` ou `LIS`, seulement en majuscules), destinations éditoriales, pays (Islande → Reykjavik ; Portugal ou Italie : question), lieux connus mais non proposés (Berlin, Lille…) ; fautes de frappe par distance de Damerau-Levenshtein restreinte (≤ 1 jusqu'à 7 lettres, ≤ 2 au-delà avec mêmes deux premières lettres et même dernière, même initiale, mots courts seulement après une préposition, liste de faux amis : « pars », « montrer », « Irlande »…), égalité entre deux lieux => question. Départ absent : Paris (comme le formulaire de vols), toujours signalé. Dates relatives à aujourd'hui en Europe/Paris (src/lib/clock.ts) en dates civiles : absolues, plages, « demain », week-ends (vendredi → dimanche), « la semaine prochaine », « dans 2 semaines », mois (début / mi / fin), durées, « retour le 16 », heures de location arrondies à la demi-heure ; prochaine occurrence (année suivante signalée) ; date impossible => question. Toute valeur par défaut (dates choisies dans un mois, durée conseillée, 1 adulte, heures 12 h / 10 h, conducteur de 30 ans résidant en France, aéroport d'arrivée pour la voiture) est listée dans les hypothèses de l'action (6 au plus, jamais tronquées). Tours successifs : chaque tour est analysé seul, le plus récent l'emporte pour chaque information ; la question précédente ne sert qu'à interpréter une réponse courte (« 3 » nuits, « 6 et 10 » ans, « le 20 » pour un retour).
+- Actions possibles : recherche de vols, d'hébergements ou de voitures préremplie, fiche destination, formulaire « Organiser mon voyage » prérempli (`origine=assistant` affiche un avis ; le voyage n'est créé qu'à la validation du formulaire). Aucune réservation, aucun paiement, aucune modification de compte (« réserve et paie » : message fixe, ou la recherche avec la remarque « Rien n'est réservé ni payé »).
+- Limitation de débit : compteurs en base séparés. Analyse locale : `local:<HMAC>:<heure>` (spam ; si la base est indisponible, la demande est servie quand même et l'incident journalisé, ce chemin n'ayant ni coût ni tiers) + `localday:<jour>` (déclenche la purge quotidienne). Repli : `ip:<HMAC>:<heure>` et `day:<jour>` (plafond de coût), consommés **seulement** par les demandes envoyées au modèle ; base indisponible => 503 sans appel.
 - Le texte saisi n'est ni stocké ni journalisé : les journaux d'erreur ne contiennent que la classe d'erreur du SDK, le statut, le type, le code et l'identifiant de requête.
-- Mode simulé (`NOMADIA_ASSISTANT_MOCK=e2e`, tests de parcours) : même requête, même validation, réponse produite localement par `src/lib/assistant/mock.ts` ; refusé sur Vercel et en production.
+- Mode simulé (`NOMADIA_ASSISTANT_MOCK=e2e`, tests de parcours) : repli simulé par `src/lib/assistant/mock.ts` (même requête, même validation), appelé comme le vrai modèle seulement pour les demandes non comprises localement ; refusé sur Vercel et en production.
 
 ## Sécurité
 

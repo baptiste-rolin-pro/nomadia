@@ -8,9 +8,10 @@ import { defineConfig, devices } from "@playwright/test";
  * - :3101 « inscription publique ouverte » (NOMADIA_PUBLIC_SIGNUP=true + boîte mail de test) — inscription,
  *   vérification d'adresse, reconnexion.
  * DATABASE_URL est forcée à vide : une base PostgreSQL de `.env.local` n'est jamais utilisée par ces tests.
- * Assistant : ANTHROPIC_API_KEY forcée à vide (aucun appel réel). :3100 utilise le modèle simulé
- * (NOMADIA_ASSISTANT_MOCK=e2e, refusé sur Vercel et en production) ; :3101 n'a ni clé ni simulation et montre
- * l'assistant « indisponible » (tests/e2e/assistant-unavailable.spec.ts).
+ * Assistant : ANTHROPIC_API_KEY forcée à vide (aucun appel réel). L'analyse locale répond sur les deux serveurs ;
+ * :3100 a en plus un repli SIMULÉ (NOMADIA_ASSISTANT_MOCK=e2e, refusé sur Vercel et en production) pour les
+ * demandes non comprises (tests/e2e/assistant.spec.ts) ; :3101 n'a ni clé ni simulation : l'assistant y fonctionne
+ * de bout en bout sans aucun service extérieur (tests/e2e/assistant-local.spec.ts).
  */
 const PORT = 3100;
 const OPEN_PORT = 3101;
@@ -26,7 +27,7 @@ const common = {
   NOMADIA_AUTH_RATE_LIMIT: "off",
   ANTHROPIC_API_KEY: "",
 };
-const OPEN_SERVER_SPECS = /(signup-open|assistant-unavailable)\.spec\.ts/;
+const OPEN_SERVER_SPECS = /(signup-open|assistant-local)\.spec\.ts/;
 
 /**
  * Fenêtre « À propos de la démo » déjà fermée (clé de src/lib/demo-notice.ts) : les parcours ne la voient pas.
@@ -70,8 +71,9 @@ export default defineConfig({
         NOMADIA_PUBLIC_SIGNUP: "false",
         NOMADIA_DEV_MAILBOX: "false",
         NOMADIA_ASSISTANT_MOCK: "e2e",
-        // Tous les parcours partagent une adresse : limite par visiteur relevée (la limite elle-même est testée par Vitest).
+        // Tous les parcours partagent une adresse : limites par visiteur relevées (les limites elles-mêmes sont testées par Vitest).
         NOMADIA_ASSISTANT_IP_HOURLY_LIMIT: "500",
+        NOMADIA_ASSISTANT_LOCAL_HOURLY_LIMIT: "1000",
       },
       stdout: "pipe",
       stderr: "pipe",

@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { BedDouble, CarFront, Map, Plane, Sparkles } from "lucide-react";
+import { BedDouble, CarFront, Map, MessageSquareText, Plane } from "lucide-react";
 import type { CivilDate } from "@/lib/dates";
 import dynamic from "next/dynamic";
 import { TripForm } from "@/components/search/trip-form";
@@ -11,8 +11,8 @@ const loading = () => <p className="py-6 text-sm text-ink-soft">Chargement du fo
 const FlightSearchForm = dynamic(() => import("@/components/search/forms").then((m) => m.FlightSearchForm), { loading });
 const HotelSearchForm = dynamic(() => import("@/components/search/forms").then((m) => m.HotelSearchForm), { loading });
 const CarSearchForm = dynamic(() => import("@/components/search/forms").then((m) => m.CarSearchForm), { loading });
-// Assistant (texte libre interprété par /api/assistant) : fragment chargé à l'ouverture de son onglet. Un seul
-// point d'import (affichage et préchargement) : un seul fragment JavaScript.
+// Assistant (texte libre interprété par /api/assistant, côté serveur) : fragment chargé à l'ouverture de son
+// onglet. Un seul point d'import (affichage et préchargement) : un seul fragment JavaScript.
 const loadAssistantPanel = () => import("@/components/home/assistant-panel");
 const AssistantPanel = dynamic(loadAssistantPanel, { loading: () => <p className="py-6 text-sm text-ink-soft">Chargement de l&apos;assistant…</p> });
 
@@ -23,7 +23,7 @@ const TABS: { id: TabId; label: string; icon: ReactNode }[] = [
   { id: "vols", label: "Vols", icon: <Plane aria-hidden className="size-4" /> },
   { id: "hotels", label: "Hôtels", icon: <BedDouble aria-hidden className="size-4" /> },
   { id: "voitures", label: "Voitures", icon: <CarFront aria-hidden className="size-4" /> },
-  { id: "assistant", label: "Assistant", icon: <Sparkles aria-hidden className="size-4" /> },
+  { id: "assistant", label: "Assistant", icon: <MessageSquareText aria-hidden className="size-4" /> },
 ];
 
 /** Préchargement au survol ou au focus d'un onglet (formulaires ou assistant). */
@@ -98,7 +98,15 @@ export function SearchPanel({ today, destinations }: { today: CivilDate; destina
           {tab.id === "vols" && visited.includes("vols") ? <FlightSearchForm today={today} /> : null}
           {tab.id === "hotels" && visited.includes("hotels") ? <HotelSearchForm today={today} /> : null}
           {tab.id === "voitures" && visited.includes("voitures") ? <CarSearchForm today={today} /> : null}
-          {tab.id === "assistant" && visited.includes("assistant") ? <AssistantPanel active={active === "assistant"} /> : null}
+          {tab.id === "assistant" && visited.includes("assistant") ? (
+            <AssistantPanel
+              active={active === "assistant"}
+              onOpenTab={(id) => {
+                setActive(id);
+                tabRefs.current[id]?.focus();
+              }}
+            />
+          ) : null}
         </div>
       ))}
     </div>

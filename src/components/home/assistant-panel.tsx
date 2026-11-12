@@ -3,14 +3,25 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { ArrowRight, Sparkles } from "lucide-react";
-import { ASSISTANT_MAX_INPUT, isAssistantHref, type AssistantAction, type AssistantResponseBody, type AssistantResult, type AssistantStatusBody } from "@/lib/assistant/types";
+import { ArrowRight, MessageCircleQuestion, Send } from "lucide-react";
+import {
+  ASSISTANT_MAX_INPUT,
+  ASSISTANT_TURN_SEPARATOR,
+  isAssistantHref,
+  type AssistantAction,
+  type AssistantEngine,
+  type AssistantResponseBody,
+  type AssistantResult,
+  type AssistantStatusBody,
+} from "@/lib/assistant/types";
 
 /**
  * Assistant de l'accueil (chargé à l'ouverture de son onglet : hors du JavaScript initial).
- * Le texte est envoyé à /api/assistant, qui renvoie des actions validées avec des chemins construits par le serveur.
+ * Le texte est envoyé à /api/assistant : analyse locale sur le serveur de Nomadia, puis, seulement si elle ne
+ * comprend pas la demande et qu'une clé est configurée, repli vers Claude (moteur « ia », signalé ici).
  * Une seule action : ce qui a été compris s'affiche, puis la page s'ouvre après un court délai (« Rester ici » annule).
  * Plusieurs actions : plan en étapes, le visiteur choisit. Question de précision : le champ devient « Votre réponse ».
+ * Demande non comprise : exemples et accès aux onglets classiques.
  * Accessibilité : libellé visible, région `status` pour l'avancement, focus déplacé sur le résultat ou sur le champ.
  */
 
@@ -20,6 +31,13 @@ export const AUTO_OPEN_DELAY_MS = 2200;
 const UNREACHABLE = "L'assistant est injoignable pour le moment. Les onglets Mon voyage, Vols, Hôtels et Voitures fonctionnent normalement.";
 
 type Previous = { request: string; question: string };
+export type ClassicTab = "voyage" | "vols" | "hotels" | "voitures";
+const CLASSIC_TABS: { id: ClassicTab; label: string }[] = [
+  { id: "voyage", label: "Mon voyage" },
+  { id: "vols", label: "Vols" },
+  { id: "hotels", label: "Hôtels" },
+  { id: "voitures", label: "Voitures" },
+];
 
 const OPEN_LABEL: Record<AssistantAction["kind"], string> = {
   search_flights: "Ouvrir la recherche de vols",
@@ -29,11 +47,13 @@ const OPEN_LABEL: Record<AssistantAction["kind"], string> = {
   plan_trip: "Ouvrir le formulaire du voyage",
 };
 
-export default function AssistantPanel({ active }: { active: boolean }) {
+export default function AssistantPanel({ active, onOpenTab }: { active: boolean; onOpenTab?: (tab: ClassicTab) => void }) {
   const router = useRouter();
   const ids = useId();
   const fieldId = `${ids}-texte`;
-  const [available, setAvailable] = useState<boolean | null>(null);
+  /** Repli vers Claude configuré sur le serveur (null : pas encore connu). */
+  const [fallback, setFallback] = useState<boolean | null>(null);
+  const [engine, setEngine] = useState<AssistantEngine | null>(null);
   const [text, setText] = useState("");
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -49,11 +69,12 @@ export default function AssistantPanel({ active }: { active: boolean }) {
 
   useEffect(() => {
     const ctrl = new AbortController();
+    // Statut inconnu (réseau) : mention prudente « peut être transmise à Anthropic ».
     fetch("/api/assistant", { cache: "no-store", signal: ctrl.signal })
-      .then((r) => (r.ok ? (r.json() as Promise<AssistantStatusBody>) : { available: false }))
-      .then((b) => setAvailable(b.available === true))
+      .then((r) => (r.ok ? (r.json() as Promise<AssistantStatusBody>) : { available: true, fallback: true }))
+      .then((b) => setFallback(b.fallback !== false))
       .catch(() => {
-        if (!ctrl.signal.aborted) setAvailable(false);
+        if (!ctrl.signal.aborted) setFallback(true);
       });
     return () => ctrl.abort();
   }, []);
@@ -81,7 +102,8 @@ export default function AssistantPanel({ active }: { active: boolean }) {
 
   const showResult = (r: AssistantResult, sent: string) => {
     if (r.type === "clarification") {
-      setPrevious((p) => ({ request: (p ? `${p.request} — ${sent}` : sent).slice(0, ASSISTANT_MAX_INPUT), question: r.question }));
+      // Tours séparés par ASSISTANT_TURN_SEPARATOR : le serveur réanalyse la demande initiale et chaque réponse.
+      setPrevious((p) => ({ request: (p ? `${p.request}${ASSISTANT_TURN_SEPARATOR}${sent}` : sent).slice(0, ASSISTANT_MAX_INPUT), question: r.question }));
       setResult(r);
       setText("");
       setStatus(`Question de l'assistant : ${r.question}`);
@@ -89,7 +111,7 @@ export default function AssistantPanel({ active }: { active: boolean }) {
       return;
     }
     setPrevious(null);
-    if (r.type === "out_of_scope") {
+    if (r.type === "out_of_scope" || r.type === "help") {
       setResult(r);
       setStatus(r.message);
       requestAnimationFrame(() => fieldRef.current?.focus());
@@ -152,6 +174,7 @@ export default function AssistantPanel({ active }: { active: boolean }) {
         setError(body.message);
         setStatus("");
       } else {
+        setEngine(body.engine === "ia" ? "ia" : "local");
         showResult(body.result, value);
       }
     } catch {
@@ -183,6 +206,7 @@ export default function AssistantPanel({ active }: { active: boolean }) {
     cancelAutoOpen(false);
     setPrevious(null);
     setResult(null);
+    setEngine(null);
     setError(null);
     setText("");
     setStatus("Nouvelle demande.");
@@ -194,20 +218,23 @@ export default function AssistantPanel({ active }: { active: boolean }) {
   const questionId = `${ids}-question`;
   const errorId = `${ids}-erreur`;
 
-  if (available === null) return <p className="py-6 text-sm text-ink-soft">Chargement de l&apos;assistant…</p>;
-  if (!available) {
-    return (
-      <div className="rounded-[var(--radius-md)] border border-warning/35 bg-warning-soft p-4 text-sm" data-testid="assistant-indisponible">
-        <p className="font-semibold">L&apos;assistant est indisponible pour le moment.</p>
-        <p className="mt-1 text-ink-soft">Les onglets Mon voyage, Vols, Hôtels et Voitures fonctionnent normalement.</p>
-      </div>
-    );
-  }
+  // Discret, et seulement quand le texte est réellement parti chez Anthropic (repli) : jamais pour l'analyse locale.
+  const engineBadge =
+    engine === "ia" && result ? (
+      <p className="text-xs text-ink-soft" data-testid="assistant-moteur">
+        Demande interprétée par Claude (Anthropic) : l&apos;analyse de Nomadia ne l&apos;avait pas comprise.
+      </p>
+    ) : null;
+
+  if (fallback === null) return <p className="py-6 text-sm text-ink-soft">Chargement de l&apos;assistant…</p>;
 
   return (
     <div className="space-y-4" data-testid="assistant">
-      <p className="text-sm text-ink-soft">
-        Décrivez votre voyage en une phrase : l&apos;assistant prépare la recherche ou le voyage correspondant et vous montre ce qu&apos;il a compris avant d&apos;ouvrir la page. Il ne réserve rien. Votre texte est transmis à Anthropic (Claude) pour être interprété : n&apos;y mettez aucune donnée personnelle (
+      <p className="text-sm text-ink-soft" data-testid="assistant-intro">
+        Décrivez votre voyage en une phrase : l&apos;assistant prépare la recherche ou le voyage correspondant et vous montre ce qu&apos;il a compris avant d&apos;ouvrir la page. Il ne réserve rien.{" "}
+        {fallback
+          ? "Votre demande est d'abord analysée par Nomadia ; si elle n'est pas comprise, elle est transmise à Anthropic (Claude) pour être interprétée : n'y mettez aucune donnée personnelle ("
+          : "Votre demande est analysée par Nomadia, sans service extérieur, et n'est pas enregistrée ("}
         <Link href="/confidentialite#assistant" className="font-semibold text-forest underline underline-offset-4">
           en savoir plus
         </Link>
@@ -216,13 +243,14 @@ export default function AssistantPanel({ active }: { active: boolean }) {
 
       {question ? (
         <div id={questionId} className="flex gap-3 rounded-[var(--radius-md)] border border-forest/25 bg-forest-soft p-3 text-sm" data-testid="assistant-question">
-          <Sparkles aria-hidden className="mt-0.5 size-4 shrink-0 text-forest" />
+          <MessageCircleQuestion aria-hidden className="mt-0.5 size-4 shrink-0 text-forest" />
           <p>
             <span className="sr-only">Question de l&apos;assistant : </span>
             {question}
           </p>
         </div>
       ) : null}
+      {question ? engineBadge : null}
 
       <form onSubmit={onSubmit} noValidate aria-label="Demande à l'assistant" aria-busy={pending} className="space-y-3">
         <div className="flex flex-col gap-1.5">
@@ -259,7 +287,8 @@ export default function AssistantPanel({ active }: { active: boolean }) {
           ) : null}
         </div>
 
-        {!question ? (
+        {/* Pas d'exemples génériques pendant une question, ni en double sous l'aide (qui a les siens). */}
+        {!question && result?.type !== "help" ? (
           <div>
             <p className="text-xs font-semibold text-ink-soft" id={`${ids}-exemples`}>
               Exemples
@@ -293,7 +322,7 @@ export default function AssistantPanel({ active }: { active: boolean }) {
               </button>
             ) : null}
             <button type="submit" disabled={pending} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-forest px-6 font-semibold text-white transition-colors hover:bg-forest-deep disabled:opacity-60">
-              <Sparkles aria-hidden className="size-4" />
+              <Send aria-hidden className="size-4" />
               {pending ? "Analyse…" : question ? "Répondre" : "Demander à l'assistant"}
             </button>
           </div>
@@ -311,9 +340,45 @@ export default function AssistantPanel({ active }: { active: boolean }) {
       ) : null}
 
       {result?.type === "out_of_scope" ? (
-        <p className="rounded-[var(--radius-md)] border border-line bg-ivory p-3 text-sm" data-testid="assistant-hors-sujet">
-          {result.message}
-        </p>
+        <div className="space-y-1">
+          <p className="rounded-[var(--radius-md)] border border-line bg-ivory p-3 text-sm" data-testid="assistant-hors-sujet">
+            {result.message}
+          </p>
+          {engineBadge}
+        </div>
+      ) : null}
+
+      {result?.type === "help" ? (
+        <section aria-labelledby={`${ids}-aide-titre`} className="rounded-[var(--radius-md)] border border-line bg-ivory p-3 text-sm" data-testid="assistant-aide">
+          <p id={`${ids}-aide-titre`}>{result.message}</p>
+          <ul className="mt-2 flex flex-wrap gap-2">
+            {result.examples.map((ex) => (
+              <li key={ex}>
+                <button
+                  type="button"
+                  className="rounded-full border border-line bg-white px-3 py-1.5 text-left text-xs font-medium text-ink transition-colors hover:border-sand"
+                  onClick={() => {
+                    setText(ex);
+                    setFieldError(null);
+                    fieldRef.current?.focus();
+                  }}
+                >
+                  {ex}
+                </button>
+              </li>
+            ))}
+          </ul>
+          {onOpenTab ? (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="text-ink-soft">Ou utilisez la recherche classique :</span>
+              {CLASSIC_TABS.map((tab) => (
+                <button key={tab.id} type="button" onClick={() => onOpenTab(tab.id)} className="inline-flex min-h-11 items-center rounded-[var(--radius-md)] border border-forest px-3 text-sm font-semibold text-forest hover:bg-forest-soft">
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </section>
       ) : null}
 
       {result?.type === "actions" ? (
@@ -321,6 +386,7 @@ export default function AssistantPanel({ active }: { active: boolean }) {
           <h3 ref={resultRef} id={`${ids}-resultat`} tabIndex={-1} className="font-serif text-lg outline-none">
             {result.actions.length === 1 ? "Voici ce que j'ai compris" : `Votre plan en ${result.actions.length} étapes`}
           </h3>
+          {engineBadge ? <div className="mt-1">{engineBadge}</div> : null}
           <ol className="mt-3 space-y-4">
             {result.actions.map((a, i) => {
               const titleId = `${ids}-etape-${i}`;

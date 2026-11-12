@@ -2,7 +2,8 @@
  * Modèle SIMULÉ pour les tests de parcours (`NOMADIA_ASSISTANT_MOCK=e2e`, interdit sur Vercel et en production,
  * voir src/lib/env.ts) et les tests unitaires : aucune requête réseau. Il reçoit la vraie requête construite
  * par run.ts et renvoie des messages au format de l'API (appels d'outils), qui passent ensuite par la même
- * validation serveur que les réponses réelles. Scénarios choisis par mots-clés du texte saisi.
+ * validation serveur que les réponses réelles. Scénarios choisis par mots-clés du texte saisi. Comme le vrai
+ * modèle, il n'est appelé par la route qu'en repli (demande non comprise par src/lib/assistant/parser).
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { addDays, weekday, type CivilDate } from "@/lib/dates";
@@ -88,6 +89,36 @@ export function createMockClient(today: CivilDate): AssistantModelClient {
 
       if (raw.includes("panne")) throw new Anthropic.APIConnectionError({ message: "Panne simulée" });
 
+      // Le modèle n'est appelé qu'en repli, pour des demandes que l'analyse locale ne comprend pas (ni service ni
+      // lieu reconnus) : ces scénarios utilisent donc des périphrases (« la ville éternelle », « le pays des geysers »).
+      if (answer !== null && raw.includes("geysers")) {
+        const start = addDays(today, 45);
+        return toolUseMessage([
+          {
+            name: "plan_trip",
+            input: { destination: "reykjavik", startDate: start, endDate: addDays(start, 4), adults: count(answer, /(\d+)\s*adulte/, 2), children: count(answer, /(\d+)\s*enfant/, 0), assumptions: [`Dates choisies : du ${start} pour 5 jours`] },
+          },
+        ]);
+      }
+      if (raw.includes("geysers")) {
+        return toolUseMessage([{ name: "ask_clarification", input: { question: "Pour quelles dates partez-vous, et combien d'adultes et d'enfants êtes-vous ?" } }], "tool_use");
+      }
+      if (raw.includes("soleil levant")) return toolUseMessage([{ name: "open_destination", input: { destination: "kyoto" } }]);
+      if (raw.includes("ville eternelle")) {
+        const dep = addDays(today, 40);
+        const ret = addDays(today, 44);
+        // Sorties invalides : date passée (refusée par la validation serveur), propriété injectée (une URL).
+        if (raw.includes("hier")) {
+          return toolUseMessage([{ name: "search_flights", input: { origin: "city:PAR", destination: "city:ROM", departDate: addDays(today, -1), returnDate: null, adults: 1, childrenAges: [], infants: 0, cabin: "economy", assumptions: [] } }]);
+        }
+        if (raw.includes("lien")) return toolUseMessage([{ name: "open_destination", input: { destination: "rome", href: "https://exemple.invalid/piege" } }]);
+        const adults = /pour 2|a deux|en amoureux/.test(raw) ? 2 : 1;
+        const flight = { name: "search_flights", input: { origin: "city:PAR", destination: "city:ROM", departDate: dep, returnDate: ret, adults, childrenAges: [], infants: 0, cabin: "economy", assumptions: ["Départ supposé : Paris", ...(adults === 1 ? ["1 adulte (nombre non précisé)"] : [])] } };
+        if (!raw.includes("tout compris")) return toolUseMessage([flight]);
+        return toolUseMessage([flight, { name: "search_hotels", input: { destination: "city:ROM", checkIn: dep, checkOut: ret, rooms: [{ adults, childrenAges: [] }], assumptions: [] } }]);
+      }
+
+      // Scénarios directs (tests unitaires de run.ts, sans passer par l'analyse locale).
       // Réponse à une question de précision sur l'Islande en famille.
       if (answer !== null && raw.includes("islande")) {
         const start = addDays(today, 45);

@@ -10,11 +10,15 @@ import { sameOrigin } from "@/lib/http";
 import { modeFor } from "@/lib/providers/registry";
 import type { ActionContext } from "@/lib/assistant/actions";
 import { createMockClient } from "@/lib/assistant/mock";
-import { clientIp, consumeAssistantQuota, type AssistantQuotaConfig } from "@/lib/assistant/rate-limit";
+import { localHelp, parseLocally } from "@/lib/assistant/parser";
+import { clientIp, consumeAssistantQuota, consumeLocalQuota, type AssistantQuotaConfig, type QuotaOutcome } from "@/lib/assistant/rate-limit";
 import { AssistantFailure, runAssistant, type AssistantModelClient } from "@/lib/assistant/run";
-import { ASSISTANT_MAX_INPUT, ASSISTANT_MAX_QUESTION, type AssistantErrorCode, type AssistantResponseBody, type AssistantStatusBody } from "@/lib/assistant/types";
+import { ASSISTANT_MAX_INPUT, ASSISTANT_MAX_QUESTION, type AssistantEngine, type AssistantErrorCode, type AssistantResponseBody, type AssistantResult, type AssistantStatusBody } from "@/lib/assistant/types";
 
-/** live : API Anthropic ; mock : modèle simulé (tests de parcours) ; off : pas de clé, assistant « indisponible ». */
+/**
+ * Mode du REPLI vers le modèle (l'analyse locale fonctionne toujours) : live = API Anthropic ; mock = modèle
+ * simulé (tests de parcours) ; off = aucun repli (pas de clé, ou plafond journalier à 0) : rien n'est envoyé.
+ */
 export type AssistantMode = "live" | "mock" | "off";
 
 export function assistantMode(): AssistantMode {
@@ -39,10 +43,12 @@ function anthropicClient(apiKey: string): AssistantModelClient {
 }
 
 export interface AssistantDeps {
+  /** Mode du repli vers le modèle. */
   mode: AssistantMode;
   client: (today: CivilDate) => AssistantModelClient;
   database: () => Promise<Database>;
-  quota: AssistantQuotaConfig;
+  /** Quotas du repli (par visiteur et plafond journalier) et de l'analyse locale (`localHourlyLimit`). */
+  quota: AssistantQuotaConfig & { localHourlyLimit: number };
   today: () => CivilDate;
   now: () => number;
   demo: ActionContext["demo"];
@@ -57,7 +63,12 @@ export async function defaultAssistantDeps(): Promise<AssistantDeps> {
     mode,
     client: (t) => (mode === "mock" ? createMockClient(t) : anthropicClient(e.ANTHROPIC_API_KEY ?? "")),
     database: db,
-    quota: { ipHourlyLimit: e.NOMADIA_ASSISTANT_IP_HOURLY_LIMIT, dailyLimit: e.NOMADIA_ASSISTANT_DAILY_LIMIT, secret: e.BETTER_AUTH_SECRET },
+    quota: {
+      ipHourlyLimit: e.NOMADIA_ASSISTANT_IP_HOURLY_LIMIT,
+      dailyLimit: e.NOMADIA_ASSISTANT_DAILY_LIMIT,
+      localHourlyLimit: e.NOMADIA_ASSISTANT_LOCAL_HOURLY_LIMIT,
+      secret: e.BETTER_AUTH_SECRET,
+    },
     today: () => today(),
     now: nowMs,
     demo: { flights: modeFor("flights") === "demo", hotels: modeFor("hotels") === "demo", cars: modeFor("cars") === "demo" },
@@ -69,7 +80,7 @@ const MESSAGES: Record<AssistantErrorCode, string> = {
   INVALID: `Votre demande doit contenir entre 1 et ${ASSISTANT_MAX_INPUT} caractères.`,
   FORBIDDEN: "Requête refusée.",
   RATE_LIMITED: "Vous avez envoyé beaucoup de demandes en peu de temps. Réessayez un peu plus tard ; les onglets de recherche restent disponibles.",
-  DAILY_LIMIT: "L'assistant a atteint sa limite d'utilisation pour aujourd'hui. Réessayez demain ; les onglets de recherche restent disponibles.",
+  DAILY_LIMIT: "L'assistant a atteint sa limite d'utilisation pour aujourd'hui pour les demandes complexes. Reformulez avec une destination et des dates, ou réessayez demain ; les onglets de recherche restent disponibles.",
   UNAVAILABLE: "L'assistant est indisponible pour le moment. Les onglets Mon voyage, Vols, Hôtels et Voitures fonctionnent normalement.",
   TIMEOUT: "L'assistant a mis trop de temps à répondre. Réessayez dans un instant.",
 };
@@ -85,6 +96,10 @@ function errorResponse(code: AssistantErrorCode, retryAfterSec?: number) {
   return NextResponse.json<AssistantResponseBody>({ status: "error", code, message: MESSAGES[code] }, { status: STATUS[code], headers });
 }
 
+function okResponse(engine: AssistantEngine, result: AssistantResult) {
+  return NextResponse.json<AssistantResponseBody>({ status: "ok", engine, result }, { headers: NO_STORE });
+}
+
 const bodySchema = z
   .object({
     text: z.string().trim().min(1).max(ASSISTANT_MAX_INPUT),
@@ -95,17 +110,34 @@ const bodySchema = z
   })
   .strict();
 
+/** GET /api/assistant : toujours disponible (analyse locale) ; `fallback` indique si le repli vers Claude est actif. */
 export function assistantStatus(mode: AssistantMode) {
-  return NextResponse.json<AssistantStatusBody>({ available: mode !== "off" }, { headers: NO_STORE });
+  return NextResponse.json<AssistantStatusBody>({ available: true, fallback: mode !== "off" }, { headers: NO_STORE });
 }
 
 /**
- * POST /api/assistant. Ordre : configuration (sans clé => 503 sans rien consommer), origine, corps (taille,
- * schéma), quotas (base partagée), appel au modèle, validation des appels d'outils. Le texte saisi n'est ni
- * journalisé ni stocké.
+ * Quota de l'analyse locale. Base indisponible : la demande est servie quand même (aucun coût ni service
+ * extérieur sur ce chemin) et l'incident est journalisé ; le repli vers le modèle, lui, reste fermé dans ce cas.
+ */
+async function localQuota(request: Request, deps: AssistantDeps): Promise<QuotaOutcome> {
+  try {
+    const database = await deps.database();
+    return await consumeLocalQuota(database, clientIp(request.headers), { hourlyLimit: deps.quota.localHourlyLimit, secret: deps.quota.secret }, deps.now());
+  } catch (err) {
+    console.error("[assistant] limitation de débit (analyse locale) indisponible", { error: err instanceof Error ? err.name : typeof err });
+    return { ok: true };
+  }
+}
+
+/**
+ * POST /api/assistant. Ordre : origine, corps (taille, schéma), puis ANALYSE LOCALE (src/lib/assistant/parser) ;
+ * - comprise : quota local (compteur séparé, limite haute), réponse immédiate, `engine: "local"` ;
+ * - non comprise et repli configuré : quotas du modèle (visiteur/heure, plafond/jour), UNE requête au modèle,
+ *   validation des appels d'outils, `engine: "ia"` ;
+ * - non comprise sans repli : aide (exemples + onglets classiques), `engine: "local"`. Rien n'est envoyé à Anthropic.
+ * Le texte saisi n'est ni journalisé ni stocké.
  */
 export async function handleAssistantPost(request: Request, deps: AssistantDeps): Promise<NextResponse> {
-  if (deps.mode === "off") return errorResponse("UNAVAILABLE");
   if (!deps.checkOrigin(request)) return errorResponse("FORBIDDEN");
 
   const declared = Number(request.headers.get("content-length") ?? "0");
@@ -121,6 +153,25 @@ export async function handleAssistantPost(request: Request, deps: AssistantDeps)
   const body = bodySchema.safeParse(json);
   if (!body.success) return errorResponse("INVALID");
 
+  const t = deps.today();
+  const ctx: ActionContext = { today: t, demo: deps.demo };
+  const input = { text: body.data.text, previous: body.data.previous ?? null };
+
+  let local: ReturnType<typeof parseLocally>;
+  try {
+    local = parseLocally(input, ctx);
+  } catch (err) {
+    // Défense en profondeur : une erreur de l'analyse locale vaut « non compris » (journal sans le texte saisi).
+    console.error("[assistant] erreur de l'analyse locale", { error: err instanceof Error ? err.name : typeof err });
+    local = { understood: false, confidence: "none" };
+  }
+  if (local.understood || deps.mode === "off") {
+    const quota = await localQuota(request, deps);
+    if (!quota.ok) return errorResponse(quota.code, quota.retryAfterSec);
+    return okResponse("local", local.understood ? local.result : localHelp());
+  }
+
+  // Repli vers le modèle : seules ces demandes consomment les quotas du modèle.
   try {
     const database = await deps.database();
     const quota = await consumeAssistantQuota(database, clientIp(request.headers), deps.quota, deps.now());
@@ -129,11 +180,9 @@ export async function handleAssistantPost(request: Request, deps: AssistantDeps)
     console.error("[assistant] limitation de débit indisponible", { error: err instanceof Error ? err.name : typeof err });
     return errorResponse("UNAVAILABLE");
   }
-
-  const t = deps.today();
   try {
-    const result = await runAssistant({ text: body.data.text, previous: body.data.previous ?? null }, { client: deps.client(t), ctx: { today: t, demo: deps.demo } });
-    return NextResponse.json<AssistantResponseBody>({ status: "ok", result }, { headers: NO_STORE });
+    const result = await runAssistant(input, { client: deps.client(t), ctx });
+    return okResponse("ia", result);
   } catch (err) {
     if (err instanceof AssistantFailure) return errorResponse(err.code);
     console.error("[assistant] erreur inattendue", { error: err instanceof Error ? err.name : typeof err });
