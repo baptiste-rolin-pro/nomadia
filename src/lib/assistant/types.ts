@@ -8,6 +8,18 @@
 export const ASSISTANT_MAX_INPUT = 500;
 /** Longueur maximale d'une question de précision renvoyée au client (et réémise par lui au tour suivant). */
 export const ASSISTANT_MAX_QUESTION = 300;
+/**
+ * Séparateur des tours dans `previous.request` (demande initiale, puis chaque réponse à une question) : le
+ * serveur analyse chaque tour séparément, la réponse la plus récente l'emporte. Caractère choisi pour ne pas
+ * apparaître dans une saisie ordinaire.
+ */
+export const ASSISTANT_TURN_SEPARATOR = "\n↳ ";
+
+/**
+ * Moteur qui a répondu : « local » (analyse déterministe sur le serveur de Nomadia, sans service extérieur)
+ * ou « ia » (repli vers le modèle Claude, seulement si la clé est configurée et la demande non comprise).
+ */
+export type AssistantEngine = "local" | "ia";
 
 export type AssistantActionKind = "search_flights" | "search_hotels" | "search_cars" | "open_destination" | "plan_trip";
 
@@ -28,14 +40,19 @@ export interface AssistantAction {
 export type AssistantResult =
   | { type: "actions"; actions: AssistantAction[] }
   | { type: "clarification"; question: string }
-  | { type: "out_of_scope"; message: string };
+  | { type: "out_of_scope"; message: string }
+  /** Demande non comprise et aucun repli configuré : exemples de formulations (l'interface ajoute les onglets classiques). */
+  | { type: "help"; message: string; examples: string[] };
 
 export type AssistantErrorCode = "INVALID" | "FORBIDDEN" | "RATE_LIMITED" | "DAILY_LIMIT" | "UNAVAILABLE" | "TIMEOUT";
 
-export type AssistantResponseBody = { status: "ok"; result: AssistantResult } | { status: "error"; code: AssistantErrorCode; message: string };
+export type AssistantResponseBody = { status: "ok"; engine: AssistantEngine; result: AssistantResult } | { status: "error"; code: AssistantErrorCode; message: string };
 
 export interface AssistantStatusBody {
+  /** Toujours vrai : l'analyse locale fonctionne sans clé. */
   available: boolean;
+  /** Repli vers Claude configuré (clé présente) : les demandes non comprises localement lui sont transmises. */
+  fallback: boolean;
 }
 
 export interface AssistantRequestBody {

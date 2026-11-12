@@ -44,14 +44,17 @@ const schema = z.object({
   DEMO_USER_PASSWORD: z.string().min(10).optional(),
   DEMO_ADMIN_PASSWORD: z.string().min(10).optional(),
   /**
-   * Assistant de recherche (API Anthropic, src/lib/assistant). SECRET. Sans clé : l'assistant s'affiche
-   * « indisponible » et le reste du site fonctionne normalement. Seule source d'identifiants utilisée par le serveur.
+   * Repli de l'assistant vers le modèle Claude (API Anthropic, src/lib/assistant). SECRET, OPTIONNELLE.
+   * L'assistant fonctionne sans elle (analyse locale, src/lib/assistant/parser) ; avec elle, seules les demandes
+   * que l'analyse locale ne comprend pas sont envoyées au modèle. Seule source d'identifiants utilisée par le serveur.
    */
   ANTHROPIC_API_KEY: z.preprocess(blankAsUndefined, z.string().min(1).optional()),
-  /** Demandes à l'assistant par visiteur (empreinte de l'adresse IP) et par heure, fenêtre fixe. */
+  /** Demandes envoyées au modèle (repli) par visiteur (empreinte de l'adresse IP) et par heure, fenêtre fixe. */
   NOMADIA_ASSISTANT_IP_HOURLY_LIMIT: intSetting(1, 1000, 20),
-  /** Plafond global de demandes à l'assistant par jour UTC, tous visiteurs confondus ; 0 ferme l'assistant. */
+  /** Plafond global de demandes envoyées au modèle par jour UTC, tous visiteurs confondus ; 0 désactive le repli. */
   NOMADIA_ASSISTANT_DAILY_LIMIT: intSetting(0, 100_000, 300),
+  /** Demandes traitées par l'analyse locale par visiteur et par heure (protection contre le spam, aucun coût). */
+  NOMADIA_ASSISTANT_LOCAL_HOURLY_LIMIT: intSetting(1, 100_000, 120),
   /**
    * « e2e » : modèle simulé (src/lib/assistant/mock.ts) pour les tests de parcours, sans appel réseau.
    * Interdit sur Vercel et lorsque NOMADIA_SITE_ENV=production.

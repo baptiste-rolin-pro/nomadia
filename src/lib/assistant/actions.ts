@@ -26,7 +26,10 @@ import {
 } from "@/lib/search/params";
 import { demoCarsCovered, demoFlightCovered, demoHotelsCovered, placeLabel, placeShortName } from "@/lib/assistant/catalog";
 import { isToolName, toolInputSchemas, type ToolInput, type ToolName } from "@/lib/assistant/tools";
-import { ASSISTANT_MAX_QUESTION, isAssistantHref, type AssistantAction } from "@/lib/assistant/types";
+import { ASSISTANT_MAX_QUESTION, isAssistantHref, type AssistantAction, type AssistantResult } from "@/lib/assistant/types";
+
+/** Étapes au plus par demande (modèle ou analyse locale). */
+export const MAX_ACTIONS = 4;
 
 export type ActionOutcome = { ok: true; action: AssistantAction } | { ok: false; step: string; issues: string[] };
 
@@ -44,8 +47,9 @@ const STEP_LABELS: Record<Exclude<ToolName, "ask_clarification">, string> = {
   plan_trip: "Voyage",
 };
 
-const MAX_ASSUMPTIONS = 4;
-const MAX_ASSUMPTION_LENGTH = 140;
+/** Hypothèses affichées par étape (le modèle en donne 4 au plus ; l'analyse locale regroupe au-delà de 6). */
+export const MAX_ASSUMPTIONS = 6;
+export const MAX_ASSUMPTION_LENGTH = 140;
 const URL_LIKE = /\b(?:https?:\/\/|www\.)\S+|\b[\w-]+(?:\.[\w-]+)*\.(?:com|net|org|fr|io|ai|co|info|biz|xyz|ru|cn|app|dev|link|ly)(?:\/\S*)?/gi;
 // Caractères de contrôle, de mise en forme bidirectionnelle et balises : retirés du texte affiché.
 const CONTROL = /[\u0000-\u001f\u007f-\u009f​-‏‪-‮⁦-⁩<>]/g;
@@ -272,6 +276,27 @@ export function buildAction(name: string, rawInput: unknown, ctx: ActionContext)
       return r.success ? trip(r.data, ctx) : { ok: false, step, issues: ["Critères incomplets ou inattendus."] };
     }
   }
+}
+
+/**
+ * Appels d'outils (du modèle ou de l'analyse locale) => résultat pour le navigateur. Chaque appel passe par
+ * buildAction ; une étape invalide n'est jamais retirée en silence : toute la demande revient en question.
+ */
+export function resultFromCalls(calls: { name: string; input: unknown }[], ctx: ActionContext): AssistantResult {
+  if (calls.length > MAX_ACTIONS) {
+    return { type: "clarification", question: `Je peux préparer ${MAX_ACTIONS} étapes au plus à la fois. Par quoi voulez-vous commencer ?` };
+  }
+  const actions: AssistantAction[] = [];
+  const problems: string[] = [];
+  for (const call of calls) {
+    const outcome = buildAction(call.name, call.input, ctx);
+    if (outcome.ok) actions.push(outcome.action);
+    else problems.push(`${outcome.step} : ${outcome.issues.join(" ")}`);
+  }
+  if (problems.length) {
+    return { type: "clarification", question: cleanQuestion(`Je n'ai pas pu tout préparer. ${problems.join(" ")} Pouvez-vous préciser ?`) };
+  }
+  return { type: "actions", actions };
 }
 
 /** Dernier jour réservable (indiqué au modèle dans la partie variable du prompt). */

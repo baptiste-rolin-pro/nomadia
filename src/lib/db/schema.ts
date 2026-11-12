@@ -452,9 +452,10 @@ export const contactMessages = pgTable("contact_messages", {
 // ---------------------------------------------------------------------------
 
 /**
- * Compteurs à fenêtre fixe de l'assistant : `ip:<empreinte HMAC de l'adresse>:<heure>` (par visiteur) et
- * `day:<AAAA-MM-JJ>` (plafond global). Aucune adresse IP en clair, aucun texte saisi ; lignes expirées
- * supprimées au premier appel de chaque jour (src/lib/assistant/rate-limit.ts).
+ * Compteurs à fenêtre fixe de l'assistant. Repli vers le modèle : `ip:<empreinte HMAC de l'adresse>:<heure>`
+ * (par visiteur) et `day:<AAAA-MM-JJ>` (plafond global). Analyse locale : `local:<empreinte HMAC>:<heure>` et
+ * `localday:<AAAA-MM-JJ>` (déclencheur de purge). Aucune adresse IP en clair, aucun texte saisi ; lignes expirées
+ * supprimées au premier appel de chaque jour (src/lib/assistant/rate-limit.ts). Même table, aucune migration.
  */
 export const assistantRateLimits = pgTable(
   "assistant_rate_limits",

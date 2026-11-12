@@ -11,6 +11,14 @@ export function inDays(n: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+const MONTHS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
+
+/** Date civile en toutes lettres, sans année (« 11 janvier »), comme un visiteur l'écrirait. */
+export function frenchDay(iso: string): string {
+  const [, m, d] = iso.split("-").map(Number);
+  return `${d} ${MONTHS[m! - 1]}`;
+}
+
 export async function dismissCookies(page: Page) {
   const refuse = page.getByRole("button", { name: "Tout refuser" });
   if (await refuse.isVisible().catch(() => false)) await refuse.click();
