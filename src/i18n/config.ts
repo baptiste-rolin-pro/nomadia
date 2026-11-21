@@ -78,3 +78,15 @@ export function stripLocale(path: string): string {
   const rest = path.slice(locale.length + 1);
   return rest === "" ? "/" : rest.startsWith("/") ? rest : `/${rest}`;
 }
+
+/**
+ * Chemin de la page sans aucune langue, préfixe interne `/fr` compris : le rendu serveur d'une page française voit
+ * l'adresse réécrite par le proxy (`/fr/vols`), le navigateur l'adresse publique (`/vols`). Pour les composants
+ * qui comparent ou reconstruisent l'adresse courante (`usePathname()`).
+ */
+export function pagePath(path: string): string {
+  const m = /^\/([a-z]{2})(?=$|[/?#])/.exec(path);
+  if (!m || !isLocale(m[1])) return path;
+  const rest = path.slice(3);
+  return rest === "" ? "/" : rest.startsWith("/") ? rest : `/${rest}`;
+}

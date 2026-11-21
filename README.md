@@ -104,11 +104,21 @@ Toutes sont lues côté serveur (aucune `NEXT_PUBLIC_*`). « Public » = valeur 
 | `DUFFEL_ACCESS_TOKEN`, `BOOKING_DEMAND_API_KEY`, `BOOKING_DEMAND_AFFILIATE_ID` | Secret | Inutilisées en démonstration | — | Fournisseurs réels (non actifs) |
 | `VERCEL`, `VERCEL_ENV`, `VERCEL_URL`, `VERCEL_BRANCH_URL`, `VERCEL_PROJECT_PRODUCTION_URL` | Système Vercel | Automatiques | — | Garde-fous et URL par défaut (option « Automatically expose System Environment Variables », active par défaut) |
 
+## Langues
+
+Le site est disponible en **10 langues** : français (par défaut), anglais, chinois simplifié, hindi, espagnol, arabe (de droite à gauche), bengali, portugais (Brésil), russe et indonésien. Tout est traduit : interface, pages, contenu éditorial des destinations et des guides, emails, erreurs et validations, fenêtre de démonstration, bannière cookies, pied de page, pages légales et politique de confidentialité, connexion, espace client, administration, tunnel de réservation et documents, pages 404 et d'erreur, métadonnées et Open Graph, assistant.
+
+- Adresses : le français reste **sans préfixe** (les anciennes adresses fonctionnent ; `/fr/…` redirige vers `/…`), les autres langues sont préfixées (`/en/vols`, `/ar/destinations/lisbonne`). Balises `hreflang` + `x-default`, sitemap par langue.
+- Sélecteur de langue (en-tête et pied de page) : même page, mêmes paramètres ; choix mémorisé dans un cookie nécessaire ; **jamais de redirection automatique** (sur l'accueil français, simple lien vers la langue du navigateur).
+- Nombres, prix, dates, heures et durées mis en forme par `Intl` dans la langue ; chiffres arabes orientaux en arabe, bengalis en bengali.
+- Assistant : comprend les demandes dans les 10 langues (noms de lieux en écriture native, mois et jours, dates relatives, chiffres natifs, numéraux chinois) et répond dans la langue de la page. Robustesse moindre en russe, arabe, hindi, bengali et chinois (voir docs/progress.md).
+- Ajouter une langue ou une traduction : docs/architecture.md (section « Internationalisation »). TypeScript et `tests/unit/i18n.test.ts` refusent toute clé manquante, vide ou dont les paramètres diffèrent du français.
+
 ## Ce qui fonctionne en démonstration
 
 - Accueil immersif (hero photographique, moteur à onglets Mon voyage / Vols / Hôtels / Voitures / Assistant, mosaïque de destinations, ambiances, aperçu du carnet, guides, FAQ, transparence des réservations).
 - 12 destinations avec pages détaillées (saisons sourcées, formalités renvoyées à France Diplomatie, galerie créditée, recherches préremplies), 3 guides, annuaires des compagnies et des loueurs.
-- Assistant de l'accueil (onglet « Assistant ») : une demande écrite en français (« Vol Paris–Rome le 12 juin, retour le 16, avec une voiture sur place ») devient une ou plusieurs actions du site — recherche de vols, d'hébergements ou de voitures préremplie, fiche destination, formulaire « Organiser mon voyage » prérempli. Ce qui a été compris (lieux, dates, voyageurs, hypothèses signalées) s'affiche avant l'ouverture ; plusieurs services donnent un plan en étapes ; une information manquante donne une seule question précise. **Analyse locale déterministe** (`src/lib/assistant/parser` : lieux du référentiel avec tolérance aux fautes, dates relatives au fuseau Europe/Paris, voyageurs, cabine, conducteur), gratuite et sans clé ; **repli optionnel** vers Claude (`claude-opus-5-5`, API Anthropic) pour les seules demandes non comprises, si `ANTHROPIC_API_KEY` est définie. Entrées validées et liens construits côté serveur par le même code dans les deux cas, limitation de débit propre à chaque chemin. Détail : docs/architecture.md, docs/providers.md.
+- Assistant de l'accueil (onglet « Assistant ») : une demande écrite dans l'une des 10 langues (« Vol Paris–Rome le 12 juin, retour le 16, avec une voiture sur place ») devient une ou plusieurs actions du site — recherche de vols, d'hébergements ou de voitures préremplie, fiche destination, formulaire « Organiser mon voyage » prérempli. Ce qui a été compris (lieux, dates, voyageurs, hypothèses signalées) s'affiche avant l'ouverture ; plusieurs services donnent un plan en étapes ; une information manquante donne une seule question précise. **Analyse locale déterministe** (`src/lib/assistant/parser`, cœur français et packs de langue dans `parser/lang/` : lieux du référentiel avec tolérance aux fautes, dates relatives au fuseau Europe/Paris, voyageurs, cabine, conducteur), gratuite et sans clé ; **repli optionnel** vers Claude (`claude-opus-5-5`, API Anthropic) pour les seules demandes non comprises, si `ANTHROPIC_API_KEY` est définie. Entrées validées et liens construits côté serveur par le même code dans les deux cas, limitation de débit propre à chaque chemin. Détail : docs/architecture.md, docs/providers.md.
 - Recherche de vols, hôtels et voitures : autocomplétion de lieux, validation client **et** serveur, filtres partageables dans l'URL, tri expliqué, « afficher plus », états chargement / vide / erreur / fournisseur indisponible, fiches détaillées. Offres de démonstration sur Lisbonne, Rome et Reykjavik.
 - Planificateur : voyage daté, ajout depuis les résultats, statuts envisagé / à réserver / en cours / confirmé, timeline jour par jour, budget détaillé, alertes (nuits sans hébergement, chevauchements, voiture avant l'atterrissage, arrivée nocturne, agence fermée…), version imprimable, export `.ics`, brouillon anonyme rattachable au compte.
 - Authentification réelle (Better Auth) : connexion (comptes de démonstration partagés), déconnexion, sessions renouvelées ; espace client (voyages, réservations, favoris, profil en lecture, préférences, export et demande de suppression des données).
@@ -142,7 +152,7 @@ Chaque service a un mode explicite défini côté serveur (`FLIGHTS_PROVIDER_MOD
 
 ## Documentation
 
-- [docs/architecture.md](docs/architecture.md) — modèle de données, flux, décisions.
+- [docs/architecture.md](docs/architecture.md) — modèle de données, flux, décisions, internationalisation.
 - [docs/providers.md](docs/providers.md) — fournisseurs, documentation consultée, capacités, activation.
 - [docs/design-motion.md](docs/design-motion.md) — direction artistique, composants, partition d'animation.
 - [docs/assets.md](docs/assets.md) — photographies, crédits, droits ; Blender.

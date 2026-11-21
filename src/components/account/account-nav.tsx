@@ -2,7 +2,7 @@
 
 import { Link } from "@/i18n/link";
 import { usePathname } from "next/navigation";
-import { stripLocale } from "@/i18n/config";
+import { pagePath } from "@/i18n/config";
 import { useI18n } from "@/i18n/client";
 
 const LINKS = [
@@ -15,7 +15,7 @@ const LINKS = [
 ] as const;
 
 export function AccountNav() {
-  const pathname = stripLocale(usePathname());
+  const pathname = pagePath(usePathname());
   const t = useI18n().m.account.nav;
   return (
     <nav aria-label={t.label}>

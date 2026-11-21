@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, type MouseEvent } from "react";
 import { Globe } from "lucide-react";
-import { LOCALES, LOCALE_COOKIE, LOCALE_INFO, localizePath, stripLocale, type Locale } from "@/i18n/config";
+import { LOCALES, LOCALE_COOKIE, LOCALE_INFO, localizePath, pagePath, type Locale } from "@/i18n/config";
 import { useI18n } from "@/i18n/client";
 
 /** Mémorise le choix (cookie nécessaire, 1 an) : jamais de redirection automatique à partir de lui. */
@@ -22,7 +22,7 @@ export function readLocaleCookie(): string | null {
  * de recherche changent l'adresse sans navigation) ou du survol/focus (copie de lien, clic du milieu).
  */
 function useTargets(pathname: string) {
-  const bare = stripLocale(pathname);
+  const bare = pagePath(pathname);
   const withQuery = (l: Locale) => localizePath(l, `${bare}${window.location.search}${window.location.hash}`);
   return {
     hrefFor: (l: Locale) => localizePath(l, bare),

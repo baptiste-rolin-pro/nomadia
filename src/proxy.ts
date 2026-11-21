@@ -51,6 +51,8 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Toutes les pages ; pas les API, les fichiers de Next.js, les médias ni les fichiers à extension (robots.txt…).
-  matcher: ["/((?!api/|_next/|images/|videos/|.*\\.[a-zA-Z0-9]+$).*)"],
+  // Toutes les pages ; pas les API, les fichiers de Next.js, les médias ni les fichiers statiques (robots.txt,
+  // sitemap.xml, icon.svg…). Liste d'extensions explicite : les références d'offres contiennent un point
+  // (« dfl.eyJ… ») et doivent passer par le proxy comme toute page.
+  matcher: ["/((?!api/|_next/|images/|videos/|.*\\.(?:txt|xml|svg|ico|png|jpe?g|webp|avif|gif|webmanifest|json|js|css|map|mp4|webm|woff2?)$).*)"],
 };

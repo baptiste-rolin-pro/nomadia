@@ -97,6 +97,8 @@ test.describe("arabe, mobile 375 px", () => {
     await page.getByRole("textbox", { name: "الاسم الأول" }).fill("Camille");
     await page.getByRole("textbox", { name: "اسم العائلة" }).fill("Durand");
     await page.getByRole("textbox", { name: "تاريخ الميلاد" }).fill("1991-05-04");
+    // Sans compte : adresse de contact fictive obligatoire (démonstration publique).
+    await page.getByRole("textbox", { name: "البريد الإلكتروني للتأكيد" }).fill("voyageur@exemple.test");
     await page.getByRole("button", { name: "المتابعة إلى الإضافات" }).click();
     await expect(page.getByRole("heading", { name: "إضافات مفيدة" })).toBeVisible();
     await noHorizontalOverflow(page);

@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Menu, UserRound, X } from "lucide-react";
 import { siteConfig } from "@/lib/config/site";
-import { stripLocale } from "@/i18n/config";
+import { pagePath } from "@/i18n/config";
 import { useI18n } from "@/i18n/client";
 import { Link } from "@/i18n/link";
 import { LanguageSwitcher } from "@/components/layout/language-switcher";
@@ -23,7 +23,7 @@ const LanguageSuggestion = dynamic(() => import("@/components/layout/language-su
 export function SiteHeader() {
   const { m, f } = useI18n();
   const t = m.common.nav;
-  const pathname = stripLocale(usePathname());
+  const pathname = pagePath(usePathname());
   const [user, setUser] = useState<{ name: string } | null>(null);
   const overlay = pathname === "/";
   const [scrolled, setScrolled] = useState(false);

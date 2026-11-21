@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_LOCALE, LOCALES, LOCALE_INFO, dirOf, isLocale, localeFromPath, localizePath, stripLocale, type Locale } from "@/i18n/config";
+import { DEFAULT_LOCALE, LOCALES, LOCALE_INFO, dirOf, isLocale, localeFromPath, localizePath, pagePath, stripLocale, type Locale } from "@/i18n/config";
 import { matchAcceptLanguage } from "@/i18n/negotiate";
 import { formatMessage, formatMoneyIn, formatNumber, monthInDate } from "@/i18n/format";
 import { MESSAGES } from "@/i18n/messages";
@@ -138,6 +138,12 @@ describe("URL et langue", () => {
     expect(localeFromPath("/english")).toBeNull();
     expect(stripLocale("/ru/voyage/nouveau")).toBe("/voyage/nouveau");
     expect(stripLocale("/ru")).toBe("/");
+    // Rendu serveur d'une page française : adresse réécrite « /fr/… » ramenée à l'adresse publique.
+    expect(pagePath("/fr")).toBe("/");
+    expect(pagePath("/fr/vols")).toBe("/vols");
+    expect(pagePath("/en/vols")).toBe("/vols");
+    expect(pagePath("/vols")).toBe("/vols");
+    expect(localizePath("en", pagePath("/fr"))).toBe("/en");
   });
 
   it("direction et négociation (suggestion seulement, jamais de redirection automatique)", () => {
@@ -157,5 +163,14 @@ describe("URL et langue", () => {
       expect(Intl.NumberFormat.supportedLocalesOf([info.intl])).toHaveLength(1);
       expect(Intl.getCanonicalLocales(info.tag)).toEqual([info.tag]);
     }
+  });
+});
+
+describe("proxy : chemins pris en charge", () => {
+  it("les pages (même avec un point, comme les références d'offres) passent par le proxy ; pas les fichiers statiques ni l'API", async () => {
+    const { config } = await import("@/proxy");
+    const matcher = new RegExp(`^${config.matcher[0]}$`);
+    for (const path of ["/", "/vols", "/en/vols/offre/dfl.eyJvIjoiQ0RHIn0", "/hotels/rom-corte-trastevere", "/ar/reservation/bkg_123"]) expect(path).toMatch(matcher);
+    for (const path of ["/robots.txt", "/sitemap.xml", "/icon.svg", "/api/assistant", "/_next/static/chunks/a.js", "/images/hero.webp", "/videos/x.mp4"]) expect(path).not.toMatch(matcher);
   });
 });
