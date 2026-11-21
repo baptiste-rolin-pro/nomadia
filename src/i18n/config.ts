@@ -56,13 +56,18 @@ export function dirOf(locale: Locale): "ltr" | "rtl" {
  * Les liens externes, les ancres seules et les chemins déjà préfixés sont rendus tels quels.
  */
 export function localizePath(locale: Locale, href: string): string {
-  if (!href.startsWith("/") || href.startsWith("//")) return href;
+  if (!/^[/\\]/.test(href)) return href;
   const current = localeFromPath(href);
-  const bare = current ? stripLocale(href) : href;
+  const bare = sameOrigin(current ? stripLocale(href) : href);
   if (locale === DEFAULT_LOCALE) return bare;
   if (bare === "/") return `/${locale}`;
   if (bare.startsWith("/?") || bare.startsWith("/#")) return `/${locale}${bare.slice(1)}`;
   return `/${locale}${bare}`;
+}
+
+/** Réduit tout préfixe de `/` ou `\` à un seul `/` : jamais d'URL protocole-relative (`//hôte`) vers un autre site. */
+function sameOrigin(path: string): string {
+  return path.replace(/^[/\\]+/, "/");
 }
 
 /** Langue portée par un chemin (`/en/vols` → en) ; `null` pour un chemin français sans préfixe. */
@@ -74,9 +79,9 @@ export function localeFromPath(path: string): Locale | null {
 /** Chemin sans préfixe de langue (`/en/vols?x` → `/vols?x`, `/en` → `/`). */
 export function stripLocale(path: string): string {
   const locale = localeFromPath(path);
-  if (!locale) return path;
+  if (!locale) return sameOrigin(path);
   const rest = path.slice(locale.length + 1);
-  return rest === "" ? "/" : rest.startsWith("/") ? rest : `/${rest}`;
+  return rest === "" ? "/" : sameOrigin(rest.startsWith("/") ? rest : `/${rest}`);
 }
 
 /**
@@ -86,7 +91,7 @@ export function stripLocale(path: string): string {
  */
 export function pagePath(path: string): string {
   const m = /^\/([a-z]{2})(?=$|[/?#])/.exec(path);
-  if (!m || !isLocale(m[1])) return path;
+  if (!m || !isLocale(m[1])) return sameOrigin(path);
   const rest = path.slice(3);
-  return rest === "" ? "/" : rest.startsWith("/") ? rest : `/${rest}`;
+  return rest === "" ? "/" : sameOrigin(rest.startsWith("/") ? rest : `/${rest}`);
 }

@@ -166,6 +166,26 @@ describe("URL et langue", () => {
   });
 });
 
+describe("localizePath : pas de redirection vers un autre hôte", () => {
+  const evil = ["/en//evil.com", "/en/\\evil.com", "//evil.com", "/\\evil.com"];
+  for (const locale of ["fr", "en"] as const) {
+    for (const input of evil) {
+      it(`${locale} ${input}`, () => {
+        for (const out of [localizePath(locale, input), localizePath(locale, pagePath(input))]) {
+          expect(out).toMatch(/^\/(?![/\\])/);
+          expect(out).toContain("evil.com");
+        }
+      });
+    }
+  }
+  it("chemins normaux inchangés", () => {
+    expect(localizePath("fr", "/vols")).toBe("/vols");
+    expect(localizePath("en", "/en/vols?x=1")).toBe("/en/vols?x=1");
+    expect(localizePath("fr", "/")).toBe("/");
+    expect(localizePath("en", "/")).toBe("/en");
+  });
+});
+
 describe("proxy : chemins pris en charge", () => {
   it("les pages (même avec un point, comme les références d'offres) passent par le proxy ; pas les fichiers statiques ni l'API", async () => {
     const { config } = await import("@/proxy");
