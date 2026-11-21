@@ -233,7 +233,7 @@ describe("authentification : comptes de démonstration partagés (NOMADIA_PUBLIC
 
   it("formulaire de contact refusé côté serveur, rien n'est enregistré", async () => {
     Object.assign(process.env, { NOMADIA_SITE_URL: "http://localhost:3000" });
-    const { sendContactAction } = await import("@/app/contact/actions");
+    const { sendContactAction } = await import("@/app/[locale]/contact/actions");
     const form = new FormData();
     form.set("email", "vraie.personne@gmail.com");
     form.set("topic", "question");

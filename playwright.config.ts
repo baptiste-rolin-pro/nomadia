@@ -11,7 +11,8 @@ import { defineConfig, devices } from "@playwright/test";
  * Assistant : ANTHROPIC_API_KEY forcée à vide (aucun appel réel). L'analyse locale répond sur les deux serveurs ;
  * :3100 a en plus un repli SIMULÉ (NOMADIA_ASSISTANT_MOCK=e2e, refusé sur Vercel et en production) pour les
  * demandes non comprises (tests/e2e/assistant.spec.ts) ; :3101 n'a ni clé ni simulation : l'assistant y fonctionne
- * de bout en bout sans aucun service extérieur (tests/e2e/assistant-local.spec.ts).
+ * de bout en bout sans aucun service extérieur, en français et dans les autres langues (tests/e2e/assistant-local.spec.ts,
+ * tests/e2e/assistant-i18n.spec.ts).
  */
 const PORT = 3100;
 const OPEN_PORT = 3101;
@@ -27,7 +28,7 @@ const common = {
   NOMADIA_AUTH_RATE_LIMIT: "off",
   ANTHROPIC_API_KEY: "",
 };
-const OPEN_SERVER_SPECS = /(signup-open|assistant-local)\.spec\.ts/;
+const OPEN_SERVER_SPECS = /(signup-open|assistant-local|assistant-i18n)\.spec\.ts/;
 
 /**
  * Fenêtre « À propos de la démo » déjà fermée (clé de src/lib/demo-notice.ts) : les parcours ne la voient pas.

@@ -6,7 +6,8 @@ Monolithe modulaire Next.js 16 (App Router, Turbopack), TypeScript strict.
 
 ```
 src/
-  app/                    routes (pages serveur, actions serveur, gestionnaires de route)
+  app/[locale]/           routes localisées (pages serveur, actions serveur, gestionnaires de route) ; app/api, robots, sitemap hors langue
+  i18n/                   langues (config), mise en forme ICU-lite (format-core, format), messages par langue, contenu éditorial traduit (content/), fournisseurs client/serveur
   components/             UI : ui/, layout/, home/, search/, results/, planner/, booking/, account/, auth/, content/
   lib/
     config/site.ts        marque, coordonnées, champs légaux « à compléter »
@@ -24,7 +25,7 @@ src/
     jobs.ts, mail.ts, audit.ts, viewer.ts, security.ts
     demo-site.ts          mode « démonstration publique » (NOMADIA_PUBLIC_SIGNUP), adresses fictives
     demo-accounts.ts      comptes de démonstration (seed + page de connexion)
-  proxy.ts                redirection optimiste des zones privées (pas un contrôle d'accès)
+  proxy.ts                langue de l'URL (réécriture / redirection, en-tête de langue) ; redirection optimiste des zones privées (pas un contrôle d'accès)
 drizzle/                  migrations SQL (seul chemin de migration)
 scripts/                  migrate, seed, reset, préparation e2e, vérification des liens, outils d'images (lib/ : chargement de .env.local)
 vercel.json               build Vercel (migrations + seed + next build) et Vercel Cron
@@ -45,6 +46,72 @@ Rendu : pages éditoriales statiques (ISR 1 h pour celles qui affichent des date
 | File de tâches en base (`jobs`) exécutée à la demande | Réconciliation, émission différée, remboursement sans processus supplémentaire (compatible serverless : rien ne s'exécute après la réponse). La page de réservation se rafraîchit et exécute les tâches de son dossier ; `/api/jobs/run` (Vercel Cron quotidien avec `CRON_SECRET`, ou ordonnanceur externe) balaie le reste. Bail de 15 min : une tâche « running » abandonnée redevient exécutable (comparer-échanger sur statut + tentatives) ; un traitement fournisseur interrompu passe en « inconnu » puis réconciliation. |
 | Motion uniquement dans le planificateur | Budget JavaScript de l'accueil ; animations CSS ailleurs. |
 | Assistant : **analyse locale d'abord**, modèle seulement en repli ; dans les deux cas des **outils** validés, le serveur construit les **liens** | L'analyse locale déterministe (src/lib/assistant/parser) rend l'assistant gratuit et utilisable sans clé ; le modèle (Claude, API Anthropic) n'est appelé que pour les demandes qu'elle ne comprend pas, si la clé est configurée. L'une comme l'autre ne produisent que des identifiants de lieux, des dates et des nombres (mêmes formes d'entrée d'outils) ; le serveur les revalide avec les schémas de recherche du site et construit lui-même les chemins (un seul code : actions.ts). Aucune URL ni aucun texte libre du modèle n'est suivi par le navigateur. |
+
+## Internationalisation (10 langues)
+
+Langues : français (`fr`, langue par défaut et source), anglais (`en`), chinois simplifié (`zh`, `lang="zh-Hans"`),
+hindi (`hi`), espagnol (`es`), arabe (`ar`, de droite à gauche), bengali (`bn`), portugais (`pt`, `pt-BR`), russe
+(`ru`) et indonésien (`id`). Configuration unique : `src/i18n/config.ts` (étiquettes BCP 47, étiquettes Intl, sens
+d'écriture, nom natif, `og:locale`).
+
+**Choix : une couche maison, sans dépendance.** Les bibliothèques courantes (next-intl, i18next/react-i18next,
+FormatJS) ont été écartées : (1) Next.js 16 fournit déjà ce qu'il faut pour la langue dans l'URL (segment
+`[locale]`, `next/root-params` pour les composants serveur, `proxy.ts`) ; (2) le budget JavaScript de l'accueil
+(≈ 200 Kio gzip) ne laisse pas la place à un moteur ICU complet — le formateur maison (`src/i18n/format-core.ts`)
+pèse environ 1,3 Ko gzip côté navigateur et s'appuie sur `Intl` (PluralRules, NumberFormat, DateTimeFormat) ;
+(3) le typage des clés vient directement du dictionnaire français (`Messages = typeof fr`), sans génération ;
+(4) aucune dépendance de plus à épingler et maintenir. Syntaxe des messages : `{nom}`, `{n, plural, =0 {…} one {…}
+few {…} many {…} other {…}}` (`#` = n mis en forme), `{v, select, …}` ; branche absente → `other`.
+
+**URL.** Le français reste **sans préfixe** (toutes les anciennes adresses fonctionnent) ; les autres langues sont
+préfixées (`/en/vols`, `/ar/destinations/lisbonne`). Toutes les pages vivent sous `src/app/[locale]` ; `proxy.ts`
+réécrit `/x` en `/fr/x` (invisible), redirige `/fr/x` vers `/x` (une seule adresse par page) et transmet la langue aux
+actions serveur par l'en-tête `x-nomadia-locale`. `localizePath(locale, href)` (jamais de double préfixe) est utilisé
+par le composant `Link` de `src/i18n/link.tsx`, les redirections et les chemins de l'assistant. Chaque page publie
+`hreflang` pour les 10 langues + `x-default` (français) et une URL canonique (`src/i18n/metadata.ts`) ; le sitemap liste
+chaque page dans chaque langue avec ses alternatives ; `robots.txt` exclut les zones privées dans toutes les langues.
+
+**Choix de la langue.** La langue est celle de l'URL, point. Le sélecteur (en-tête et pied de page) mène à la même
+page dans l'autre langue, paramètres et ancre compris (relus au moment du clic : les filtres changent l'URL sans
+navigation), et mémorise le choix dans un cookie nécessaire (`nomadia_lang`, 1 an). **Aucune redirection
+automatique** : ni le cookie ni `Accept-Language` ne déplacent le visiteur ; sur l'accueil français seulement, un lien
+discret propose la langue mémorisée ou celle du navigateur (`src/components/layout/language-suggestion.tsx`, chargé
+après l'hydratation).
+
+**Messages.** `src/i18n/messages/<langue>/` : le français par espace de noms (17), les autres langues en quatre
+fichiers (`ui`, `domain`, `pages`, `flow`) typés `Pick<Messages, …>` — TypeScript refuse une clé manquante ou en
+trop ; `tests/unit/i18n.test.ts` vérifie en plus les mêmes clés et longueurs de listes, aucune valeur vide, les mêmes
+paramètres `{…}` et les mêmes liens que le français, et qu'aucun long texte n'est resté en français. Côté serveur,
+`getI18n()` (`src/i18n/request.tsx`) donne langue, messages et formateur ; côté navigateur, `I18nProvider` /
+`ClientMessages` ne transmettent que **les espaces de noms utiles, dans la langue active** (charge utile du rendu
+serveur) : aucun fichier de traduction n'est importé par un module client (`src/i18n/messages/index.ts` est
+`server-only`).
+
+**Contenu éditorial.** Le français reste dans `src/lib/content` ; chaque langue fournit un « pack »
+(`src/i18n/content/<langue>.ts`, type `ContentPack`) : destinations (textes, idées, saisons, sources), guides, légendes
+des photos, annuaires, FAQ, noms des villes (clé = nom français) et des aéroports (clé = code IATA), établissements
+et agences fictifs. Les noms de pays viennent d'`Intl.DisplayNames`. Mêmes clés que le français (test).
+
+**Mise en forme.** Nombres, montants, dates civiles (sans conversion de fuseau), heures locales, durées, listes et
+noms de pays par `Intl` dans la langue (`ar-u-nu-arab` : chiffres arabes orientaux ; `bn-BD` : chiffres bengalis).
+Le français garde exactement ses formats d'avant (« 21 h 30 », dates de `lib/dates.ts`).
+
+**Données et emails.** `user.locale` et `bookings.locale` (migration `drizzle/0004_user_booking_locale.sql`) :
+les emails (vérification, réinitialisation, confirmation) partent dans la langue de l'utilisateur ou de la
+réservation. Le texte des conditions d'une offre reste celui du devis (langue de la réservation), signalé à l'écran.
+
+**Erreurs et validation.** Les schémas Zod renvoient des **codes** ; l'interface les traduit (`search.validation`,
+`planner.errors`, `auth`, `booking.errors`…). Les pages 404 et d'erreur sont traduites.
+
+**Assistant multilingue.** Le cœur d'analyse reste unique (français) ; chaque langue a un « pack » de
+canonicalisation (`src/lib/assistant/parser/lang/<langue>.ts` : réécritures, vocabulaire, suffixes, segmentation du
+chinois par dictionnaire, chiffres natifs, numéraux chinois, mois et jours) qui transforme la demande en texte
+canonique français ; les lieux sont reconnus dans chaque langue (noms traduits, écriture native, noms de pays Intl).
+Langue du texte : écriture (arabe, devanagari, bengali, cyrillique, han), sinon vocabulaire latin distinctif ; la
+langue de la page départage. Les réponses (questions, hypothèses, titres, détails, aide) sont rendues dans la langue
+de la page par `say.ts` (français identique à avant) ; les chemins gardent le préfixe de langue et passent
+`isAssistantHref`. Le repli Claude reçoit la langue de réponse dans son contexte. Robustesse moindre pour les langues
+non latines : voir docs/progress.md.
 
 ## Modèle de données (tables)
 

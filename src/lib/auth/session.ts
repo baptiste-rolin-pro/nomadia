@@ -3,6 +3,7 @@ import { cache } from "react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getAuth } from "@/lib/auth/auth";
+import { localeFromPath, localizePath } from "@/i18n/config";
 
 export interface CurrentUser {
   id: string;
@@ -10,6 +11,8 @@ export interface CurrentUser {
   email: string;
   emailVerified: boolean;
   role: string;
+  /** Langue préférée (e-mails) ; absente des sessions construites hors Better Auth (tests, seed). */
+  locale?: string;
 }
 
 /** Session courante vérifiée en base (contrôle réel, pas seulement la présence d'un cookie). */
@@ -17,13 +20,14 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const auth = await getAuth();
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return null;
-  const u = session.user as typeof session.user & { role?: string | null };
-  return { id: u.id, name: u.name, email: u.email, emailVerified: u.emailVerified, role: u.role ?? "user" };
+  const u = session.user as typeof session.user & { role?: string | null; locale?: string | null };
+  return { id: u.id, name: u.name, email: u.email, emailVerified: u.emailVerified, role: u.role ?? "user", locale: u.locale ?? "fr" };
 });
 
+/** `returnTo` : chemin de la page (avec son préfixe de langue) ; la connexion s'ouvre dans la même langue. */
 export async function requireUser(returnTo: string): Promise<CurrentUser> {
   const user = await getCurrentUser();
-  if (!user) redirect(`/connexion?retour=${encodeURIComponent(returnTo)}`);
+  if (!user) redirect(localizePath(localeFromPath(returnTo) ?? "fr", `/connexion?retour=${encodeURIComponent(returnTo)}`));
   return user;
 }
 

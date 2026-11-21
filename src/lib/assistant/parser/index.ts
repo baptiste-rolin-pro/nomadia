@@ -1,5 +1,8 @@
 /**
- * Assistant LOCAL : analyse déterministe d'une demande en français, sans service extérieur ni coût.
+ * Assistant LOCAL : analyse déterministe d'une demande, sans service extérieur ni coût. Le cœur travaille sur un
+ * texte français canonique : une demande écrite dans une autre langue du site y est d'abord ramenée par
+ * src/lib/assistant/parser/lang (vocabulaire par langue, chiffres natifs, noms de lieux traduits). Les réponses
+ * (questions, hypothèses, détails) sont rendues dans la langue de la page (src/lib/assistant/parser/say.ts).
  * Il produit les MÊMES entrées d'outils que le modèle (src/lib/assistant/tools.ts), validées et converties en
  * chemins par le même code (src/lib/assistant/actions.ts : buildAction → finalize) : aucun second chemin de
  * construction d'URL. Résultat : des actions avec leurs hypothèses, UNE question précise quand il manque une
@@ -16,8 +19,11 @@ import { resultFromCalls, type ActionContext } from "@/lib/assistant/actions";
 import { ASSISTANT_TURN_SEPARATOR, type AssistantResult } from "@/lib/assistant/types";
 import { normalize, normalizeText, type Token } from "@/lib/assistant/parser/text";
 import { DEFAULT_DROPOFF_TIME, DEFAULT_PICKUP_TIME, extractDates, resolveDates, type DateFacts } from "@/lib/assistant/parser/dates";
+import { sayFor, type Say } from "@/lib/assistant/parser/say";
+import { canonicalSegment } from "@/lib/assistant/parser/lang/canonical";
+import { getMessages } from "@/i18n/messages";
 import { emptyPeople, extractDriver, extractFlightOptions, extractPeople, extractResidence, hasCounts, type Driver, type FlightOptions, type People } from "@/lib/assistant/parser/people";
-import { destinationNames, findPlaces, previousWord, targetById, type PlaceMention, type Target } from "@/lib/assistant/parser/places";
+import { destinationIds, findPlaces, previousWord, targetById, type Entry, type PlaceMention, type Target } from "@/lib/assistant/parser/places";
 import { BOOKING_WORDS, CAR_WORDS, DISCOVER_PHRASES, DISCOVER_WORDS, FLIGHT_WORDS, HOTEL_WORDS, PLAN_STRONG, PLAN_WEAK } from "@/lib/assistant/parser/vocabulary";
 
 export type LocalOutcome =
@@ -33,24 +39,21 @@ type Kind = "open_destination" | "plan_trip" | "search_flights" | "search_hotels
 type Hint = "travellers" | "childAges" | "driverAge" | "nights" | "origin" | "end" | "dates" | null;
 type Role = "origin" | "destination" | "dropoff" | null;
 
-export const INJECTION_MESSAGE =
-  "Je prépare uniquement des recherches de vols, d'hébergements et de voitures, des fiches destination et des voyages sur Nomadia : je ne suis pas d'autres consignes. Décrivez votre voyage : destination, dates et voyageurs.";
-export const BOOKING_MESSAGE =
-  "Je ne réserve et ne paie rien : je prépare des recherches de vols, d'hébergements et de voitures, des fiches destination et des voyages, que vous vérifiez puis réservez vous-même. Décrivez votre voyage : destination, dates et voyageurs.";
-export const BOOKING_NOTE = "Rien n'est réservé ni payé : l'assistant prépare seulement la recherche.";
-export const LOCAL_EXAMPLES = ["Vol Paris–Rome du 12 au 16 juin pour 2", "Hôtel à Lisbonne 3 nuits à partir du 10 avril", "Organise-moi 5 jours en Islande en famille"];
+const FR = getMessages("fr").assistant;
+/** Textes français (langue source) ; les autres langues : messages `assistant` de src/i18n/messages. */
+export const INJECTION_MESSAGE = FR.injection;
+export const BOOKING_MESSAGE = FR.booking;
+export const BOOKING_NOTE = FR.bookingNote;
+export const LOCAL_EXAMPLES = [...FR.examples];
 
 /** Réponse quand rien n'est compris et qu'aucun repli n'est configuré : exemples + onglets classiques (interface). */
-export function localHelp(): AssistantResult {
-  return {
-    type: "help",
-    message: "Je n'ai pas compris votre demande. Indiquez une destination ou un service (vol, hôtel, voiture), par exemple :",
-    examples: [...LOCAL_EXAMPLES],
-  };
+export function localHelp(say: Say = sayFor()): AssistantResult {
+  return { type: "help", message: say.m.help, examples: [...say.m.examples] };
 }
 
 const MAX_ASSUMPTIONS = 6;
-const ORIGINS_LIST = "Paris, Lyon, Marseille, Nice, Bordeaux, Nantes ou Toulouse";
+/** Villes de départ proposées (aéroports français du référentiel). */
+const ORIGIN_IDS = ["city:PAR", "airport:LYS", "airport:MRS", "airport:NCE", "airport:BOD", "airport:NTE", "airport:TLS"];
 
 // ---------------------------------------------------------------------------
 // Injections et hors-sujet
@@ -136,16 +139,16 @@ function assignRoles(norm: string, tokens: Token[], mentions: PlaceMention[], se
   return located;
 }
 
-function parseSegment(text: string, seg: number, hint: Hint, today: CivilDate): SegmentFacts {
+function parseSegment(text: string, seg: number, hint: Hint, today: CivilDate, say: Say): SegmentFacts {
   const { norm, tokens } = normalize(text);
   const used = tokens.map(() => false);
   // Résidence d'abord : « je réside au Canada » ne fait pas du Canada une destination.
   const residence = extractResidence(tokens, used);
-  const dates = extractDates(norm, tokens, used, today, hint === "end" ? "end" : "start");
+  const dates = extractDates(norm, tokens, used, today, hint === "end" ? "end" : "start", say);
   if (hint === "nights" && !dates.duration) {
     const k = tokens.findIndex((t, i) => !used[i] && t.n !== null && t.n >= 1 && t.n <= 30);
     if (k >= 0) {
-      dates.duration = { nights: tokens[k]!.n!, label: `${tokens[k]!.n} nuits`, weekend: false };
+      dates.duration = { nights: tokens[k]!.n!, label: say.locale === "fr" ? `${tokens[k]!.n} nuits` : say.t(say.m.labels.nights, { n: tokens[k]!.n! }), weekend: false };
       used[k] = true;
       dates.any = true;
     }
@@ -234,7 +237,9 @@ interface PlacePick {
   question: string | null;
 }
 
-function pickPlaces(all: Located[]): PlacePick {
+function pickPlaces(all: Located[], say: Say): PlacePick {
+  const q = say.m.questions;
+  const entryName = (e: Entry) => (e.kind === "place" ? say.placeName(e.targets[0]!.placeId) : say.otherName(e.label, e.code));
   // Ambiguïté levée par un autre lieu cité (« Portugal » puis « Lisbonne »).
   const resolved = all.filter((l) => !isAmbiguous(l.mention) && l.mention.options[0]!.kind !== "unsupported");
   let list = all.filter((l) => !isAmbiguous(l.mention) || !resolved.some((r) => groupsOf(l.mention).includes(r.mention.options[0]!.targets[0]!.group)));
@@ -258,14 +263,14 @@ function pickPlaces(all: Located[]): PlacePick {
         dropoff: null,
         question:
           l.role === "origin"
-            ? `Les départs de ${o[0]!.label} ne sont pas proposés sur Nomadia. De quelle ville partez-vous : ${ORIGINS_LIST} ?`
-            : `${o[0]!.label} n'est pas proposé sur Nomadia. Quelle destination choisissez-vous : ${destinationNames().join(", ")} ?`,
+            ? say.t(q.unsupportedOrigin, { place: entryName(o[0]!), origins: say.or(ORIGIN_IDS.map(say.placeName)) })
+            : say.t(q.unsupportedDestination, { place: entryName(o[0]!), destinations: say.join(destinationIds().map(say.placeName)) }),
       };
     }
     if (isAmbiguous(l.mention)) {
-      const names = o.length > 1 ? o.map((e) => (e.kind === "place" ? e.targets[0]!.name : e.label)) : o[0]!.targets.map((t) => t.name);
-      const choice = `${names.slice(0, -1).join(", ")} ou ${names[names.length - 1]}`;
-      return { origin: null, destination: null, dropoff: null, question: o.length > 1 ? `Vous voulez dire ${choice} ?` : `${o[0]!.label} : quelle destination choisissez-vous, ${choice} ?` };
+      const names = o.length > 1 ? o.map(entryName) : o[0]!.targets.map((t) => say.placeName(t.placeId));
+      const choice = say.or(names);
+      return { origin: null, destination: null, dropoff: null, question: o.length > 1 ? say.t(q.didYouMean, { choice }) : say.t(q.whichInCountry, { country: entryName(o[0]!), choice }) };
     }
   }
   // Même ville citée deux fois (« Rome (FCO) », « Paris CDG ») : le nom le plus précis (aéroport) l'emporte.
@@ -280,8 +285,8 @@ function pickPlaces(all: Located[]): PlacePick {
   };
   const dest = dedupe(destinations);
   if (dest.length > 1) {
-    const names = dest.map((l) => l.mention.options[0]!.targets[0]!.name);
-    return { origin: null, destination: null, dropoff: null, question: `Je prépare une destination à la fois : ${names.slice(0, -1).join(", ")} ou ${names[names.length - 1]} ?` };
+    const names = dest.map((l) => say.placeName(l.mention.options[0]!.targets[0]!.placeId));
+    return { origin: null, destination: null, dropoff: null, question: say.t(q.oneAtATime, { choice: say.or(names) }) };
   }
   return { origin: dedupe(origins).at(-1) ?? null, destination: dest[0] ?? null, dropoff: dedupe(dropoffs).at(-1) ?? null, question: null };
 }
@@ -308,7 +313,8 @@ function arrivalAirport(t: Target): Target {
 // ---------------------------------------------------------------------------
 // Questions (une seule à la fois)
 
-function questionHint(question: string): Hint {
+/** Indice tiré d'une question française (posée par l'analyse locale ou par le modèle). */
+function frenchHint(question: string): Hint {
   const n = normalizeText(question);
   if (/\bage\b/.test(n) && /enfant/.test(n)) return "childAges";
   if (/\bage\b/.test(n) && /conduct/.test(n)) return "driverAge";
@@ -320,12 +326,49 @@ function questionHint(question: string): Hint {
   return null;
 }
 
-const plural = (n: number, one: string, many: string) => `${n} ${n > 1 ? many : one}`;
+/** Gabarit de question → expression régulière (paramètres libres) ; pluriels : formes rendues de 1 à 9. */
+function matchesTemplate(question: string, template: string, say: Say): boolean {
+  if (template.includes("plural")) {
+    for (let n = 1; n <= 9; n++) if (say.t(template, { n }) === question) return true;
+    return false;
+  }
+  const re = template
+    .split(/\{[a-z]+\}/i)
+    .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("[\\s\\S]+");
+  return new RegExp(`^${re}$`).test(question);
+}
 
-function capAssumptions(list: string[]): string[] {
+/** Type de la question posée au tour précédent, pour interpréter la réponse (« 3 » = nuits, voyageurs, âge…). */
+function questionHint(question: string, say: Say): Hint {
+  if (say.locale !== "fr") {
+    const q = say.m.questions;
+    const pairs: [string, Hint][] = [
+      [q.childAges, "childAges"],
+      [q.driverAge, "driverAge"],
+      [q.nights, "nights"],
+      [q.party, "travellers"],
+      [q.travellers, "travellers"],
+      [q.origin, "origin"],
+      [q.unsupportedOrigin, "origin"],
+      [q.carReturn, "end"],
+      [q.returnDate, "end"],
+      [q.invalidDate, "dates"],
+      [q.whichWeekend, "dates"],
+      [q.fromWhen, "dates"],
+      [q.carDates, "dates"],
+      [q.hotelDates, "dates"],
+      [q.dates, "dates"],
+    ];
+    for (const [template, hint] of pairs) if (matchesTemplate(question, template, say)) return hint;
+  }
+  return frenchHint(question);
+}
+
+function capAssumptions(list: string[], say: Say): string[] {
   const unique = [...new Set(list.filter(Boolean))];
   if (unique.length <= MAX_ASSUMPTIONS) return unique;
-  return [...unique.slice(0, MAX_ASSUMPTIONS - 1), unique.slice(MAX_ASSUMPTIONS - 1).join(" ; ")];
+  return [...unique.slice(0, MAX_ASSUMPTIONS - 1), unique.slice(MAX_ASSUMPTIONS - 1).join(say.m.assumptions.join)];
 }
 
 interface Party {
@@ -336,8 +379,9 @@ interface Party {
   assumption: string | null;
 }
 
-function resolveParty(p: People): { party: Party } | { question: string } {
-  if (p.kidsUnknown && p.children === null) return { question: "Combien d'adultes et d'enfants êtes-vous ?" };
+function resolveParty(p: People, say: Say): { party: Party } | { question: string } {
+  const q = say.m.questions;
+  if (p.kidsUnknown && p.children === null) return { question: q.party };
   let children = p.children ?? 0;
   if (p.childAges.length > children) children = p.childAges.length;
   let adults = p.adults;
@@ -348,14 +392,14 @@ function resolveParty(p: People): { party: Party } | { question: string } {
   if (adults === null && p.companions) adults = 1 + p.companions;
   let assumption: string | null = null;
   if (adults === null) {
-    if (p.group) return { question: "Combien de voyageurs êtes-vous ?" };
-    if (p.family && children === 0 && p.infants === 0) return { question: "Combien d'adultes et d'enfants êtes-vous ?" };
+    if (p.group) return { question: q.travellers };
+    if (p.family && children === 0 && p.infants === 0) return { question: q.party };
     if (children > 0 || p.infants > 0 || p.family) {
       adults = 2;
-      assumption = "2 adultes (nombre d'adultes non précisé)";
+      assumption = say.m.assumptions.twoAdults;
     } else {
       adults = 1;
-      assumption = "1 adulte (nombre de voyageurs non précisé)";
+      assumption = say.m.assumptions.oneAdult;
     }
   }
   return { party: { adults, children, ages: Array.from({ length: children }, (_, k) => p.childAges[k] ?? null), infants: p.infants, assumption } };
@@ -372,12 +416,20 @@ function splitTurns(input: LocalInput): string[] {
   return [...previous, input.text];
 }
 
-/** Analyse locale d'une demande (et du tour précédent quand l'assistant a posé une question). */
+/**
+ * Analyse locale d'une demande (et du tour précédent quand l'assistant a posé une question). Langue de réponse :
+ * `ctx.locale` (langue de la page, français par défaut) ; chaque tour est d'abord ramené au français canonique
+ * selon sa langue détectée (la langue de la page l'emporte en cas de doute).
+ */
 export function parseLocally(input: LocalInput, ctx: ActionContext): LocalOutcome {
-  const segments = splitTurns(input);
-  if (segments.some(isInjection)) return { understood: true, confidence: "high", result: { type: "out_of_scope", message: INJECTION_MESSAGE } };
-  const hint = input.previous ? questionHint(input.previous.question) : null;
-  const facts = segments.map((s, k) => parseSegment(s, k, k === segments.length - 1 ? hint : null, ctx.today));
+  const say = sayFor(ctx.locale);
+  const q = say.m.questions;
+  const as = say.m.assumptions;
+  const raw = splitTurns(input);
+  const segments = raw.map((s) => canonicalSegment(s, say.locale).text);
+  if (raw.some(isInjection) || segments.some(isInjection)) return { understood: true, confidence: "high", result: { type: "out_of_scope", message: say.m.injection } };
+  const hint = input.previous ? questionHint(input.previous.question, say) : null;
+  const facts = segments.map((s, k) => parseSegment(s, k, k === segments.length - 1 ? hint : null, ctx.today, say));
   const m = merge(facts);
   const has = (set: Set<string>) => [...m.words].some((w) => set.has(w));
 
@@ -394,7 +446,7 @@ export function parseLocally(input: LocalInput, ctx: ActionContext): LocalOutcom
   const explicit = flights || hotels || cars;
 
   if (!explicit && !strong && !weak && !discover && !m.located.length) {
-    if (booking) return { understood: true, confidence: "high", result: { type: "out_of_scope", message: BOOKING_MESSAGE } };
+    if (booking) return { understood: true, confidence: "high", result: { type: "out_of_scope", message: say.m.booking } };
     return { understood: false, confidence: "none" };
   }
 
@@ -407,7 +459,7 @@ export function parseLocally(input: LocalInput, ctx: ActionContext): LocalOutcom
   if (cars) kinds.push("search_cars");
 
   // Lieux.
-  const picked = pickPlaces(m.located);
+  const picked = pickPlaces(m.located, say);
   if (picked.question) return clarification(picked.question);
   let destL = picked.destination;
   let originL = picked.origin;
@@ -417,9 +469,9 @@ export function parseLocally(input: LocalInput, ctx: ActionContext): LocalOutcom
     originL = null;
   }
   if (!destL) {
-    if (carOnly) return clarification("Où souhaitez-vous prendre la voiture ?");
-    if (originL) return clarification(`Où souhaitez-vous aller au départ de ${targetOf(originL).name} ?`);
-    return clarification(`Où souhaitez-vous aller ? Destinations proposées : ${destinationNames().join(", ")}.`);
+    if (carOnly) return clarification(q.carWhere);
+    if (originL) return clarification(say.t(q.whereFrom, { origin: say.placeName(targetOf(originL).placeId) }));
+    return clarification(say.t(q.where, { destinations: say.join(destinationIds().map(say.placeName)) }));
   }
   const dest = targetOf(destL);
   const origin = originL ? targetOf(originL) : null;
@@ -431,7 +483,7 @@ export function parseLocally(input: LocalInput, ctx: ActionContext): LocalOutcom
     if (m.dates.duration?.weekend || m.dates.weekend) kinds.push("search_flights", "search_hotels");
     else if (detailed) kinds.push(dest.slug ? "plan_trip" : "search_flights");
     else if (dest.slug) kinds.push("open_destination");
-    else return clarification(`Que souhaitez-vous préparer pour ${dest.name} : un vol, un hébergement ou une voiture ?`);
+    else return clarification(say.t(q.whatFor, { place: say.placeName(dest.placeId) }));
   }
   const needs = (k: Kind) => kinds.includes(k);
 
@@ -440,59 +492,60 @@ export function parseLocally(input: LocalInput, ctx: ActionContext): LocalOutcom
   for (const l of [originL, destL, picked.dropoff]) {
     if (!l) continue;
     const entry = l.mention.options[0]!;
-    if (l.mention.typo > 0) corrections.push(`« ${l.mention.raw.slice(0, 30)} » compris comme ${entry.kind === "country" ? entry.label : entry.targets[0]!.name}`);
-    if (entry.kind === "country") corrections.push(`${entry.label} : ${entry.targets[0]!.name} (seule destination proposée dans ce pays)`);
+    if (l.mention.typo > 0) corrections.push(say.t(as.typo, { raw: l.mention.raw.slice(0, 30), name: entry.kind === "country" ? say.otherName(entry.label, entry.code) : say.placeName(entry.targets[0]!.placeId) }));
+    if (entry.kind === "country") corrections.push(say.t(as.countryOnly, { country: say.otherName(entry.label, entry.code), name: say.placeName(entry.targets[0]!.placeId) }));
   }
 
   if ((needs("plan_trip") || needs("open_destination")) && !dest.slug) {
-    return clarification(`Nomadia n'a pas de fiche voyage pour ${dest.name}. Quelle destination choisissez-vous : ${destinationNames().join(", ")} ?`);
+    return clarification(say.t(q.noGuide, { place: say.placeName(dest.placeId), destinations: say.join(destinationIds().map(say.placeName)) }));
   }
   const city = needs("search_hotels") ? hotelCity(dest) : null;
   if (needs("search_hotels") && !city) {
-    const cities = places.filter((p) => p.kind === "city").map((p) => targetById(p.id)!.name);
-    return clarification(`Nomadia ne propose pas d'hébergement à ${dest.name}. Quelle ville choisissez-vous : ${cities.join(", ")} ?`);
+    const cities = places.filter((p) => p.kind === "city").map((p) => say.placeName(p.id));
+    return clarification(say.t(q.noHotel, { place: say.placeName(dest.placeId), cities: say.join(cities) }));
   }
-  if (needs("search_flights") && !origin && dest.group === "paris") return clarification("De quelle ville partez-vous ?");
+  if (needs("search_flights") && !origin && dest.group === "paris") return clarification(q.origin);
 
   // Dates.
   const destination = dest.slug ? getDestination(dest.slug) : undefined;
   const adviceDays = destination?.duration.min ?? 7;
-  const fallback = { nights: adviceDays - 1, label: destination ? `durée conseillée pour ${destination.name} : ${adviceDays} jours` : "7 jours, durée non précisée" };
+  const destName = destination ? say.placeName(dest.placeId) : "";
+  const fallback = { nights: adviceDays - 1, label: destination ? say.t(say.m.labels.advice, { name: destName, days: adviceDays }) : say.m.labels.noDuration };
   const dated = kinds.some((k) => k !== "open_destination");
-  const r = resolveDates(m.dates, ctx.today, fallback);
+  const r = resolveDates(m.dates, ctx.today, fallback, say);
   const dateAssumptions = [...r.assumptions];
   const start = r.start;
   let end = r.end;
   if (dated) {
-    if (r.invalid) return clarification(`La date « ${r.invalid} » n'existe pas. Pour quelles dates ?`);
+    if (r.invalid) return clarification(say.t(q.invalidDate, { date: r.invalid }));
     if (!start) {
-      if (m.dates.duration?.weekend) return clarification("Pour quel week-end ?");
-      if (m.dates.duration) return clarification("À partir de quelle date ?");
-      if (carOnly) return clarification("Pour quelles dates souhaitez-vous la voiture ?");
-      if (kinds.length === 1 && needs("search_hotels")) return clarification("Pour quelles dates d'arrivée et de départ ?");
-      return clarification("Pour quelles dates ?");
+      if (m.dates.duration?.weekend) return clarification(q.whichWeekend);
+      if (m.dates.duration) return clarification(q.fromWhen);
+      if (carOnly) return clarification(q.carDates);
+      if (kinds.length === 1 && needs("search_hotels")) return clarification(q.hotelDates);
+      return clarification(q.dates);
     }
     if (!end) {
       if (needs("plan_trip")) {
         end = addDays(start, fallback.nights);
-        dateAssumptions.push(`Durée supposée : ${adviceDays} jours${destination ? ` (durée conseillée pour ${destination.name})` : ""}`);
-      } else if (needs("search_hotels")) return clarification("Combien de nuits restez-vous ?");
-      else if (needs("search_cars")) return clarification("Quand rendrez-vous la voiture ? Indiquez la date de retour.");
-      else if (m.flight.tripType === "roundtrip") return clarification("Quelle est la date de retour ?");
+        dateAssumptions.push(destination ? say.t(as.durationAdvice, { days: adviceDays, name: destName }) : say.t(as.duration, { days: adviceDays }));
+      } else if (needs("search_hotels")) return clarification(q.nights);
+      else if (needs("search_cars")) return clarification(q.carReturn);
+      else if (m.flight.tripType === "roundtrip") return clarification(q.returnDate);
     }
   }
 
   // Voyageurs.
   let party: Party | null = null;
   if (needs("search_flights") || needs("search_hotels") || needs("plan_trip")) {
-    const pr = resolveParty(m.people);
+    const pr = resolveParty(m.people, say);
     if ("question" in pr) return clarification(pr.question);
     party = pr.party;
     if ((needs("search_flights") || needs("search_hotels")) && party.ages.some((a) => a === null)) {
-      return clarification(party.children > 1 ? `Quel âge ont les ${party.children} enfants ?` : "Quel âge a l'enfant ?");
+      return clarification(say.t(q.childAges, { n: party.children }));
     }
   }
-  if (needs("search_cars") && m.driver.young) return clarification("Quel âge a le conducteur ?");
+  if (needs("search_cars") && m.driver.young) return clarification(q.driverAge);
 
   // Entrées d'outils (mêmes formes que tools.ts), validées ensuite par buildAction.
   const calls: { name: Kind; input: unknown }[] = [];
@@ -502,7 +555,7 @@ export function parseLocally(input: LocalInput, ctx: ActionContext): LocalOutcom
     if (kind === "plan_trip" && party) {
       calls.push({
         name: kind,
-        input: { destination: dest.slug, startDate: start, endDate: end, adults: party.adults, children: party.children + party.infants, assumptions: capAssumptions([...corrections, ...dateAssumptions, ...travellerAssumption]) },
+        input: { destination: dest.slug, startDate: start, endDate: end, adults: party.adults, children: party.children + party.infants, assumptions: capAssumptions([...corrections, ...dateAssumptions, ...travellerAssumption], say) },
       });
     }
     if (kind === "search_flights" && party) {
@@ -522,12 +575,12 @@ export function parseLocally(input: LocalInput, ctx: ActionContext): LocalOutcom
           cabin: m.flight.cabin ?? "economy",
           assumptions: capAssumptions([
             ...corrections,
-            origin ? "" : "Départ supposé : Paris",
+            origin ? "" : say.t(as.origin, { city: say.placeShort("city:PAR") }),
             ...dateAssumptions,
-            oneWay && m.flight.tripType !== "oneway" ? "Aller simple (aucune date de retour indiquée)" : "",
+            oneWay && m.flight.tripType !== "oneway" ? as.oneWay : "",
             ...travellerAssumption,
-            teens ? `${plural(teens, "enfant de 12 ans ou plus compté", "enfants de 12 ans ou plus comptés")} comme adulte${teens > 1 ? "s" : ""} (règle des compagnies)` : "",
-          ]),
+            teens ? say.t(as.teens, { n: teens }) : "",
+          ], say),
         },
       });
     }
@@ -546,11 +599,11 @@ export function parseLocally(input: LocalInput, ctx: ActionContext): LocalOutcom
           rooms,
           assumptions: capAssumptions([
             ...corrections,
-            city.placeId !== dest.placeId ? `Hébergement cherché à ${city.name}` : "",
+            city.placeId !== dest.placeId ? say.t(as.hotelCity, { city: say.placeName(city.placeId) }) : "",
             ...dateAssumptions,
             ...travellerAssumption,
-            count > 1 ? `Répartition supposée : ${rooms.map((room) => room.adults).join(" + ")} adultes en ${count} chambres` : "",
-          ]),
+            count > 1 ? say.t(as.rooms, { split: rooms.map((room) => say.f.number(room.adults)).join(" + "), n: count }) : "",
+          ], say),
         },
       });
     }
@@ -564,19 +617,20 @@ export function parseLocally(input: LocalInput, ctx: ActionContext): LocalOutcom
       const dropoffTime = m.dates.times.dropoff ?? (sameDay ? "18:00" : DEFAULT_DROPOFF_TIME);
       const times =
         !m.dates.times.pickup && !m.dates.times.dropoff
-          ? `Prise à ${pickupTime.replace(":", " h ")} et retour à ${dropoffTime.replace(":", " h ")} (heures non précisées)`
+          ? say.t(as.times, { pickup: say.time(pickupTime), dropoff: say.time(dropoffTime) })
           : !m.dates.times.pickup
-            ? `Prise à ${pickupTime.replace(":", " h ")} (heure non précisée)`
+            ? say.t(as.pickupTime, { pickup: say.time(pickupTime) })
             : !m.dates.times.dropoff
-              ? `Retour à ${dropoffTime.replace(":", " h ")} (heure non précisée)`
+              ? say.t(as.dropoffTime, { dropoff: say.time(dropoffTime) })
               : "";
+      const france = (getMessages(say.locale).search.residences as Record<string, string>).FR ?? "France";
       const driver =
         m.driver.age === null && m.driver.residence === null
-          ? "Conducteur de 30 ans résidant en France (non précisé)"
+          ? say.t(as.driverBoth, { age: 30, country: france })
           : m.driver.age === null
-            ? "Conducteur de 30 ans (âge non précisé)"
+            ? say.t(as.driverAge, { age: 30 })
             : m.driver.residence === null
-              ? "Conducteur résidant en France (non précisé)"
+              ? say.t(as.driverResidence, { country: france })
               : "";
       calls.push({
         name: kind,
@@ -591,19 +645,19 @@ export function parseLocally(input: LocalInput, ctx: ActionContext): LocalOutcom
           residence: m.driver.residence ?? "FR",
           assumptions: capAssumptions([
             ...corrections,
-            needs("search_flights") && pickup.placeId !== dest.placeId ? `Voiture prise à l'aéroport d'arrivée : ${pickup.name}` : "",
+            needs("search_flights") && pickup.placeId !== dest.placeId ? say.t(as.carAtAirport, { place: say.placeName(pickup.placeId) }) : "",
             ...dateAssumptions,
             times,
             ...m.dates.times.notes,
             driver,
-          ]),
+          ], say),
         },
       });
     }
   }
 
   const result = resultFromCalls(calls, ctx);
-  if (result.type === "actions" && booking && result.actions[0]) result.actions[0].notes.unshift(BOOKING_NOTE);
+  if (result.type === "actions" && booking && result.actions[0]) result.actions[0].notes.unshift(say.m.bookingNote);
   const assumed = result.type === "actions" && result.actions.some((a) => a.assumptions.length > 0);
   return { understood: true, confidence: result.type !== "actions" ? "low" : assumed ? "medium" : "high", result };
 }

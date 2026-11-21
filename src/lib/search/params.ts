@@ -1,17 +1,23 @@
 import { z } from "zod";
 import { compareCivil, isCivilDate, isTime, nightsBetween } from "@/lib/dates";
 import type { Cabin } from "@/lib/providers/types";
-import { decodeRooms, type SearchIssue } from "@/lib/search/query";
+import { decodeRooms, toValidationCode, type SearchIssue } from "@/lib/search/query";
 
-export { MAX_BOOKING_HORIZON_DAYS, carSearchToQuery, dateWindowIssues, decodeRooms, encodeRooms, flightSearchToQuery, hotelSearchToQuery, type SearchIssue } from "@/lib/search/query";
+export { MAX_BOOKING_HORIZON_DAYS, carSearchToQuery, dateWindowIssues, decodeRooms, encodeRooms, flightSearchToQuery, hotelSearchToQuery, issueText, type SearchIssue, type ValidationCode } from "@/lib/search/query";
 
 /**
  * Schémas de recherche partagés client/serveur.
  * Les paramètres d'URL ne contiennent aucune donnée personnelle (pas de nom, d'email, de date de naissance).
+ * Les messages d'erreur sont des CODES (`search.validation`), traduits par l'interface dans la langue de la page.
  */
 
-const civil = z.string().refine(isCivilDate, "Date invalide (format attendu AAAA-MM-JJ).");
-const time = z.string().refine(isTime, "Heure invalide (format attendu HH:mm).");
+/** Problèmes Zod → codes de validation (un message Zod par défaut devient « invalid »). */
+export function toIssues(error: { issues: { path: PropertyKey[]; message: string }[] }): SearchIssue[] {
+  return error.issues.map((i) => ({ field: String(i.path[0] ?? ""), code: toValidationCode(i.message) }));
+}
+
+const civil = z.string().refine(isCivilDate, "invalidDate");
+const time = z.string().refine(isTime, "invalidTime");
 
 function intParam(value: string | null | undefined, fallback: number): number {
   if (value === null || value === undefined || value === "") return fallback;
@@ -32,23 +38,23 @@ export const CABINS: Cabin[] = ["economy", "premium_economy", "business", "first
 
 export const flightSearchSchema = z
   .object({
-    origin: z.string().min(3, "Choisissez un lieu de départ."),
-    destination: z.string().min(3, "Choisissez une destination."),
+    origin: z.string().min(3, "originRequired"),
+    destination: z.string().min(3, "destinationRequired"),
     tripType: z.enum(["roundtrip", "oneway"]),
     departDate: civil,
     returnDate: civil.nullable(),
-    adults: z.number().int().min(1, "Au moins un adulte.").max(9),
-    childrenAges: z.array(z.number().int().min(2, "Âge enfant : 2 à 11 ans.").max(11, "Âge enfant : 2 à 11 ans.")).max(8),
+    adults: z.number().int().min(1, "adultMin").max(9, "maxPassengers"),
+    childrenAges: z.array(z.number().int().min(2, "childAgeFlight").max(11, "childAgeFlight")).max(8, "maxPassengers"),
     infants: z.number().int().min(0).max(4),
     cabin: z.enum(["economy", "premium_economy", "business", "first"]),
   })
   .superRefine((v, ctx) => {
-    if (v.origin === v.destination) ctx.addIssue({ code: "custom", path: ["destination"], message: "Le départ et la destination doivent être différents." });
-    if (v.adults + v.childrenAges.length > 9) ctx.addIssue({ code: "custom", path: ["adults"], message: "9 passagers avec siège au maximum par réservation." });
-    if (v.infants > v.adults) ctx.addIssue({ code: "custom", path: ["infants"], message: "Un bébé voyage sur les genoux d'un adulte : pas plus de bébés que d'adultes." });
+    if (v.origin === v.destination) ctx.addIssue({ code: "custom", path: ["destination"], message: "sameOriginDestination" });
+    if (v.adults + v.childrenAges.length > 9) ctx.addIssue({ code: "custom", path: ["adults"], message: "maxPassengers" });
+    if (v.infants > v.adults) ctx.addIssue({ code: "custom", path: ["infants"], message: "infantsPerAdult" });
     if (v.tripType === "roundtrip") {
-      if (!v.returnDate) ctx.addIssue({ code: "custom", path: ["returnDate"], message: "Indiquez une date de retour." });
-      else if (compareCivil(v.returnDate, v.departDate) < 0) ctx.addIssue({ code: "custom", path: ["returnDate"], message: "Le retour ne peut pas précéder l'aller." });
+      if (!v.returnDate) ctx.addIssue({ code: "custom", path: ["returnDate"], message: "returnRequired" });
+      else if (compareCivil(v.returnDate, v.departDate) < 0) ctx.addIssue({ code: "custom", path: ["returnDate"], message: "returnBeforeDepart" });
     }
   });
 
@@ -69,7 +75,7 @@ export function parseFlightSearch(sp: URLSearchParams): { params: FlightSearchPa
   };
   if (!CABINS.includes(raw.cabin)) raw.cabin = "economy";
   const r = flightSearchSchema.safeParse(raw);
-  if (!r.success) return { params: null, issues: r.error.issues.map((i) => ({ field: String(i.path[0] ?? ""), message: i.message })) };
+  if (!r.success) return { params: null, issues: toIssues(r.error) };
   return { params: r.data, issues: [] };
 }
 
@@ -78,22 +84,22 @@ export function parseFlightSearch(sp: URLSearchParams): { params: FlightSearchPa
 // ---------------------------------------------------------------------------
 
 export const roomSchema = z.object({
-  adults: z.number().int().min(1, "Au moins un adulte par chambre.").max(4, "4 adultes maximum par chambre."),
-  childrenAges: z.array(z.number().int().min(0, "Âge enfant : 0 à 17 ans.").max(17, "Âge enfant : 0 à 17 ans.")).max(3, "3 enfants maximum par chambre."),
+  adults: z.number().int().min(1, "roomAdultMin").max(4, "roomAdultMax"),
+  childrenAges: z.array(z.number().int().min(0, "childAgeHotel").max(17, "childAgeHotel")).max(3, "roomChildrenMax"),
 });
 
 export const hotelSearchSchema = z
   .object({
-    destination: z.string().min(3, "Choisissez une destination."),
+    destination: z.string().min(3, "destinationRequired"),
     checkIn: civil,
     checkOut: civil,
-    rooms: z.array(roomSchema).min(1).max(5, "5 chambres maximum."),
+    rooms: z.array(roomSchema).min(1).max(5, "roomsMax"),
   })
   .superRefine((v, ctx) => {
     if (isCivilDate(v.checkIn) && isCivilDate(v.checkOut)) {
       const n = nightsBetween(v.checkIn, v.checkOut);
-      if (n < 1) ctx.addIssue({ code: "custom", path: ["checkOut"], message: "Le départ doit être au moins le lendemain de l'arrivée." });
-      if (n > 30) ctx.addIssue({ code: "custom", path: ["checkOut"], message: "30 nuits maximum par recherche." });
+      if (n < 1) ctx.addIssue({ code: "custom", path: ["checkOut"], message: "checkOutAfter" });
+      if (n > 30) ctx.addIssue({ code: "custom", path: ["checkOut"], message: "maxNights" });
     }
   });
 
@@ -107,7 +113,7 @@ export function parseHotelSearch(sp: URLSearchParams): { params: HotelSearchPara
     rooms: decodeRooms(sp.get("ch")),
   };
   const r = hotelSearchSchema.safeParse(raw);
-  if (!r.success) return { params: null, issues: r.error.issues.map((i) => ({ field: String(i.path[0] ?? ""), message: i.message })) };
+  if (!r.success) return { params: null, issues: toIssues(r.error) };
   return { params: r.data, issues: [] };
 }
 
@@ -117,21 +123,21 @@ export function parseHotelSearch(sp: URLSearchParams): { params: HotelSearchPara
 
 export const carSearchSchema = z
   .object({
-    pickupPlace: z.string().min(3, "Choisissez un lieu de prise en charge."),
-    dropoffPlace: z.string().min(3),
+    pickupPlace: z.string().min(3, "pickupRequired"),
+    dropoffPlace: z.string().min(3, "dropoffRequired"),
     pickupDate: civil,
     pickupTime: time,
     dropoffDate: civil,
     dropoffTime: time,
-    driverAge: z.number().int().min(18, "Le conducteur doit avoir au moins 18 ans.").max(99),
-    residence: z.string().regex(/^[A-Z]{2}$/, "Pays de résidence invalide."),
+    driverAge: z.number().int().min(18, "driverMin").max(99),
+    residence: z.string().regex(/^[A-Z]{2}$/, "residenceInvalid"),
   })
   .superRefine((v, ctx) => {
     if (isCivilDate(v.pickupDate) && isCivilDate(v.dropoffDate) && isTime(v.pickupTime) && isTime(v.dropoffTime)) {
       const start = `${v.pickupDate}T${v.pickupTime}`;
       const end = `${v.dropoffDate}T${v.dropoffTime}`;
-      if (end <= start) ctx.addIssue({ code: "custom", path: ["dropoffDate"], message: "Le retour doit être postérieur à la prise en charge." });
-      if (nightsBetween(v.pickupDate, v.dropoffDate) > 60) ctx.addIssue({ code: "custom", path: ["dropoffDate"], message: "60 jours de location maximum." });
+      if (end <= start) ctx.addIssue({ code: "custom", path: ["dropoffDate"], message: "dropoffAfterPickup" });
+      if (nightsBetween(v.pickupDate, v.dropoffDate) > 60) ctx.addIssue({ code: "custom", path: ["dropoffDate"], message: "maxRentalDays" });
     }
   });
 
@@ -150,6 +156,6 @@ export function parseCarSearch(sp: URLSearchParams): { params: CarSearchParams |
     residence: (sp.get("res") ?? "FR").toUpperCase(),
   };
   const r = carSearchSchema.safeParse(raw);
-  if (!r.success) return { params: null, issues: r.error.issues.map((i) => ({ field: String(i.path[0] ?? ""), message: i.message })) };
+  if (!r.success) return { params: null, issues: toIssues(r.error) };
   return { params: r.data, issues: [] };
 }

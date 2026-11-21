@@ -20,7 +20,7 @@ const assumptions = {
   type: "array",
   items: { type: "string" },
   description:
-    "Ce que tu as supposé faute de précision dans la demande, en français, une courte phrase par élément (par exemple « Départ supposé : Paris », « Dates choisies : premier week-end de mars »). Liste vide si rien n'a été supposé.",
+    "Ce que tu as supposé faute de précision dans la demande, dans la langue de réponse, une courte phrase par élément (par exemple « Départ supposé : Paris », « Dates choisies : premier week-end de mars »). Liste vide si rien n'a été supposé.",
 };
 
 function tool(name: ToolName, description: string, properties: Record<string, unknown>): Tool {
@@ -107,7 +107,7 @@ export const ASSISTANT_TOOLS: Tool[] = [
   ),
   tool(
     "ask_clarification",
-    "Pose une seule question courte en français quand une information indispensable manque (dates ou période, destination, composition d'une famille, âge des enfants pour un vol) ou quand la demande est ambiguë. N'appelle aucun autre outil dans la même réponse.",
+    "Pose une seule question courte, dans la langue de réponse, quand une information indispensable manque (dates ou période, destination, composition d'une famille, âge des enfants pour un vol) ou quand la demande est ambiguë. N'appelle aucun autre outil dans la même réponse.",
     {
       question: { type: "string", description: "La question, une phrase de 200 caractères au plus, sans lien." },
     },

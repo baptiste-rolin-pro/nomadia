@@ -17,7 +17,10 @@ import { isBookingScenario } from "@/lib/providers/scenarios";
 import { completeDemoAuthentication, createDemoPayment } from "@/lib/payments/demo-psp";
 import { enqueueJob, runDueJobs } from "@/lib/jobs";
 import { audit } from "@/lib/audit";
-import { FICTITIOUS_EMAIL_MESSAGE, isFictitiousEmail, sharedDemoAccounts } from "@/lib/demo-site";
+import { isFictitiousEmail, sharedDemoAccounts } from "@/lib/demo-site";
+import { DEFAULT_LOCALE, localizePath, toLocale, type Locale } from "@/i18n/config";
+import { formatMessage } from "@/i18n/format";
+import { getMessages } from "@/i18n/messages";
 import type { Viewer } from "@/lib/viewer";
 import type { BookingRow } from "@/lib/booking/processing";
 
@@ -27,13 +30,30 @@ export const GUEST_LINK_TTL_DAYS = 30;
 export type QuoteRow = typeof quotes.$inferSelect;
 export type PaymentRow = typeof payments.$inferSelect;
 
+/** Clés des messages d'erreur du tunnel (`booking.errors`) : le texte est choisi dans la langue de la page. */
+export type BookingErrorKey = "notFound" | "notEditable" | "travelersFirst" | "unexpectedStep" | "termsRequired" | "invalidPaymentKey" | "notCancellable" | "feeChanged" | "offerUnavailable" | "providerUnavailable" | "notBookable";
+
 export class BookingError extends Error {
   constructor(
     message: string,
     public readonly code: "NOT_FOUND" | "FORBIDDEN" | "INVALID" | "STATE" | "PROVIDER" = "INVALID",
+    /** Message traduit (clé) ; sinon `detail` (texte déjà dans la bonne langue), sinon le message interne. */
+    public readonly key: BookingErrorKey | null = null,
+    public readonly detail: string | null = null,
   ) {
     super(message);
   }
+}
+
+/** Erreur fournisseur → erreur du tunnel avec une clé de message traduite. */
+function providerFailure(err: ProviderError): BookingError {
+  const key: BookingErrorKey = err.code === "UNAVAILABLE" || err.code === "TIMEOUT" ? "providerUnavailable" : err.code === "OFFER_NOT_FOUND" || err.code === "OFFER_EXPIRED" || err.code === "INVALID_REQUEST" ? "offerUnavailable" : "notBookable";
+  return new BookingError(err.message, "PROVIDER", key);
+}
+
+/** Langue d'une réservation (colonne `locale`, migration 0004). */
+export function bookingLocale(b: { locale?: string | null }): Locale {
+  return toLocale(b.locale);
 }
 
 // ---------------------------------------------------------------------------
@@ -77,7 +97,7 @@ export async function getBookingView(bookingId: string, viewer: Viewer, guestTok
 
 async function requireView(bookingId: string, viewer: Viewer, guestToken: string | null): Promise<BookingView> {
   const view = await getBookingView(bookingId, viewer, guestToken);
-  if (!view) throw new BookingError("Réservation introuvable ou accès refusé.", "NOT_FOUND");
+  if (!view) throw new BookingError("Réservation introuvable ou accès refusé.", "NOT_FOUND", "notFound");
   return view;
 }
 
@@ -109,20 +129,24 @@ async function insertQuote(bookable: Bookable, options: SelectedOption[], previo
   return { ...row, priceChangeAcceptedAt: null };
 }
 
-export async function startBooking(input: { offerRef: string; tripItemId: string | null }, viewer: Viewer): Promise<{ bookingId: string; guestToken: string | null }> {
+/**
+ * Démarre une réservation dans la langue de la page : le devis (titre, conditions, lignes de prix) est rédigé dans
+ * cette langue et la réservation la conserve (emails et documents).
+ */
+export async function startBooking(input: { offerRef: string; tripItemId: string | null }, viewer: Viewer, locale: Locale = DEFAULT_LOCALE): Promise<{ bookingId: string; guestToken: string | null }> {
   const vertical = verticalOf(input.offerRef) ?? ("flights" as Vertical);
   const ops = bookingOpsFor(vertical);
   if (!ops.info.capabilities.includes("book")) {
-    throw new BookingError(`La réservation n'est pas disponible pour ce service (${ops.info.name}, mode ${ops.info.mode.toUpperCase()}).`, "PROVIDER");
+    throw new BookingError(`La réservation n'est pas disponible pour ce service (${ops.info.name}, mode ${ops.info.mode.toUpperCase()}).`, "PROVIDER", "notBookable");
   }
   let bookable: Bookable;
   try {
-    bookable = await ops.reprice(input.offerRef, {});
+    bookable = await ops.reprice(input.offerRef, { locale });
   } catch (err) {
-    if (err instanceof ProviderError) throw new BookingError(err.message, "PROVIDER");
+    if (err instanceof ProviderError) throw providerFailure(err);
     throw err;
   }
-  if (!bookable.bookable) throw new BookingError(`Cette offre ne peut pas être réservée en l'état : ${bookable.blockingReasons.join(" ")}`, "INVALID");
+  if (!bookable.bookable) throw new BookingError(`Cette offre ne peut pas être réservée en l'état : ${bookable.blockingReasons.join(" ")}`, "INVALID", null, bookable.blockingReasons.join(" "));
   const database = await db();
   if (input.tripItemId) {
     // Le voyage doit appartenir au visiteur.
@@ -152,6 +176,7 @@ export async function startBooking(input: { offerRef: string; tripItemId: string
     payNowAmount: quote.payNowAmount,
     payOnSiteAmount: quote.payOnSiteAmount,
     currency: quote.currency,
+    locale,
     createdAt: new Date(nowMs()),
     updatedAt: new Date(nowMs()),
   });
@@ -164,22 +189,24 @@ export async function startBooking(input: { offerRef: string; tripItemId: string
 // ---------------------------------------------------------------------------
 
 function assertEditable(b: BookingRow) {
-  if (!["travelers", "options", "review"].includes(b.step)) throw new BookingError("Ce dossier ne peut plus être modifié.", "STATE");
+  if (!["travelers", "options", "review"].includes(b.step)) throw new BookingError("Ce dossier ne peut plus être modifié.", "STATE", "notEditable");
 }
 
 export async function saveTravelers(
   bookingId: string,
   viewer: Viewer,
   guestToken: string | null,
-  input: { travelers: TravelerInput[]; contactEmail: string; saveToAccount: boolean },
+  input: { travelers: TravelerInput[]; contactEmail: string; saveToAccount: boolean; messagesLocale?: Locale },
 ): Promise<{ issues: TravelerIssue[] }> {
   const view = await requireView(bookingId, viewer, guestToken);
   assertEditable(view.booking);
-  const issues = validateTravelers(view.bookable.travelers, input.travelers);
+  // Messages dans la langue de la page (`messagesLocale`), à défaut celle de la réservation.
+  const locale = input.messagesLocale ?? bookingLocale(view.booking);
+  const issues = validateTravelers(view.bookable.travelers, input.travelers, locale);
   const shared = sharedDemoAccounts();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.contactEmail)) issues.push({ index: -1, field: "general", message: "Adresse email de contact invalide." });
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.contactEmail)) issues.push({ index: -1, field: "general", message: getMessages(locale).domain.travelers.contactInvalid });
   // Site de démonstration public : aucune adresse réelle n'est acceptée (domaines réservés RFC 2606 / 6761).
-  else if (shared && !isFictitiousEmail(input.contactEmail)) issues.push({ index: -1, field: "general", message: FICTITIOUS_EMAIL_MESSAGE });
+  else if (shared && !isFictitiousEmail(input.contactEmail)) issues.push({ index: -1, field: "general", message: getMessages(locale).common.demo.fictitiousEmail });
   if (issues.length) return { issues };
   const database = await db();
   const clean = input.travelers.map((t) => ({ type: t.type, firstName: t.firstName.trim(), lastName: t.lastName.trim(), birthDate: t.birthDate || null }));
@@ -188,10 +215,13 @@ export async function saveTravelers(
     // Lien invité opaque envoyé à l'adresse du réservant : c'est la preuve de propriété pour un rattachement ultérieur.
     const { sendEmail } = await import("@/lib/mail");
     const { siteUrl } = await import("@/lib/env");
+    // Email dans la langue de la réservation.
+    const mailLocale = bookingLocale(view.booking);
+    const t = getMessages(mailLocale).email.guestAccess;
     await sendEmail({
       to: input.contactEmail.trim(),
-      subject: "Nomadia — votre lien d'accès à la réservation (DÉMONSTRATION)",
-      text: `Conservez ce lien personnel : il permet de suivre votre réservation sans compte, pendant ${GUEST_LINK_TTL_DAYS} jours.\n${siteUrl()}/reservation/${bookingId}/acces?cle=${guestToken}\n\nNe le transmettez pas : toute personne qui le possède peut consulter la réservation.`,
+      subject: t.subject,
+      text: formatMessage(mailLocale, t.body, { days: GUEST_LINK_TTL_DAYS, url: `${siteUrl()}${localizePath(mailLocale, `/reservation/${bookingId}/acces`)}?cle=${guestToken}` }),
       template: "guest_access",
       dedupeKey: `guest-link:${bookingId}:${sha256(input.contactEmail.trim().toLowerCase())}`,
     });
@@ -209,7 +239,7 @@ export async function saveTravelers(
 export async function saveOptions(bookingId: string, viewer: Viewer, guestToken: string | null, options: SelectedOption[]): Promise<void> {
   const view = await requireView(bookingId, viewer, guestToken);
   assertEditable(view.booking);
-  if (view.booking.step === "travelers") throw new BookingError("Renseignez d'abord les voyageurs.", "STATE");
+  if (view.booking.step === "travelers") throw new BookingError("Renseignez d'abord les voyageurs.", "STATE", "travelersFirst");
   const totals = computeTotals(view.bookable, options);
   const database = await db();
   await database
@@ -237,8 +267,8 @@ export type ReviewOutcome =
 export async function submitReview(bookingId: string, viewer: Viewer, guestToken: string | null, input: { termsAccepted: boolean; scenario: string | null }): Promise<ReviewOutcome> {
   const view = await requireView(bookingId, viewer, guestToken);
   const { booking, quote } = view;
-  if (booking.step !== "review") throw new BookingError("Étape inattendue.", "STATE");
-  if (!input.termsAccepted) throw new BookingError("Vous devez accepter les conditions de l'offre et du fournisseur.", "INVALID");
+  if (booking.step !== "review") throw new BookingError("Étape inattendue.", "STATE", "unexpectedStep");
+  if (!input.termsAccepted) throw new BookingError("Vous devez accepter les conditions de l'offre et du fournisseur.", "INVALID", "termsRequired");
   const database = await db();
   const demo = modeFor(booking.vertical as Vertical) === "demo";
   const scenario = demo && isBookingScenario(input.scenario) && input.scenario !== "nominal" ? input.scenario : null;
@@ -256,9 +286,9 @@ export async function submitReview(bookingId: string, viewer: Viewer, guestToken
   const ops = bookingOpsFor(booking.vertical as Vertical);
   let fresh: Bookable;
   try {
-    fresh = await ops.reprice(quote.offerRef, { scenario });
+    fresh = await ops.reprice(quote.offerRef, { scenario, locale: bookingLocale(booking) });
   } catch (err) {
-    if (err instanceof ProviderError) throw new BookingError(err.message, "PROVIDER");
+    if (err instanceof ProviderError) throw providerFailure(err);
     throw err;
   }
   if (!fresh.bookable) return { state: "blocked", reasons: fresh.blockingReasons };
@@ -310,9 +340,9 @@ export async function refreshQuote(bookingId: string, viewer: Viewer, guestToken
   const ops = bookingOpsFor(view.booking.vertical as Vertical);
   let fresh: Bookable;
   try {
-    fresh = await ops.reprice(view.quote.offerRef, {});
+    fresh = await ops.reprice(view.quote.offerRef, { locale: bookingLocale(view.booking) });
   } catch (err) {
-    if (err instanceof ProviderError) throw new BookingError(err.message, "PROVIDER");
+    if (err instanceof ProviderError) throw providerFailure(err);
     throw err;
   }
   if (!fresh.bookable) return { state: "blocked", reasons: fresh.blockingReasons };
@@ -410,7 +440,7 @@ async function expireQuoteBeforePayment(view: BookingView, viewer: Viewer, idemp
 export async function payBooking(bookingId: string, viewer: Viewer, guestToken: string | null, idempotencyKey: string): Promise<PayResult> {
   const view = await requireView(bookingId, viewer, guestToken);
   const { booking, quote } = view;
-  if (!idempotencyKey.startsWith(`pay:${bookingId}:`)) throw new BookingError("Clé de paiement invalide.", "INVALID");
+  if (!idempotencyKey.startsWith(`pay:${bookingId}:`)) throw new BookingError("Clé de paiement invalide.", "INVALID", "invalidPaymentKey");
   const database = await db();
   // Double soumission avec la même clé : on renvoie le résultat existant.
   const existing = await database.select().from(payments).where(eq(payments.idempotencyKey, idempotencyKey)).limit(1);
@@ -456,22 +486,23 @@ export async function refreshStatus(bookingId: string, viewer: Viewer, guestToke
 // Annulation
 // ---------------------------------------------------------------------------
 
-export async function cancellationPreview(bookingId: string, viewer: Viewer, guestToken: string | null) {
+/** Conditions d'annulation ; message du fournisseur dans la langue de la page (`locale`). */
+export async function cancellationPreview(bookingId: string, viewer: Viewer, guestToken: string | null, locale: Locale = DEFAULT_LOCALE) {
   const view = await requireView(bookingId, viewer, guestToken);
   if (!view.booking.providerReference || !["confirmed", "ticketed"].includes(view.booking.providerStatus)) return null;
   const ops = bookingOpsFor(view.booking.vertical as Vertical);
-  return ops.cancellationQuote(view.booking.providerReference, {});
+  return ops.cancellationQuote(view.booking.providerReference, { locale });
 }
 
-export async function cancelBooking(bookingId: string, viewer: Viewer, guestToken: string | null, input: { acceptedFee: number }): Promise<void> {
+export async function cancelBooking(bookingId: string, viewer: Viewer, guestToken: string | null, input: { acceptedFee: number; locale?: Locale }): Promise<void> {
   const view = await requireView(bookingId, viewer, guestToken);
   const { booking } = view;
-  if (!booking.providerReference || !["confirmed", "ticketed"].includes(booking.providerStatus)) throw new BookingError("Cette réservation ne peut pas être annulée en ligne.", "STATE");
+  if (!booking.providerReference || !["confirmed", "ticketed"].includes(booking.providerStatus)) throw new BookingError("Cette réservation ne peut pas être annulée en ligne.", "STATE", "notCancellable");
   const ops = bookingOpsFor(booking.vertical as Vertical);
-  const preview = await ops.cancellationQuote(booking.providerReference, {});
-  if (!preview.allowed) throw new BookingError(preview.message, "STATE");
+  const preview = await ops.cancellationQuote(booking.providerReference, { locale: input.locale });
+  if (!preview.allowed) throw new BookingError(preview.message, "STATE", null, preview.message);
   // Les frais affichés doivent être ceux acceptés : sinon nouvelle acceptation.
-  if (preview.fee.amount !== input.acceptedFee) throw new BookingError("Les frais d'annulation ont changé : vérifiez le nouveau montant.", "STATE");
+  if (preview.fee.amount !== input.acceptedFee) throw new BookingError("Les frais d'annulation ont changé : vérifiez le nouveau montant.", "STATE", "feeChanged");
   const key = `cancel:${bookingId}`;
   const database = await db();
   const claimed = await database

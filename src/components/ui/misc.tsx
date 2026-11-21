@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Link } from "@/i18n/link";
 import { AlertTriangle, CheckCircle2, Info, XCircle } from "lucide-react";
 
 type Tone = "neutral" | "forest" | "terracotta" | "success" | "warning" | "danger";
@@ -16,10 +17,10 @@ export function Badge({ tone = "neutral", children, className = "" }: { tone?: T
   return <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${toneClasses[tone]} ${className}`}>{children}</span>;
 }
 
-export function DemoBadge({ className = "" }: { className?: string }) {
+export function DemoBadge({ className = "", label }: { className?: string; label: string }) {
   return (
     <Badge tone="terracotta" className={className}>
-      Démo · fictif
+      {label}
     </Badge>
   );
 }
@@ -59,17 +60,17 @@ export function SectionHeading({ eyebrow, title, intro, id, as = "h2" }: { eyebr
   );
 }
 
-export function Breadcrumbs({ items }: { items: { href?: string; label: string }[] }) {
+export function Breadcrumbs({ items, label }: { items: { href?: string; label: string }[]; label: string }) {
   return (
-    <nav aria-label="Fil d'Ariane" className="text-sm text-ink-soft">
+    <nav aria-label={label} className="text-sm text-ink-soft">
       <ol className="flex flex-wrap items-center gap-1.5">
         {items.map((item, i) => (
           <li key={`${item.label}-${i}`} className="flex items-center gap-1.5">
             {i > 0 ? <span aria-hidden>/</span> : null}
             {item.href && i < items.length - 1 ? (
-              <a href={item.href} className="underline-offset-4 hover:underline">
+              <Link href={item.href} className="underline-offset-4 hover:underline">
                 {item.label}
-              </a>
+              </Link>
             ) : (
               <span aria-current={i === items.length - 1 ? "page" : undefined} className={i === items.length - 1 ? "text-ink" : ""}>
                 {item.label}

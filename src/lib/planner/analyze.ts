@@ -2,16 +2,13 @@
  * Analyse d'un voyage : timeline jour par jour, budget détaillé et alertes de cohérence.
  * Aucune correction automatique : les incohérences sont signalées, l'utilisateur décide.
  */
-import { addDays, civilDateOf, compareCivil, eachNight, epochDay, formatCivilDate, localToUtc, timeOf, type CivilDate } from "@/lib/dates";
+import { addDays, civilDateOf, compareCivil, eachNight, epochDay, localToUtc, timeOf, type CivilDate } from "@/lib/dates";
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/config";
+import { formatter } from "@/i18n/format";
+import { getMessages } from "@/i18n/messages";
 
 export type ItemStatus = "considered" | "to_book" | "booking" | "confirmed";
-
-export const ITEM_STATUS_LABELS: Record<ItemStatus, string> = {
-  considered: "Envisagé",
-  to_book: "À réserver",
-  booking: "Réservation en cours",
-  confirmed: "Confirmé",
-};
+// Libellés des statuts : `planner.status` dans src/i18n/messages.
 
 export interface Zoned {
   local: string;
@@ -34,6 +31,8 @@ export interface PlannerItem {
     checkOut?: string;
     checkInFrom?: string;
     receptionNote?: string;
+    /** Accueil limité (heure limite d'arrivée) ; absent des anciens instantanés : repli sur le texte français. */
+    receptionLimited?: boolean;
     agencyHours?: { pickup: string; dropoff: string };
   };
 }
@@ -82,13 +81,14 @@ export interface BudgetSummary {
 
 const instant = (z: Zoned) => localToUtc(z.local, z.timeZone).instantMs;
 
-/** Termine une phrase sans doubler le point d'une abréviation (« janv. »). */
-function sentence(text: string): string {
-  return text.endsWith(".") ? text : `${text}.`;
+/** Accueil limité d'après la note française de l'établissement (« jusqu'à 23 h », « uniquement », « de 9 h à 20 h »). */
+export function isReceptionLimited(note: string | undefined): boolean {
+  return !!note && /jusqu'à|uniquement|de \d+ h à \d+ h/i.test(note);
 }
 
-function hhmm(local: string): string {
-  return timeOf(local).replace(":", " h ");
+/** Termine une phrase sans doubler le point d'une abréviation (« janv. »). */
+function sentence(text: string, stop: string): string {
+  return text.endsWith(stop) ? text : `${text}${stop}`;
 }
 
 function parseHours(range: string | undefined): { opens: string; closes: string } | null {
@@ -97,7 +97,14 @@ function parseHours(range: string | undefined): { opens: string; closes: string 
   return opens && closes ? { opens, closes: closes === "24:00" ? "23:59" : closes } : null;
 }
 
-export function analyzeTrip(trip: PlannerTrip, items: PlannerItem[]): { warnings: TripWarning[]; timeline: TimelineDay[]; budget: BudgetSummary } {
+/** Analyse dans une langue : textes des alertes et de la timeline (`planner.alerts`, `planner.timeline`). */
+export function analyzeTrip(trip: PlannerTrip, items: PlannerItem[], locale: Locale = DEFAULT_LOCALE): { warnings: TripWarning[]; timeline: TimelineDay[]; budget: BudgetSummary } {
+  const msg = getMessages(locale).planner;
+  const sep = getMessages(locale).common.listSep;
+  const a = msg.alerts;
+  const f = formatter(locale);
+  const short = (d: CivilDate) => f.date(d, "short");
+  const hhmm = (local: string) => f.time(local);
   const warnings: TripWarning[] = [];
   const margin = trip.transferMarginMinutes;
 
@@ -119,10 +126,10 @@ export function analyzeTrip(trip: PlannerTrip, items: PlannerItem[]): { warnings
     const first = civilDateOf(segs[0]!.start.local);
     const last = civilDateOf(segs[segs.length - 1]!.end.local);
     if (compareCivil(first, trip.startDate) < 0 || compareCivil(last, addDays(trip.endDate, 1)) > 0) {
-      warnings.push({ severity: "attention", code: "outside_dates", message: `« ${item.title} » se situe en dehors des dates du voyage (${formatCivilDate(trip.startDate, "short")} – ${formatCivilDate(trip.endDate, "short")}).`, itemIds: [item.id] });
+      warnings.push({ severity: "attention", code: "outside_dates", message: f.t(a.outsideDates, { title: item.title, from: short(trip.startDate), to: short(trip.endDate) }), itemIds: [item.id] });
     }
     if (item.quoteValidity === "stale") {
-      warnings.push({ severity: "attention", code: "stale_quote", message: `Le prix de « ${item.title} » n'est plus valable après la modification des dates : relancez la recherche.`, itemIds: [item.id] });
+      warnings.push({ severity: "attention", code: "stale_quote", message: f.t(a.staleQuote, { title: item.title }), itemIds: [item.id] });
     }
   }
 
@@ -139,8 +146,8 @@ export function analyzeTrip(trip: PlannerTrip, items: PlannerItem[]): { warnings
         severity: "info",
         code: "late_arrival",
         message: lateNight
-          ? `Arrivée nocturne le ${formatCivilDate(arrDate, "short")} à ${hhmm(arrival.local)} : la nuit du ${formatCivilDate(addDays(arrDate, -1), "short")} au ${formatCivilDate(arrDate, "short")} doit être réservée (nuitée décalée). Prévenez l'hébergement.`
-          : `Arrivée tardive à ${hhmm(arrival.local)} : vérifiez l'heure limite d'accueil de votre hébergement.`,
+          ? f.t(a.lateNight, { date: short(arrDate), time: hhmm(arrival.local), nightFrom: short(addDays(arrDate, -1)), nightTo: short(arrDate) })
+          : f.t(a.late, { time: hhmm(arrival.local) }),
         itemIds: [flightSlices[0]!.item.id],
       });
     }
@@ -154,15 +161,16 @@ export function analyzeTrip(trip: PlannerTrip, items: PlannerItem[]): { warnings
       coverage.set(night, [...(coverage.get(night) ?? []), h.id]);
     }
     if (compareCivil(h.snapshot.checkIn!, neededStart) < 0) {
-      warnings.push({ severity: "attention", code: "hotel_before_arrival", message: `« ${h.title} » commence le ${formatCivilDate(h.snapshot.checkIn!, "short")}, avant votre arrivée : la ou les premières nuits ne seraient pas utilisées.`, itemIds: [h.id] });
+      warnings.push({ severity: "attention", code: "hotel_before_arrival", message: f.t(a.hotelBefore, { title: h.title, date: short(h.snapshot.checkIn!) }), itemIds: [h.id] });
     }
     if (compareCivil(h.snapshot.checkOut!, neededEnd) > 0) {
-      warnings.push({ severity: "attention", code: "hotel_after_departure", message: `« ${h.title} » se termine le ${formatCivilDate(h.snapshot.checkOut!, "short")}, après votre départ.`, itemIds: [h.id] });
+      warnings.push({ severity: "attention", code: "hotel_after_departure", message: f.t(a.hotelAfter, { title: h.title, date: short(h.snapshot.checkOut!) }), itemIds: [h.id] });
     }
-    if (arrival && h.snapshot.checkIn === civilDateOf(arrival.local) && h.snapshot.receptionNote && /jusqu'à|uniquement|de \d+ h à \d+ h/i.test(h.snapshot.receptionNote)) {
+    const limited = h.snapshot.receptionLimited ?? isReceptionLimited(h.snapshot.receptionNote);
+    if (arrival && h.snapshot.checkIn === civilDateOf(arrival.local) && h.snapshot.receptionNote && limited) {
       const arrHour = Number(arrival.local.slice(11, 13));
       if (arrHour >= 20) {
-        warnings.push({ severity: "attention", code: "reception_hours", message: `Arrivée à ${hhmm(arrival.local)} : « ${h.title} » indique un accueil limité (${h.snapshot.receptionNote}).`, itemIds: [h.id] });
+        warnings.push({ severity: "attention", code: "reception_hours", message: f.t(a.reception, { time: hhmm(arrival.local), title: h.title, note: h.snapshot.receptionNote }), itemIds: [h.id] });
       }
     }
   }
@@ -171,7 +179,7 @@ export function analyzeTrip(trip: PlannerTrip, items: PlannerItem[]): { warnings
     warnings.push({
       severity: "attention",
       code: "hotel_overlap",
-      message: sentence(`Chevauchement d'hébergements : ${overlapNights.map(([d]) => formatCivilDate(d, "short")).join(", ")}`),
+      message: sentence(f.t(a.overlap, { dates: overlapNights.map(([d]) => short(d)).join(sep) }), a.fullStop),
       itemIds: [...new Set(overlapNights.flatMap(([, ids]) => ids))],
     });
   }
@@ -181,7 +189,7 @@ export function analyzeTrip(trip: PlannerTrip, items: PlannerItem[]): { warnings
       warnings.push({
         severity: hotels.length ? "attention" : "info",
         code: "hotel_gap",
-        message: sentence(`${gaps.length} nuit${gaps.length > 1 ? "s" : ""} sans hébergement : ${gaps.map((d) => `nuit du ${formatCivilDate(d, "short")}`).join(", ")}`),
+        message: sentence(f.t(a.gap, { n: gaps.length, nights: gaps.map((d) => f.t(a.gapNight, { date: short(d) })).join(sep) }), a.fullStop),
         itemIds: [],
       });
     }
@@ -194,7 +202,7 @@ export function analyzeTrip(trip: PlannerTrip, items: PlannerItem[]): { warnings
       warnings.push({
         severity: "attention",
         code: "car_before_landing",
-        message: `La voiture « ${car.title} » est prise en charge le ${formatCivilDate(civilDateOf(seg.start.local), "short")} à ${hhmm(seg.start.local)}, avant l'atterrissage (${hhmm(arrival.local)}) augmenté de la marge de transfert (${margin} min).`,
+        message: f.t(a.carBeforeLanding, { title: car.title, date: short(civilDateOf(seg.start.local)), time: hhmm(seg.start.local), landing: hhmm(arrival.local), margin }),
         itemIds: [car.id, flightSlices[0]!.item.id],
       });
     }
@@ -202,14 +210,14 @@ export function analyzeTrip(trip: PlannerTrip, items: PlannerItem[]): { warnings
       warnings.push({
         severity: "attention",
         code: "car_after_departure",
-        message: `La voiture « ${car.title} » est rendue à ${hhmm(seg.end.local)}, trop tard pour le vol de ${hhmm(departure.local)} avec ${margin} min de marge.`,
+        message: f.t(a.carAfterDeparture, { title: car.title, time: hhmm(seg.end.local), departure: hhmm(departure.local), margin }),
         itemIds: [car.id, departureSlice!.item.id],
       });
     }
     const hours = parseHours(car.snapshot.agencyHours?.pickup);
     const t = timeOf(seg.start.local);
     if (hours && (t < hours.opens || t > hours.closes)) {
-      warnings.push({ severity: "bloquant", code: "agency_closed", message: `L'agence de « ${car.title} » est fermée à ${hhmm(seg.start.local)} (ouverte ${hours.opens}–${hours.closes}). Choisissez une autre heure de prise en charge.`, itemIds: [car.id] });
+      warnings.push({ severity: "bloquant", code: "agency_closed", message: f.t(a.agencyClosed, { title: car.title, time: hhmm(seg.start.local), opens: hours.opens, closes: hours.closes }), itemIds: [car.id] });
     }
   }
 
@@ -224,14 +232,14 @@ export function analyzeTrip(trip: PlannerTrip, items: PlannerItem[]): { warnings
   for (const item of items) {
     for (const seg of item.snapshot.segments) {
       if (seg.kind === "flight") {
-        dayOf(civilDateOf(seg.start.local))?.entries.push({ time: timeOf(seg.start.local), label: `Départ — ${seg.label}`, kind: "flight", itemId: item.id });
-        dayOf(civilDateOf(seg.end.local))?.entries.push({ time: timeOf(seg.end.local), label: `Arrivée — ${seg.label}`, kind: "flight", itemId: item.id });
+        dayOf(civilDateOf(seg.start.local))?.entries.push({ time: timeOf(seg.start.local), label: f.t(msg.timeline.departure, { label: seg.label }), kind: "flight", itemId: item.id });
+        dayOf(civilDateOf(seg.end.local))?.entries.push({ time: timeOf(seg.end.local), label: f.t(msg.timeline.arrival, { label: seg.label }), kind: "flight", itemId: item.id });
       } else if (seg.kind === "stay") {
-        dayOf(civilDateOf(seg.start.local))?.entries.push({ time: item.snapshot.checkInFrom ?? null, label: `Arrivée à l'hébergement — ${item.title}`, kind: "stay", itemId: item.id });
-        dayOf(civilDateOf(seg.end.local))?.entries.push({ time: timeOf(seg.end.local), label: `Départ de l'hébergement — ${item.title}`, kind: "stay", itemId: item.id });
+        dayOf(civilDateOf(seg.start.local))?.entries.push({ time: item.snapshot.checkInFrom ?? null, label: f.t(msg.timeline.checkIn, { title: item.title }), kind: "stay", itemId: item.id });
+        dayOf(civilDateOf(seg.end.local))?.entries.push({ time: timeOf(seg.end.local), label: f.t(msg.timeline.checkOut, { title: item.title }), kind: "stay", itemId: item.id });
       } else {
-        dayOf(civilDateOf(seg.start.local))?.entries.push({ time: timeOf(seg.start.local), label: `Prise en charge — ${seg.label}`, kind: "car", itemId: item.id });
-        dayOf(civilDateOf(seg.end.local))?.entries.push({ time: timeOf(seg.end.local), label: `Restitution — ${seg.label}`, kind: "car", itemId: item.id });
+        dayOf(civilDateOf(seg.start.local))?.entries.push({ time: timeOf(seg.start.local), label: f.t(msg.timeline.pickup, { label: seg.label }), kind: "car", itemId: item.id });
+        dayOf(civilDateOf(seg.end.local))?.entries.push({ time: timeOf(seg.end.local), label: f.t(msg.timeline.dropoff, { label: seg.label }), kind: "car", itemId: item.id });
       }
     }
   }
@@ -254,7 +262,7 @@ export function analyzeTrip(trip: PlannerTrip, items: PlannerItem[]): { warnings
   const deposits = byVertical.reduce((n, v) => n + v.deposit, 0);
   const overBudget = trip.budgetTarget !== null && total > trip.budgetTarget;
   if (overBudget) {
-    warnings.push({ severity: "info", code: "over_budget", message: "Le total des prestations sélectionnées dépasse votre budget cible.", itemIds: [] });
+    warnings.push({ severity: "info", code: "over_budget", message: a.overBudget, itemIds: [] });
   }
   const order: Record<Severity, number> = { bloquant: 0, attention: 1, info: 2 };
   warnings.sort((a, b) => order[a.severity] - order[b.severity]);

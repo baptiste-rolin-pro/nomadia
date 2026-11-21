@@ -21,6 +21,8 @@ export const user = pgTable("user", {
   emailVerified: boolean("emailVerified").notNull().default(false),
   image: text("image"),
   role: text("role").notNull().default("user"),
+  /** Langue des emails du compte (fr, en, zh…), fixée à l'inscription d'après la page (migration 0004). */
+  locale: text("locale").notNull().default("fr"),
   createdAt: ts("createdAt").notNull().defaultNow(),
   updatedAt: ts("updatedAt").notNull().defaultNow(),
 });
@@ -188,6 +190,8 @@ export interface TripItemSnapshot {
   checkOut?: string;
   checkInFrom?: string;
   receptionNote?: string;
+  /** Accueil limité (calculé à l'ajout sur la note de base) ; absent des anciens instantanés. */
+  receptionLimited?: boolean;
   agencyHours?: { pickup: string; dropoff: string };
   searchUrl: string;
   detailUrl: string;
@@ -253,6 +257,8 @@ export const bookings = pgTable(
     termsAcceptedAt: ts("terms_accepted_at"),
     /** Scénario de démonstration (mode DEMO uniquement). */
     scenario: text("scenario"),
+    /** Langue de la réservation (page où elle a commencé) : devis, emails et documents (migration 0004). */
+    locale: text("locale").notNull().default("fr"),
     /** not_required | requires_payment | processing | requires_action | declined | paid | refund_requested | refunded */
     paymentStatus: text("payment_status").notNull().default("requires_payment"),
     /** not_started | pending | confirmed | ticketed | failed | unknown | cancel_requested | cancelled */

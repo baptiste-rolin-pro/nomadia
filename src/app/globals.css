@@ -147,7 +147,7 @@
   }
   .prose-nomadia ul {
     list-style: disc;
-    padding-left: 1.25rem;
+    padding-inline-start: 1.25rem;
     margin-block: 0 1rem;
   }
   .prose-nomadia li {
@@ -709,6 +709,72 @@
   .media-zoom img {
     transform: none !important;
   }
+}
+
+/*
+ * Langues et écritures (src/i18n/config.ts). Les polices du site (Fraunces, Instrument Sans) ne couvrent que
+ * l'alphabet latin : chaque écriture reçoit une pile de polices système de qualité (aucun téléchargement en plus,
+ * rien de chargé pour les autres langues). Hauteurs de ligne relevées pour les signes au-dessus et au-dessous de la
+ * ligne (devanagari, bengali, arabe) ; pas d'espacement de lettres ni de capitales forcées hors alphabet latin.
+ */
+:root:lang(hi) {
+  --script-sans: "Nirmala UI", "Noto Sans Devanagari", "Kohinoor Devanagari", "Devanagari Sangam MN", Mangal;
+  --script-serif: "Noto Serif Devanagari", "Nirmala UI", "Kohinoor Devanagari", "Devanagari Sangam MN", Mangal;
+}
+:root:lang(bn) {
+  --script-sans: "Nirmala UI", "Noto Sans Bengali", "Kohinoor Bangla", "Bangla Sangam MN", Vrinda, "Shonar Bangla";
+  --script-serif: "Noto Serif Bengali", "Nirmala UI", "Kohinoor Bangla", "Bangla Sangam MN", Vrinda;
+}
+:root:lang(ar) {
+  --script-sans: "Segoe UI", "Noto Sans Arabic", "Geeza Pro", Tahoma, "Arial";
+  --script-serif: "Noto Naskh Arabic", "Times New Roman", "Geeza Pro", "Segoe UI", serif;
+}
+:root:lang(zh) {
+  --script-sans: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Source Han Sans SC";
+  --script-serif: "Songti SC", "Noto Serif SC", "Source Han Serif SC", "SimSun", "PingFang SC", "Microsoft YaHei";
+}
+:root:lang(ru) {
+  --script-sans: "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  --script-serif: Georgia, "Times New Roman";
+}
+:root:is(:lang(hi), :lang(bn), :lang(ar), :lang(zh), :lang(ru)) body,
+:root:is(:lang(hi), :lang(bn), :lang(ar), :lang(zh), :lang(ru)) .font-sans {
+  font-family: var(--font-instrument), var(--script-sans), ui-sans-serif, system-ui, sans-serif;
+}
+:root:is(:lang(hi), :lang(bn), :lang(ar), :lang(zh), :lang(ru)) .font-serif {
+  font-family: var(--font-fraunces), var(--script-serif), ui-serif, Georgia, serif;
+}
+:root:is(:lang(hi), :lang(bn), :lang(ar)) :is(.hero-title, .text-title, .text-display, .text-heading, h1, h2) {
+  line-height: 1.32;
+}
+:root:is(:lang(hi), :lang(bn), :lang(ar)) .hero-word-mask {
+  padding-block: 0.2em 0.3em;
+  margin-block: -0.2em -0.3em;
+}
+:root:is(:lang(hi), :lang(bn), :lang(ar), :lang(zh)) :is(.eyebrow, [class*="tracking-"], .uppercase) {
+  letter-spacing: 0;
+  text-transform: none;
+}
+:root:lang(zh) :is(.hero-title, .text-title, h1) {
+  line-height: 1.18;
+}
+
+/*
+ * Écriture de droite à gauche (arabe) : la mise en page utilise des propriétés logiques (ms-, pe-, start-, end-,
+ * text-start…). Les flèches directionnelles et le motif « avion sur trajet » sont retournés pour suivre le sens
+ * de lecture ; le trajet animé du hero aussi (ses textes restent lisibles).
+ */
+[dir="rtl"] :is(.lucide-arrow-right, .lucide-arrow-left, .lucide-arrow-up-right, .lucide-chevron-right, .lucide-chevron-left) {
+  transform: scaleX(-1);
+}
+[dir="rtl"] .flight-path {
+  transform: scaleX(-1);
+}
+[dir="rtl"] .hero-route {
+  transform: scaleX(-1);
+}
+[dir="rtl"] .hero-route > :is(p, div) {
+  transform: scaleX(-1);
 }
 
 @media print {

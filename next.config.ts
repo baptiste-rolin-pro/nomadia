@@ -14,6 +14,9 @@ const securityHeaders = [
 ];
 
 const privateNoStore = [{ key: "Cache-Control", value: "private, no-store, max-age=0" }];
+// Langues préfixées (le français n'a pas de préfixe) : mêmes en-têtes pour les zones privées dans chaque langue.
+const PREFIXED = "en|zh|hi|es|ar|bn|pt|ru|id";
+const privateSections = ["compte", "voyage", "reservation", "admin", "dev"];
 
 const nextConfig: NextConfig = {
   // Ne pas modifier AGENTS.md automatiquement : le dépôt possède déjà ses propres instructions.
@@ -38,6 +41,10 @@ const nextConfig: NextConfig = {
       { source: "/admin", headers: privateNoStore },
       { source: "/dev/:path*", headers: privateNoStore },
       { source: "/api/:path*", headers: privateNoStore },
+      ...privateSections.flatMap((s) => [
+        { source: `/:lang(${PREFIXED})/${s}`, headers: privateNoStore },
+        { source: `/:lang(${PREFIXED})/${s}/:path*`, headers: privateNoStore },
+      ]),
     ];
   },
 };

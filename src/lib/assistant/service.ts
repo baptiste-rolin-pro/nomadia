@@ -14,6 +14,10 @@ import { localHelp, parseLocally } from "@/lib/assistant/parser";
 import { clientIp, consumeAssistantQuota, consumeLocalQuota, type AssistantQuotaConfig, type QuotaOutcome } from "@/lib/assistant/rate-limit";
 import { AssistantFailure, runAssistant, type AssistantModelClient } from "@/lib/assistant/run";
 import { ASSISTANT_MAX_INPUT, ASSISTANT_MAX_QUESTION, type AssistantEngine, type AssistantErrorCode, type AssistantResponseBody, type AssistantResult, type AssistantStatusBody } from "@/lib/assistant/types";
+import { sayFor } from "@/lib/assistant/parser/say";
+import { DEFAULT_LOCALE, isLocale, localeFromPath, type Locale } from "@/i18n/config";
+import { formatMessage } from "@/i18n/format";
+import { getMessages } from "@/i18n/messages";
 
 /**
  * Mode du REPLI vers le modèle (l'analyse locale fonctionne toujours) : live = API Anthropic ; mock = modèle
@@ -76,24 +80,30 @@ export async function defaultAssistantDeps(): Promise<AssistantDeps> {
   };
 }
 
-const MESSAGES: Record<AssistantErrorCode, string> = {
-  INVALID: `Votre demande doit contenir entre 1 et ${ASSISTANT_MAX_INPUT} caractères.`,
-  FORBIDDEN: "Requête refusée.",
-  RATE_LIMITED: "Vous avez envoyé beaucoup de demandes en peu de temps. Réessayez un peu plus tard ; les onglets de recherche restent disponibles.",
-  DAILY_LIMIT: "L'assistant a atteint sa limite d'utilisation pour aujourd'hui pour les demandes complexes. Reformulez avec une destination et des dates, ou réessayez demain ; les onglets de recherche restent disponibles.",
-  UNAVAILABLE: "L'assistant est indisponible pour le moment. Les onglets Mon voyage, Vols, Hôtels et Voitures fonctionnent normalement.",
-  TIMEOUT: "L'assistant a mis trop de temps à répondre. Réessayez dans un instant.",
-};
+/** Message d'erreur dans la langue de la page (`assistant.errors`). */
+function errorMessage(code: AssistantErrorCode, locale: Locale): string {
+  return formatMessage(locale, getMessages(locale).assistant.errors[code], { max: ASSISTANT_MAX_INPUT });
+}
+
+/** Langue avant lecture du corps (erreurs précoces) : chemin de la page d'origine, sinon français. */
+function refererLocale(request: Request): Locale {
+  try {
+    const referer = request.headers.get("referer");
+    return (referer && localeFromPath(new URL(referer).pathname)) || DEFAULT_LOCALE;
+  } catch {
+    return DEFAULT_LOCALE;
+  }
+}
 
 const STATUS: Record<AssistantErrorCode, number> = { INVALID: 400, FORBIDDEN: 403, RATE_LIMITED: 429, DAILY_LIMIT: 429, UNAVAILABLE: 503, TIMEOUT: 504 };
 const NO_STORE = { "Cache-Control": "private, no-store" };
 /** Corps JSON accepté (le texte lui-même est limité à 500 caractères). */
 const MAX_BODY_BYTES = 4096;
 
-function errorResponse(code: AssistantErrorCode, retryAfterSec?: number) {
+function errorResponse(code: AssistantErrorCode, locale: Locale, retryAfterSec?: number) {
   const headers: Record<string, string> = { ...NO_STORE };
   if (retryAfterSec) headers["Retry-After"] = String(retryAfterSec);
-  return NextResponse.json<AssistantResponseBody>({ status: "error", code, message: MESSAGES[code] }, { status: STATUS[code], headers });
+  return NextResponse.json<AssistantResponseBody>({ status: "error", code, message: errorMessage(code, locale) }, { status: STATUS[code], headers });
 }
 
 function okResponse(engine: AssistantEngine, result: AssistantResult) {
@@ -107,6 +117,7 @@ const bodySchema = z
       .object({ request: z.string().trim().min(1).max(ASSISTANT_MAX_INPUT), question: z.string().trim().min(1).max(ASSISTANT_MAX_QUESTION) })
       .strict()
       .nullish(),
+    locale: z.string().max(8).optional(),
   })
   .strict();
 
@@ -138,23 +149,26 @@ async function localQuota(request: Request, deps: AssistantDeps): Promise<QuotaO
  * Le texte saisi n'est ni journalisé ni stocké.
  */
 export async function handleAssistantPost(request: Request, deps: AssistantDeps): Promise<NextResponse> {
-  if (!deps.checkOrigin(request)) return errorResponse("FORBIDDEN");
+  const early = refererLocale(request);
+  if (!deps.checkOrigin(request)) return errorResponse("FORBIDDEN", early);
 
   const declared = Number(request.headers.get("content-length") ?? "0");
-  if (declared > MAX_BODY_BYTES) return errorResponse("INVALID");
+  if (declared > MAX_BODY_BYTES) return errorResponse("INVALID", early);
   const raw = await request.text().catch(() => "");
-  if (!raw || new TextEncoder().encode(raw).length > MAX_BODY_BYTES) return errorResponse("INVALID");
+  if (!raw || new TextEncoder().encode(raw).length > MAX_BODY_BYTES) return errorResponse("INVALID", early);
   let json: unknown;
   try {
     json = JSON.parse(raw);
   } catch {
-    return errorResponse("INVALID");
+    return errorResponse("INVALID", early);
   }
   const body = bodySchema.safeParse(json);
-  if (!body.success) return errorResponse("INVALID");
+  if (!body.success) return errorResponse("INVALID", early);
 
+  // Langue de la page envoyée par le client : réponses, questions et chemins dans cette langue.
+  const locale: Locale = isLocale(body.data.locale) ? body.data.locale : early;
   const t = deps.today();
-  const ctx: ActionContext = { today: t, demo: deps.demo };
+  const ctx: ActionContext = { today: t, demo: deps.demo, locale };
   const input = { text: body.data.text, previous: body.data.previous ?? null };
 
   let local: ReturnType<typeof parseLocally>;
@@ -167,25 +181,25 @@ export async function handleAssistantPost(request: Request, deps: AssistantDeps)
   }
   if (local.understood || deps.mode === "off") {
     const quota = await localQuota(request, deps);
-    if (!quota.ok) return errorResponse(quota.code, quota.retryAfterSec);
-    return okResponse("local", local.understood ? local.result : localHelp());
+    if (!quota.ok) return errorResponse(quota.code, locale, quota.retryAfterSec);
+    return okResponse("local", local.understood ? local.result : localHelp(sayFor(locale)));
   }
 
   // Repli vers le modèle : seules ces demandes consomment les quotas du modèle.
   try {
     const database = await deps.database();
     const quota = await consumeAssistantQuota(database, clientIp(request.headers), deps.quota, deps.now());
-    if (!quota.ok) return errorResponse(quota.code, quota.retryAfterSec);
+    if (!quota.ok) return errorResponse(quota.code, locale, quota.retryAfterSec);
   } catch (err) {
     console.error("[assistant] limitation de débit indisponible", { error: err instanceof Error ? err.name : typeof err });
-    return errorResponse("UNAVAILABLE");
+    return errorResponse("UNAVAILABLE", locale);
   }
   try {
     const result = await runAssistant(input, { client: deps.client(t), ctx });
     return okResponse("ia", result);
   } catch (err) {
-    if (err instanceof AssistantFailure) return errorResponse(err.code);
+    if (err instanceof AssistantFailure) return errorResponse(err.code, locale);
     console.error("[assistant] erreur inattendue", { error: err instanceof Error ? err.name : typeof err });
-    return errorResponse("UNAVAILABLE");
+    return errorResponse("UNAVAILABLE", locale);
   }
 }

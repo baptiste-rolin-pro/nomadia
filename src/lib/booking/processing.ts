@@ -17,8 +17,10 @@ import { RUNNING_LEASE_MS, enqueueJob, type JobType } from "@/lib/jobs";
 import { requestDemoRefund, settleDemoRefund } from "@/lib/payments/demo-psp";
 import { sendEmail } from "@/lib/mail";
 import { audit } from "@/lib/audit";
-import { formatMoney } from "@/lib/money";
 import { siteUrl } from "@/lib/env";
+import { localizePath, toLocale } from "@/i18n/config";
+import { formatMessage, formatMoneyIn } from "@/i18n/format";
+import { getMessages } from "@/i18n/messages";
 
 export type BookingRow = typeof bookings.$inferSelect;
 
@@ -61,19 +63,22 @@ async function onConfirmed(booking: BookingRow, result: ProviderBookingResult) {
   if (booking.contactEmail) {
     const quote = await loadQuote(booking.quoteId);
     const bookable = quote?.snapshot as Bookable | undefined;
+    // Email dans la langue de la réservation (devis rédigé dans cette même langue).
+    const locale = toLocale(booking.locale);
+    const t = getMessages(locale).email.bookingConfirmed;
     const sent = await sendEmail({
       to: booking.contactEmail,
-      subject: `Nomadia — réservation confirmée (DÉMONSTRATION) ${result.providerReference ?? ""}`.trim(),
+      subject: formatMessage(locale, t.subject, { reference: result.providerReference ?? "" }).trim(),
       text: [
-        "DÉMONSTRATION — aucune réservation ni aucun paiement réel.",
+        t.demo,
         "",
         bookable ? bookable.title : "",
         bookable ? bookable.subtitle : "",
-        `Référence fournisseur (fictive) : ${result.providerReference ?? "—"}`,
-        `Total : ${formatMoney({ amount: booking.totalAmount, currency: booking.currency })}`,
+        formatMessage(locale, t.reference, { reference: result.providerReference ?? "—" }),
+        formatMessage(locale, t.total, { total: formatMoneyIn(locale, { amount: booking.totalAmount, currency: booking.currency }) }),
         "",
-        `Détail et documents : ${siteUrl()}/reservation/${booking.id}`,
-        "Ce lien exige d'être connecté au compte qui a réservé (ou d'utiliser le lien invité reçu)."
+        formatMessage(locale, t.details, { url: `${siteUrl()}${localizePath(locale, `/reservation/${booking.id}`)}` }),
+        t.access,
       ].join("\n"),
       template: "booking_confirmed",
       dedupeKey: `booking-confirmed:${booking.id}`,

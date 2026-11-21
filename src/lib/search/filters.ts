@@ -11,8 +11,7 @@ import type { CarOffer, FlightOffer, HotelSearchResult } from "@/lib/providers/t
 
 export const PAGE_SIZE = 10;
 
-export const RECOMMENDATION_EXPLANATION =
-  "Tri recommandé : 60 % prix, 30 % durée, 10 % nombre d'escales ; les billets séparés sont placés plus bas. Aucun critère commercial n'est utilisé.";
+// Explications des tris : `domain.sort` dans src/i18n/messages (une traduction par langue).
 
 function int(v: string | null): number | null {
   if (!v) return null;
@@ -105,7 +104,7 @@ export function flightFacets(offers: FlightOffer[]) {
   }
   const prices = offers.map((o) => o.price.total.amount);
   return {
-    carriers: [...carriers.values()].sort((a, b) => a.name.localeCompare(b.name, "fr")),
+    carriers: [...carriers.values()].sort((a, b) => a.name.localeCompare(b.name)),
     minPrice: prices.length ? Math.floor(Math.min(...prices) / 100) : null,
     maxPrice: prices.length ? Math.ceil(Math.max(...prices) / 100) : null,
     withBag: offers.filter((o) => o.fare.checkedBags > 0).length,
@@ -157,19 +156,21 @@ export function applyHotelFilters(results: HotelSearchResult[], f: HotelFilters)
   return filtered.sort((a, b) => score(a) - score(b));
 }
 
-export const HOTEL_RECOMMENDATION_EXPLANATION =
-  "Tri recommandé : 70 % prix total, puis disponibilité d'une annulation gratuite et transparence des taxes. Aucun critère commercial.";
-
-export function hotelFacets(results: HotelSearchResult[]) {
+/**
+ * Facettes calculées sur les valeurs de base (clés d'équipement, nom de quartier) ; `label` traduit le libellé
+ * (fourni par la route de recherche, côté serveur).
+ */
+export function hotelFacets(results: HotelSearchResult[], label: { amenity: (key: string) => string; neighborhood: (hotelId: string, value: string) => string } = { amenity: (k) => k, neighborhood: (_h, v) => v }) {
   const amenities = new Map<string, number>();
-  const neighborhoods = new Map<string, number>();
+  const neighborhoods = new Map<string, { count: number; hotelId: string }>();
   for (const r of results) {
     for (const a of r.hotel.amenities) amenities.set(a, (amenities.get(a) ?? 0) + 1);
-    neighborhoods.set(r.hotel.neighborhood, (neighborhoods.get(r.hotel.neighborhood) ?? 0) + 1);
+    const n = neighborhoods.get(r.hotel.neighborhood);
+    neighborhoods.set(r.hotel.neighborhood, { count: (n?.count ?? 0) + 1, hotelId: n?.hotelId ?? r.hotel.id });
   }
   return {
-    amenities: [...amenities.entries()].map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count),
-    neighborhoods: [...neighborhoods.entries()].map(([label, count]) => ({ label, count })),
+    amenities: [...amenities.entries()].map(([value, count]) => ({ value, label: label.amenity(value), count })).sort((a, b) => b.count - a.count),
+    neighborhoods: [...neighborhoods.entries()].map(([value, n]) => ({ value, label: label.neighborhood(n.hotelId, value), count: n.count })),
   };
 }
 
@@ -206,7 +207,7 @@ export function parseCarFilters(sp: URLSearchParams): CarFilters {
 
 export function applyCarFilters(offers: CarOffer[], f: CarFilters): CarOffer[] {
   const filtered = offers.filter((o) => {
-    if (f.categories.length && !f.categories.includes(o.category)) return false;
+    if (f.categories.length && !f.categories.includes(o.modelId)) return false;
     if (f.transmission && o.transmission !== f.transmission) return false;
     if (f.minSeats !== null && o.seats < f.minSeats) return false;
     if (f.minBags !== null && o.bagsLarge < f.minBags) return false;
@@ -221,9 +222,6 @@ export function applyCarFilters(offers: CarOffer[], f: CarFilters): CarOffer[] {
   return filtered.sort((a, b) => Number(b.bookable) - Number(a.bookable) || a.price.total.amount - b.price.total.amount);
 }
 
-export const CAR_RECOMMENDATION_EXPLANATION =
-  "Tri recommandé : offres réservables aux horaires choisis d'abord, puis prix total de la période. Aucun critère commercial.";
-
 export function carFacets(offers: CarOffer[]) {
   const count = <K extends string>(key: (o: CarOffer) => K) => {
     const m = new Map<K, number>();
@@ -231,7 +229,8 @@ export function carFacets(offers: CarOffer[]) {
     return [...m.entries()].map(([value, n]) => ({ value, count: n }));
   };
   return {
-    categories: count((o) => o.category),
+    // Valeur = identifiant du modèle ; libellé = catégorie déjà dans la langue de l'offre.
+    categories: count((o) => o.modelId).map((c) => ({ ...c, label: offers.find((o) => o.modelId === c.value)?.category ?? c.value })),
     suppliers: [...new Map(offers.map((o) => [o.supplier.id, o.supplier])).values()].map((s) => ({ ...s, count: offers.filter((o) => o.supplier.id === s.id).length })),
     energies: count((o) => o.energy),
     closedAgencies: offers.filter((o) => !o.bookable).length,

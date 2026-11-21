@@ -1,11 +1,13 @@
 /**
- * Dates, durées et heures en français, relatives à aujourd'hui (date civile Europe/Paris fournie par
+ * Dates, durées et heures (texte français canonique : les autres langues y sont ramenées par
+ * src/lib/assistant/parser/lang), relatives à aujourd'hui (date civile Europe/Paris fournie par
  * l'appelant : src/lib/clock.ts). Tout se calcule en dates civiles (src/lib/dates.ts) : aucun passage par
  * minuit UTC, donc aucun décalage au changement d'heure. Toute date choisie par défaut est rendue comme
  * hypothèse ; une date impossible (« 31 juin ») est signalée, jamais corrigée en silence.
  */
-import { addDays, compareCivil, formatCivilDate, isCivilDate, parseCivilDate, weekday, type CivilDate } from "@/lib/dates";
+import { addDays, compareCivil, isCivilDate, parseCivilDate, weekday, type CivilDate } from "@/lib/dates";
 import { editDistance } from "@/lib/assistant/parser/fuzzy";
+import type { Say } from "@/lib/assistant/parser/say";
 import type { Token } from "@/lib/assistant/parser/text";
 import { UNIT_WORDS } from "@/lib/assistant/parser/vocabulary";
 
@@ -51,7 +53,6 @@ export interface DateFacts {
   any: boolean;
 }
 
-export const day = (d: CivilDate) => formatCivilDate(d, "weekday");
 const iso = (y: number, m: number, d: number) => `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 const lastDay = (y: number, m: number) => (m === 2 ? (isCivilDate(iso(y, 2, 29)) ? 29 : 28) : MAX_DAYS[m - 1]!);
 
@@ -130,13 +131,39 @@ function startOfWeek(date: CivilDate): CivilDate {
   return addDays(date, -((weekday(date) + 6) % 7));
 }
 
-function monthPeriod(m: number, y: number | null, part: Period["part"], today: CivilDate): Period {
+/** Année affichée (sans séparateur de milliers). */
+const yearText = (say: Say, y: number) => say.f.number(y, { useGrouping: false });
+
+function monthLabel(say: Say, m: number, y: number | null, part: Period["part"]): string {
+  if (say.locale === "fr") {
+    const prefix = part === "debut" ? "début " : part === "mi" ? "mi-" : part === "fin" ? "fin " : "";
+    return `${prefix}${MONTH_LABELS[m - 1]}${y ? ` ${y}` : ""}`;
+  }
+  const l = say.m.labels;
+  const name = part ? say.monthOf(m) : say.month(m);
+  const month = y ? say.t(l.monthYear, { month: name, year: yearText(say, y) }) : name;
+  return part === "debut" ? say.t(l.early, { month }) : part === "mi" ? say.t(l.mid, { month }) : part === "fin" ? say.t(l.late, { month }) : month;
+}
+
+/** Date citée (« 31 juin », « 29 février 2027 », « le 31 ») dans la langue de réponse. */
+function dateLabel(say: Say, d: number, m: number | null, y: number | null, french: string): string {
+  if (say.locale === "fr") return french;
+  const l = say.m.labels;
+  if (m === null) return say.t(l.dayOnly, { d });
+  return y ? say.t(l.dayMonthYear, { d, month: say.monthOf(m), year: yearText(say, y) }) : say.t(l.dayMonth, { d, month: say.monthOf(m) });
+}
+
+function durationLabel(say: Say, unit: "days" | "nights" | "weeks" | "month", n: number, french: string): string {
+  if (say.locale === "fr") return french;
+  return unit === "month" ? say.m.labels.month : say.t(say.m.labels[unit], { n });
+}
+
+function monthPeriod(m: number, y: number | null, part: Period["part"], today: CivilDate, say: Say): Period {
   const t = parseCivilDate(today)!;
   const build = (year: number): Period => {
     const end = lastDay(year, m);
     const [a, b] = part === "debut" ? [1, 10] : part === "mi" ? [11, 20] : part === "fin" ? [21, end] : [1, end];
-    const prefix = part === "debut" ? "début " : part === "mi" ? "mi-" : part === "fin" ? "fin " : "";
-    return { kind: "month", from: iso(year, m, a), to: iso(year, m, b), part, label: `${prefix}${MONTH_LABELS[m - 1]}${y ? ` ${year}` : ""}` };
+    return { kind: "month", from: iso(year, m, a), to: iso(year, m, b), part, label: monthLabel(say, m, y ? year : null, part) };
   };
   if (y) return build(y);
   const current = build(t.year);
@@ -147,7 +174,7 @@ function monthPeriod(m: number, y: number | null, part: Period["part"], today: C
  * Extraction des dates d'un segment de texte ; les jetons utilisés sont marqués. `firstRole` : rôle d'une date
  * sans indice (« le 9 ») — la fin quand le segment répond à « Quand rendrez-vous la voiture ? ».
  */
-export function extractDates(norm: string, tokens: Token[], used: boolean[], today: CivilDate, firstRole: "start" | "end" = "start"): DateFacts {
+export function extractDates(norm: string, tokens: Token[], used: boolean[], today: CivilDate, firstRole: "start" | "end", say: Say): DateFacts {
   const facts: DateFacts = { atoms: [], period: null, weekend: null, duration: null, times: { pickup: null, dropoff: null, notes: [] }, invalid: null, any: false };
   const t = (i: number) => tokens[i]?.t ?? "";
   const gap = (i: number) => (tokens[i] && tokens[i + 1] ? norm.slice(tokens[i]!.end, tokens[i + 1]!.start) : "");
@@ -157,7 +184,7 @@ export function extractDates(norm: string, tokens: Token[], used: boolean[], tod
   };
   const free = (i: number) => !!tokens[i] && !used[i];
   const checkDay = (d: number, m: number, label: string) => {
-    if (d > MAX_DAYS[m - 1]!) facts.invalid ??= label;
+    if (d > MAX_DAYS[m - 1]!) facts.invalid ??= dateLabel(say, d, m, null, label);
   };
 
   // 1. Heures (location de voiture) : « 10h », « 10h30 », « 10 h 30 », « 10:30 », « midi ».
@@ -191,7 +218,7 @@ export function extractDates(norm: string, tokens: Token[], used: boolean[], tod
     if (dropoff && facts.times.dropoff === null) facts.times.dropoff = r.time;
     else if (!dropoff && facts.times.pickup === null) facts.times.pickup = r.time;
     else continue;
-    if (r.rounded) facts.times.notes.push(`Heure arrondie à ${r.time.replace(":", " h ")} (créneaux de 30 minutes)`);
+    if (r.rounded) facts.times.notes.push(say.t(say.m.assumptions.rounded, { time: say.time(r.time) }));
     take(i, last);
     i = last;
   }
@@ -232,10 +259,10 @@ export function extractDates(norm: string, tokens: Token[], used: boolean[], tod
         const thisFriday = addDays(today, wd === 6 ? -1 : wd === 0 ? -2 : 5 - wd);
         const friday = next || wd === 0 ? addDays(thisFriday, 7) : thisFriday;
         const start = compareCivil(friday, today) < 0 ? today : friday;
-        facts.weekend = { start, end: addDays(friday, 2), label: thisOne ? "Ce week-end" : "Le week-end prochain" };
+        facts.weekend = { start, end: addDays(friday, 2), label: thisOne ? say.m.labels.thisWeekend : say.m.labels.nextWeekend };
         take(["ce", "cet", "prochain"].includes(t(i - 1)) ? i - 1 : i, ["ci", "prochain"].includes(t(i + 1)) ? i + 1 : i);
       } else {
-        facts.duration ??= { nights: 2, label: "un week-end", weekend: true };
+        facts.duration ??= { nights: 2, label: say.m.labels.aWeekend, weekend: true };
         take(i, i);
       }
       continue;
@@ -245,13 +272,13 @@ export function extractDates(norm: string, tokens: Token[], used: boolean[], tod
       const nextWeek = t(i - 1) !== "cette";
       const monday = nextWeek ? addDays(startOfWeek(today), 7) : today;
       const sunday = nextWeek ? addDays(monday, 6) : addDays(startOfWeek(today), 6);
-      facts.period ??= { kind: "week", from: monday, to: sunday, part: null, label: nextWeek ? "la semaine prochaine" : "cette semaine" };
+      facts.period ??= { kind: "week", from: monday, to: sunday, part: null, label: nextWeek ? say.m.labels.nextWeek : say.m.labels.thisWeek };
       take(t(i - 1) === "prochaine" || t(i - 1) === "cette" ? i - 1 : i, t(i + 1) === "prochaine" ? i + 1 : i);
       continue;
     }
     if (w === "mois" && (t(i + 1) === "prochain" || t(i - 1) === "prochain")) {
       const p = parseCivilDate(addMonths(today, 1))!;
-      facts.period ??= monthPeriod(p.month, p.year, null, today);
+      facts.period ??= monthPeriod(p.month, p.year, null, today, say);
       take(t(i - 1) === "prochain" ? i - 1 : i, t(i + 1) === "prochain" ? i + 1 : i);
       continue;
     }
@@ -262,7 +289,8 @@ export function extractDates(norm: string, tokens: Token[], used: boolean[], tod
         continue;
       }
       const next = t(i + 1) === "prochain";
-      facts.atoms.push({ kind: "wd", wd: WEEKDAYS[w]!, strict: t(i - 1) !== "ce", role: roleBefore(norm, tokens, i), label: next ? `${tokens[i]!.raw} prochain` : "" });
+      const nextLabel = say.locale === "fr" ? `${tokens[i]!.raw} prochain` : say.t(say.m.labels.nextWeekday, { weekday: say.weekday(WEEKDAYS[w]!) });
+      facts.atoms.push({ kind: "wd", wd: WEEKDAYS[w]!, strict: t(i - 1) !== "ce", role: roleBefore(norm, tokens, i), label: next ? nextLabel : "" });
       take(i, next ? i + 1 : i);
       continue;
     }
@@ -320,7 +348,7 @@ export function extractDates(norm: string, tokens: Token[], used: boolean[], tod
     // Jour seul après « le », « du », « au », « dès », « entre » : « retour le 16 », « du 12 au 16 ».
     const d3 = dayAt(tokens, i, false);
     if (d3 !== null && ["le", "du", "au", "des", "entre", "jusquau"].includes(t(i - 1)) && !UNIT_WORDS.has(t(i + 1)) && !/:/.test(gap(i))) {
-      facts.atoms.push({ kind: "abs", d: d3, m: null, y: null, role: roleBefore(norm, tokens, i), label: `le ${d3}` });
+      facts.atoms.push({ kind: "abs", d: d3, m: null, y: null, role: roleBefore(norm, tokens, i), label: dateLabel(say, d3, null, null, `le ${d3}`) });
       take(i, i);
       continue;
     }
@@ -343,7 +371,7 @@ export function extractDates(norm: string, tokens: Token[], used: boolean[], tod
         break;
       }
       const y = yearAt(tokens, i + 1);
-      facts.period ??= monthPeriod(mo, y, part, today);
+      facts.period ??= monthPeriod(mo, y, part, today, say);
       take(first, y !== null ? i + 1 : i);
       if (y !== null) i += 1;
       continue;
@@ -354,19 +382,20 @@ export function extractDates(norm: string, tokens: Token[], used: boolean[], tod
     if (n !== null && n >= 1 && n <= 90) {
       const unit = t(i + 1);
       let nights: number | null = null;
+      let kind: "days" | "nights" | "weeks" | "month" = "days";
       if (unit === "jour" || unit === "jours" || unit === "j") nights = Math.max(0, n - 1);
-      else if (unit === "nuit" || unit === "nuits" || unit === "nuitee" || unit === "nuitees") nights = n;
-      else if (unit === "semaine" || unit === "semaines") nights = 7 * n;
-      else if (unit === "mois" && n === 1) nights = 30;
+      else if (unit === "nuit" || unit === "nuits" || unit === "nuitee" || unit === "nuitees") [nights, kind] = [n, "nights"];
+      else if (unit === "semaine" || unit === "semaines") [nights, kind] = [7 * n, "weeks"];
+      else if (unit === "mois" && n === 1) [nights, kind] = [30, "month"];
       if (nights !== null && free(i + 1)) {
-        facts.duration = { nights, label: `${tokens[i]!.raw} ${tokens[i + 1]!.raw}`, weekend: false };
+        facts.duration = { nights, label: durationLabel(say, kind, n, `${tokens[i]!.raw} ${tokens[i + 1]!.raw}`), weekend: false };
         take(i, i + 1);
         i += 1;
         continue;
       }
     }
     if (w === "quinzaine") {
-      facts.duration = { nights: 14, label: "une quinzaine", weekend: false };
+      facts.duration = { nights: 14, label: say.m.labels.fortnight, weekend: false };
       take(i, i);
     }
   }
@@ -395,7 +424,7 @@ export function extractDates(norm: string, tokens: Token[], used: boolean[], tod
 
 type Resolved = { date: CivilDate; rolled: boolean } | { invalid: string };
 
-function resolveAtom(a: DateAtom, today: CivilDate, after: CivilDate | null): Resolved {
+function resolveAtom(a: DateAtom, today: CivilDate, after: CivilDate | null, say: Say): Resolved {
   const ref = after ?? today;
   const r = parseCivilDate(ref)!;
   if (a.kind === "rel") return { date: a.date, rolled: false };
@@ -406,14 +435,14 @@ function resolveAtom(a: DateAtom, today: CivilDate, after: CivilDate | null): Re
   }
   if (a.m !== null && a.y !== null) {
     const date = iso(a.y, a.m, a.d);
-    return isCivilDate(date) ? { date, rolled: false } : { invalid: `${a.d} ${MONTH_LABELS[a.m - 1]} ${a.y}` };
+    return isCivilDate(date) ? { date, rolled: false } : { invalid: dateLabel(say, a.d, a.m, a.y, `${a.d} ${MONTH_LABELS[a.m - 1]} ${a.y}`) };
   }
   if (a.m !== null) {
     for (const y of [r.year, r.year + 1]) {
       const date = iso(y, a.m, a.d);
       if (isCivilDate(date) && compareCivil(date, ref) >= 0) return { date, rolled: y > parseCivilDate(today)!.year };
     }
-    return { invalid: `${a.d} ${MONTH_LABELS[a.m - 1]}` };
+    return { invalid: dateLabel(say, a.d, a.m, null, `${a.d} ${MONTH_LABELS[a.m - 1]}`) };
   }
   // Jour seul : prochaine date portant ce numéro de jour, à partir de la référence.
   for (let k = 0; k < 13; k++) {
@@ -421,7 +450,7 @@ function resolveAtom(a: DateAtom, today: CivilDate, after: CivilDate | null): Re
     const date = iso(Math.floor(index / 12), (index % 12) + 1, a.d);
     if (isCivilDate(date) && compareCivil(date, ref) >= 0) return { date, rolled: false };
   }
-  return { invalid: `le ${a.d}` };
+  return { invalid: dateLabel(say, a.d, null, null, `le ${a.d}`) };
 }
 
 export interface ResolvedDates {
@@ -438,7 +467,10 @@ export interface ResolvedDates {
  * Début et fin à partir des indices du texte. `fallbackNights` ne sert qu'à une période sans durée
  * (« en mars ») : la durée choisie est alors signalée.
  */
-export function resolveDates(f: DateFacts, today: CivilDate, fallback: { nights: number; label: string }): ResolvedDates {
+export function resolveDates(f: DateFacts, today: CivilDate, fallback: { nights: number; label: string }, say: Say): ResolvedDates {
+  const a = say.m.assumptions;
+  const l = say.m.labels;
+  const day = (d: CivilDate) => say.day(d);
   const out: ResolvedDates = { start: null, end: null, assumptions: [], invalid: f.invalid, chosen: false };
   if (f.invalid) return out;
   const todayYear = parseCivilDate(today)!.year;
@@ -461,13 +493,13 @@ export function resolveDates(f: DateFacts, today: CivilDate, fallback: { nights:
   }
 
   if (startAtom) {
-    out.start = take(resolveAtom(startAtom, today, null), true);
-    if (out.start && startAtom.kind === "abs" && startAtom.m === null) out.assumptions.push(`« ${capitalize(startAtom.label)} » compris comme le ${day(out.start)}`);
-    if (out.start && startAtom.kind === "wd" && startAtom.label) out.assumptions.push(`« ${capitalize(startAtom.label)} » compris comme le ${day(out.start)}`);
+    out.start = take(resolveAtom(startAtom, today, null, say), true);
+    if (out.start && startAtom.kind === "abs" && startAtom.m === null) out.assumptions.push(say.t(a.understoodAs, { label: capitalize(startAtom.label), date: day(out.start) }));
+    if (out.start && startAtom.kind === "wd" && startAtom.label) out.assumptions.push(say.t(a.understoodAs, { label: capitalize(startAtom.label), date: day(out.start) }));
   } else if (f.weekend) {
     out.start = f.weekend.start;
     out.end = f.duration && !f.duration.weekend ? addDays(f.weekend.start, f.duration.nights) : f.weekend.end;
-    out.assumptions.push(`« ${f.weekend.label} » : du ${day(out.start)} au ${day(out.end)}`);
+    out.assumptions.push(say.t(a.weekend, { label: f.weekend.label, from: day(out.start), to: day(out.end) }));
   } else if (f.period) {
     const p = f.period;
     const tomorrow = addDays(today, 1);
@@ -477,21 +509,21 @@ export function resolveDates(f: DateFacts, today: CivilDate, fallback: { nights:
     let desc: string;
     if (f.duration?.weekend) {
       start = addDays(from, (5 - weekday(from) + 7) % 7);
-      desc = p.kind === "week" || p.part ? `week-end de ${p.label}` : `premier week-end de ${p.label}`;
+      desc = say.t(p.kind === "week" || p.part ? l.weekendOf : l.firstWeekendOf, { period: p.label });
     } else {
       if (p.part === "fin") {
         const latest = addDays(p.to, -nights);
         if (compareCivil(latest, from) > 0) start = latest;
       }
-      desc = f.duration ? `${p.label}, ${f.duration.label}` : p.kind === "week" ? p.label : `${p.label}, ${fallback.label}`;
+      desc = f.duration ? say.t(l.periodWith, { period: p.label, duration: f.duration.label }) : p.kind === "week" ? p.label : say.t(l.periodWith, { period: p.label, duration: fallback.label });
     }
     out.start = start;
     out.end = addDays(start, nights);
     out.chosen = true;
     const y = parseCivilDate(start)!.year;
-    out.assumptions.push(`Dates choisies : du ${day(start)} au ${day(out.end)}${y !== todayYear ? ` ${y}` : ""} (${desc})`);
+    out.assumptions.push(say.t(a.chosen, { from: day(start), to: day(out.end), year: y !== todayYear ? ` ${yearText(say, y)}` : "", desc }));
   } else if (endAtom && f.duration) {
-    const end = take(resolveAtom(endAtom, today, null), true);
+    const end = take(resolveAtom(endAtom, today, null, say), true);
     if (end) {
       out.end = end;
       out.start = addDays(end, -f.duration.nights);
@@ -499,10 +531,10 @@ export function resolveDates(f: DateFacts, today: CivilDate, fallback: { nights:
   }
 
   if (out.start && !out.end) {
-    if (endAtom) out.end = take(resolveAtom(endAtom, today, out.start));
+    if (endAtom) out.end = take(resolveAtom(endAtom, today, out.start, say));
     else if (f.duration) out.end = addDays(out.start, f.duration.nights);
   }
-  if (rolled && out.start) out.assumptions.push(`Année : ${parseCivilDate(out.start)!.year} (prochaine occurrence de cette date)`);
+  if (rolled && out.start) out.assumptions.push(say.t(a.year, { year: yearText(say, parseCivilDate(out.start)!.year) }));
   if (out.invalid) {
     out.start = null;
     out.end = null;

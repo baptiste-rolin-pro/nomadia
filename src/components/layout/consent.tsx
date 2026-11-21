@@ -1,9 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useDemoNoticeOpen } from "@/lib/demo-notice";
 import { useIntroDone } from "@/lib/intro-state";
+import { useI18n } from "@/i18n/client";
+import { Link } from "@/i18n/link";
 
 /**
  * Consentement aux traceurs non essentiels (mesure d'audience interne, sans donnée personnelle).
@@ -59,9 +60,10 @@ export function useConsent(): ConsentState | null {
 }
 
 export function ManageCookiesButton({ className = "" }: { className?: string }) {
+  const { m } = useI18n();
   return (
     <button type="button" className={className} onClick={() => window.dispatchEvent(new Event(OPEN_EVENT))}>
-      Gérer les cookies
+      {m.common.consent.manage}
     </button>
   );
 }
@@ -72,6 +74,7 @@ export function ManageCookiesButton({ className = "" }: { className?: string }) 
  * Dans tous les cas, elle attend la fin de l'écran d'accueil « avion » (première page de la session).
  */
 export function ConsentBanner({ afterDemoNotice = false }: { afterDemoNotice?: boolean }) {
+  const t = useI18n().m.common.consent;
   const decided = useSyncExternalStore(
     subscribe,
     () => readConsent() !== null,
@@ -105,36 +108,33 @@ export function ConsentBanner({ afterDemoNotice = false }: { afterDemoNotice?: b
     <div
       ref={regionRef}
       role="region"
-      aria-label="Gestion des cookies"
+      aria-label={t.region}
       className="no-print fixed inset-x-3 bottom-3 z-[var(--z-toast)] mx-auto max-w-3xl rounded-[var(--radius-lg)] border border-line bg-white p-5 shadow-[var(--shadow-panel)] sm:inset-x-6"
     >
-      <h2 className="font-serif text-xl">Vos choix sur les cookies</h2>
-      <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-        Nomadia utilise uniquement des cookies nécessaires (session, sécurité, brouillon de voyage). Avec votre accord, nous mesurons aussi
-        l&apos;usage du site de façon anonyme (recherches, étapes de réservation) pour l&apos;améliorer. Aucun traceur publicitaire.
-      </p>
+      <h2 className="font-serif text-xl">{t.title}</h2>
+      <p className="mt-2 text-sm leading-relaxed text-ink-soft">{t.text}</p>
       {details ? (
         <ul className="mt-3 space-y-1 text-sm">
           <li>
-            <strong>Nécessaires</strong> — toujours actifs : connexion, protection, panier de réservation.
+            <strong>{t.necessary}</strong> — {t.necessaryText}
           </li>
           <li>
-            <strong>Mesure d&apos;audience interne</strong> — {current?.audience ? "actuellement acceptée" : "actuellement refusée ou non choisie"}.
+            <strong>{t.audience}</strong> — {current?.audience ? t.accepted : t.refused}.
           </li>
         </ul>
       ) : null}
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
         <button type="button" onClick={() => choose(false)} className="min-h-11 rounded-[var(--radius-md)] border border-forest px-5 font-semibold text-forest hover:bg-forest-soft">
-          Tout refuser
+          {t.refuseAll}
         </button>
         <button type="button" onClick={() => choose(true)} className="min-h-11 rounded-[var(--radius-md)] border border-forest px-5 font-semibold text-forest hover:bg-forest-soft">
-          Tout accepter
+          {t.acceptAll}
         </button>
         <button type="button" onClick={() => setDetails((d) => !d)} aria-expanded={details} className="min-h-11 px-3 text-sm font-semibold text-ink underline underline-offset-4">
-          {details ? "Masquer le détail" : "Voir le détail"}
+          {details ? t.hideDetails : t.showDetails}
         </button>
-        <Link href="/cookies" className="text-sm text-ink-soft underline underline-offset-4 sm:ml-auto">
-          Politique cookies
+        <Link href="/cookies" className="text-sm text-ink-soft underline underline-offset-4 sm:ms-auto">
+          {t.policy}
         </Link>
       </div>
     </div>

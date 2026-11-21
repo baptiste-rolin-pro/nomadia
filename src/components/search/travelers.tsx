@@ -3,10 +3,11 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Minus, Plus, Users } from "lucide-react";
 import type { RoomOccupancy } from "@/lib/providers/types";
-import { flightTravelersSummary, roomsSummary } from "@/lib/search/summary";
+import { useI18n } from "@/i18n/client";
 
 function Stepper({ label, hint, value, min, max, onChange }: { label: string; hint?: string; value: number; min: number; max: number; onChange: (v: number) => void }) {
   const id = useId();
+  const { m, f } = useI18n();
   return (
     <div className="flex items-center justify-between gap-4 py-2">
       <div>
@@ -16,13 +17,13 @@ function Stepper({ label, hint, value, min, max, onChange }: { label: string; hi
         {hint ? <p className="text-xs text-ink-soft">{hint}</p> : null}
       </div>
       <div className="flex items-center gap-3" role="group" aria-labelledby={id}>
-        <button type="button" className="inline-flex size-9 items-center justify-center rounded-full border border-line disabled:opacity-40" onClick={() => onChange(value - 1)} disabled={value <= min} aria-label={`Retirer : ${label}`}>
+        <button type="button" className="inline-flex size-9 items-center justify-center rounded-full border border-line disabled:opacity-40" onClick={() => onChange(value - 1)} disabled={value <= min} aria-label={f.t(m.search.travelers.remove, { label })}>
           <Minus aria-hidden className="size-4" />
         </button>
         <output aria-live="polite" className="w-5 text-center font-semibold tabular-nums">
-          {value}
+          {f.number(value)}
         </output>
-        <button type="button" className="inline-flex size-9 items-center justify-center rounded-full border border-line disabled:opacity-40" onClick={() => onChange(value + 1)} disabled={value >= max} aria-label={`Ajouter : ${label}`}>
+        <button type="button" className="inline-flex size-9 items-center justify-center rounded-full border border-line disabled:opacity-40" onClick={() => onChange(value + 1)} disabled={value >= max} aria-label={f.t(m.search.travelers.add, { label })}>
           <Plus aria-hidden className="size-4" />
         </button>
       </div>
@@ -32,6 +33,7 @@ function Stepper({ label, hint, value, min, max, onChange }: { label: string; hi
 
 function AgeSelect({ label, value, min, max, onChange }: { label: string; value: number; min: number; max: number; onChange: (v: number) => void }) {
   const id = useId();
+  const { m, f } = useI18n();
   return (
     <div className="flex items-center justify-between gap-3 py-1">
       <label htmlFor={id} className="text-sm">
@@ -40,7 +42,7 @@ function AgeSelect({ label, value, min, max, onChange }: { label: string; value:
       <select id={id} className="field-input w-28 min-h-9 py-1" value={value} onChange={(e) => onChange(Number(e.target.value))}>
         {Array.from({ length: max - min + 1 }, (_, i) => min + i).map((age) => (
           <option key={age} value={age}>
-            {age} an{age > 1 ? "s" : ""}
+            {f.t(m.search.travelers.age, { n: age })}
           </option>
         ))}
       </select>
@@ -50,6 +52,7 @@ function AgeSelect({ label, value, min, max, onChange }: { label: string; value:
 
 /** Panneau déroulant accessible (bouton + région), fermeture par Échap et retour du focus. */
 function Disclosure({ label, summary, children, error }: { label: string; summary: string; children: ReactNode; error?: string | null }) {
+  const { m } = useI18n();
   const [open, setOpen] = useState(false);
   const panelId = useId();
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -70,7 +73,7 @@ function Disclosure({ label, summary, children, error }: { label: string; summar
       <button
         ref={btnRef}
         type="button"
-        className="field-input flex items-center gap-2 text-left"
+        className="field-input flex items-center gap-2 text-start"
         aria-expanded={open}
         aria-controls={panelId}
         aria-labelledby={`${panelId}-label ${panelId}-summary`}
@@ -89,7 +92,7 @@ function Disclosure({ label, summary, children, error }: { label: string; summar
       <div
         id={panelId}
         hidden={!open}
-        className="absolute left-0 top-full z-[var(--z-overlay)] mt-1 w-[min(22rem,calc(100vw-2rem))] rounded-[var(--radius-md)] border border-line bg-white p-4 shadow-[var(--shadow-panel)]"
+        className="absolute start-0 top-full z-[var(--z-overlay)] mt-1 w-[min(22rem,calc(100vw-2rem))] rounded-[var(--radius-md)] border border-line bg-white p-4 shadow-[var(--shadow-panel)]"
         onKeyDown={(e) => {
           if (e.key === "Escape") {
             setOpen(false);
@@ -106,7 +109,7 @@ function Disclosure({ label, summary, children, error }: { label: string; summar
             btnRef.current?.focus();
           }}
         >
-          Valider
+          {m.search.travelers.validate}
         </button>
       </div>
     </div>
@@ -120,52 +123,56 @@ export interface FlightTravelers {
 }
 
 export function FlightTravelersPicker({ value, onChange, error }: { value: FlightTravelers; onChange: (v: FlightTravelers) => void; error?: string | null }) {
+  const { m, f } = useI18n();
+  const t = m.search.travelers;
   const seats = value.adults + value.childrenAges.length;
+  const summary = f.t(t.flightSummary, { adults: value.adults, children: value.childrenAges.length, infants: value.infants });
   return (
-    <Disclosure label="Voyageurs" summary={flightTravelersSummary(value)} error={error}>
-      <Stepper label="Adultes" hint="12 ans et plus au départ" value={value.adults} min={1} max={9 - value.childrenAges.length} onChange={(adults) => onChange({ ...value, adults, infants: Math.min(value.infants, adults) })} />
+    <Disclosure label={t.label} summary={summary} error={error}>
+      <Stepper label={t.adults} hint={t.adultsHint} value={value.adults} min={1} max={9 - value.childrenAges.length} onChange={(adults) => onChange({ ...value, adults, infants: Math.min(value.infants, adults) })} />
       <Stepper
-        label="Enfants"
-        hint="2 à 11 ans au départ"
+        label={t.children}
+        hint={t.childrenHint}
         value={value.childrenAges.length}
         min={0}
         max={Math.min(8, 9 - value.adults)}
         onChange={(n) => onChange({ ...value, childrenAges: n > value.childrenAges.length ? [...value.childrenAges, 8] : value.childrenAges.slice(0, n) })}
       />
       {value.childrenAges.map((age, i) => (
-        <AgeSelect key={i} label={`Âge de l'enfant ${i + 1} au départ`} value={age} min={2} max={11} onChange={(a) => onChange({ ...value, childrenAges: value.childrenAges.map((x, j) => (j === i ? a : x)) })} />
+        <AgeSelect key={i} label={f.t(t.childAgeFlight, { n: i + 1 })} value={age} min={2} max={11} onChange={(a) => onChange({ ...value, childrenAges: value.childrenAges.map((x, j) => (j === i ? a : x)) })} />
       ))}
-      <Stepper label="Bébés" hint="Moins de 2 ans, sur les genoux d'un adulte" value={value.infants} min={0} max={value.adults} onChange={(infants) => onChange({ ...value, infants })} />
-      <p className="mt-2 text-xs text-ink-soft">
-        {seats} siège{seats > 1 ? "s" : ""} sur 9 au maximum. Les âges sont vérifiés à la date de chaque vol lors de la saisie des voyageurs.
-      </p>
+      <Stepper label={t.infants} hint={t.infantsHint} value={value.infants} min={0} max={value.adults} onChange={(infants) => onChange({ ...value, infants })} />
+      <p className="mt-2 text-xs text-ink-soft">{f.t(t.seats, { n: seats })}</p>
     </Disclosure>
   );
 }
 
 export function RoomsPicker({ value, onChange, error }: { value: RoomOccupancy[]; onChange: (v: RoomOccupancy[]) => void; error?: string | null }) {
+  const { m, f } = useI18n();
+  const t = m.search.travelers;
   const update = (i: number, room: RoomOccupancy) => onChange(value.map((r, j) => (j === i ? room : r)));
+  const summary = f.t(t.roomsSummary, { rooms: value.length, adults: value.reduce((n, r) => n + r.adults, 0), children: value.reduce((n, r) => n + r.childrenAges.length, 0) });
   return (
-    <Disclosure label="Chambres et voyageurs" summary={roomsSummary(value)} error={error}>
+    <Disclosure label={t.roomsLabel} summary={summary} error={error}>
       <div className="max-h-[60vh] space-y-4 overflow-auto">
         {value.map((room, i) => (
           <fieldset key={i} className="rounded-[var(--radius-md)] border border-line p-3">
-            <legend className="px-1 text-sm font-semibold">Chambre {i + 1}</legend>
-            <Stepper label="Adultes" value={room.adults} min={1} max={4} onChange={(adults) => update(i, { ...room, adults })} />
+            <legend className="px-1 text-sm font-semibold">{f.t(t.room, { n: i + 1 })}</legend>
+            <Stepper label={t.adults} value={room.adults} min={1} max={4} onChange={(adults) => update(i, { ...room, adults })} />
             <Stepper
-              label="Enfants"
-              hint="0 à 17 ans"
+              label={t.children}
+              hint={t.childrenHotelHint}
               value={room.childrenAges.length}
               min={0}
               max={3}
               onChange={(n) => update(i, { ...room, childrenAges: n > room.childrenAges.length ? [...room.childrenAges, 6] : room.childrenAges.slice(0, n) })}
             />
             {room.childrenAges.map((age, k) => (
-              <AgeSelect key={k} label={`Âge de l'enfant ${k + 1}`} value={age} min={0} max={17} onChange={(a) => update(i, { ...room, childrenAges: room.childrenAges.map((x, j) => (j === k ? a : x)) })} />
+              <AgeSelect key={k} label={f.t(t.childAge, { n: k + 1 })} value={age} min={0} max={17} onChange={(a) => update(i, { ...room, childrenAges: room.childrenAges.map((x, j) => (j === k ? a : x)) })} />
             ))}
             {value.length > 1 ? (
               <button type="button" className="mt-1 text-sm font-semibold text-danger underline underline-offset-4" onClick={() => onChange(value.filter((_, j) => j !== i))}>
-                Retirer la chambre {i + 1}
+                {f.t(t.removeRoom, { n: i + 1 })}
               </button>
             ) : null}
           </fieldset>
@@ -173,7 +180,7 @@ export function RoomsPicker({ value, onChange, error }: { value: RoomOccupancy[]
       </div>
       {value.length < 5 ? (
         <button type="button" className="mt-3 text-sm font-semibold text-forest underline underline-offset-4" onClick={() => onChange([...value, { adults: 2, childrenAges: [] }])}>
-          Ajouter une chambre
+          {t.addRoom}
         </button>
       ) : null}
     </Disclosure>

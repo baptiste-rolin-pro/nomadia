@@ -29,7 +29,7 @@ export const DEMO_HOTELS: DemoHotel[] = [
     timeZone: "Europe/Lisbon",
     description:
       "Maison d'hôtes de démonstration organisée autour d'un patio, dans les ruelles en pente d'Alfama. Chambres simples, terrasse commune avec vue sur les toits.",
-    amenities: ["Wi-Fi", "Climatisation", "Terrasse", "Consigne à bagages"],
+    amenities: ["wifi", "aircon", "terrace", "luggage"],
     checkInFrom: "15:00",
     checkInUntil: "22:00",
     checkOutUntil: "11:00",
@@ -38,9 +38,9 @@ export const DEMO_HOTELS: DemoHotel[] = [
     cityTaxMaxNights: 7,
     ratePlans: ["nonref", "flex", "property"],
     rooms: [
-      { id: "dbl", name: "Chambre double", beds: "1 lit double", sizeM2: 16, maxAdults: 2, maxChildren: 1, maxOccupancy: 2, amenities: ["Douche", "Climatisation"], baseNight: 9800 },
-      { id: "dbl-vue", name: "Chambre double vue sur le Tage", beds: "1 lit double", sizeM2: 19, maxAdults: 2, maxChildren: 1, maxOccupancy: 3, amenities: ["Douche", "Vue fleuve", "Climatisation"], baseNight: 12900 },
-      { id: "fam", name: "Suite familiale", beds: "1 lit double + 2 lits simples", sizeM2: 32, maxAdults: 2, maxChildren: 2, maxOccupancy: 4, amenities: ["Baignoire", "Coin salon", "Climatisation"], baseNight: 17400 },
+      { id: "dbl", name: "Chambre double", beds: "1 lit double", sizeM2: 16, maxAdults: 2, maxChildren: 1, maxOccupancy: 2, amenities: ["shower", "aircon"], baseNight: 9800 },
+      { id: "dbl-vue", name: "Chambre double vue sur le Tage", beds: "1 lit double", sizeM2: 19, maxAdults: 2, maxChildren: 1, maxOccupancy: 3, amenities: ["shower", "riverView", "aircon"], baseNight: 12900 },
+      { id: "fam", name: "Suite familiale", beds: "1 lit double + 2 lits simples", sizeM2: 32, maxAdults: 2, maxChildren: 2, maxOccupancy: 4, amenities: ["bathtub", "sittingArea", "aircon"], baseNight: 17400 },
     ],
   },
   {
@@ -57,7 +57,7 @@ export const DEMO_HOTELS: DemoHotel[] = [
     lng: -9.1489,
     timeZone: "Europe/Lisbon",
     description: "Appartements avec kitchenette dans un immeuble rénové, à proximité des jardins de Príncipe Real.",
-    amenities: ["Wi-Fi", "Kitchenette", "Ascenseur", "Lave-linge"],
+    amenities: ["wifi", "kitchenette", "lift", "washer"],
     checkInFrom: "16:00",
     checkInUntil: null,
     checkOutUntil: "11:00",
@@ -66,8 +66,8 @@ export const DEMO_HOTELS: DemoHotel[] = [
     cityTaxMaxNights: 7,
     ratePlans: ["nonref", "flex"],
     rooms: [
-      { id: "studio", name: "Studio", beds: "1 lit double", sizeM2: 28, maxAdults: 2, maxChildren: 1, maxOccupancy: 3, amenities: ["Kitchenette", "Lave-vaisselle"], baseNight: 13600 },
-      { id: "apt2", name: "Appartement deux chambres", beds: "1 lit double + 2 lits simples", sizeM2: 58, maxAdults: 4, maxChildren: 2, maxOccupancy: 4, amenities: ["Cuisine équipée", "Salon", "Balcon"], baseNight: 21500 },
+      { id: "studio", name: "Studio", beds: "1 lit double", sizeM2: 28, maxAdults: 2, maxChildren: 1, maxOccupancy: 3, amenities: ["kitchenette", "dishwasher"], baseNight: 13600 },
+      { id: "apt2", name: "Appartement deux chambres", beds: "1 lit double + 2 lits simples", sizeM2: 58, maxAdults: 4, maxChildren: 2, maxOccupancy: 4, amenities: ["equippedKitchen", "livingRoom", "balcony"], baseNight: 21500 },
     ],
   },
   {
@@ -84,7 +84,7 @@ export const DEMO_HOTELS: DemoHotel[] = [
     lng: -9.1393,
     timeZone: "Europe/Lisbon",
     description: "Hôtel de démonstration au cœur de la Baixa, à quelques rues de la place du Commerce.",
-    amenities: ["Wi-Fi", "Réception 24 h/24", "Salle de sport", "Climatisation", "Accès PMR"],
+    amenities: ["wifi", "reception24", "gym", "aircon", "accessible"],
     checkInFrom: "14:00",
     checkInUntil: null,
     checkOutUntil: "12:00",
@@ -93,8 +93,8 @@ export const DEMO_HOTELS: DemoHotel[] = [
     cityTaxMaxNights: 7,
     ratePlans: ["nonref", "flex", "flex_bb"],
     rooms: [
-      { id: "classic", name: "Chambre classique", beds: "1 lit double ou 2 lits simples", sizeM2: 20, maxAdults: 2, maxChildren: 1, maxOccupancy: 3, amenities: ["Douche", "Coffre-fort"], baseNight: 14200 },
-      { id: "family", name: "Chambre familiale", beds: "1 lit double + 1 canapé-lit", sizeM2: 30, maxAdults: 2, maxChildren: 2, maxOccupancy: 4, amenities: ["Baignoire", "Canapé-lit"], baseNight: 18900 },
+      { id: "classic", name: "Chambre classique", beds: "1 lit double ou 2 lits simples", sizeM2: 20, maxAdults: 2, maxChildren: 1, maxOccupancy: 3, amenities: ["shower", "safe"], baseNight: 14200 },
+      { id: "family", name: "Chambre familiale", beds: "1 lit double + 1 canapé-lit", sizeM2: 30, maxAdults: 2, maxChildren: 2, maxOccupancy: 4, amenities: ["bathtub", "sofaBed"], baseNight: 18900 },
     ],
   },
   {
@@ -111,7 +111,7 @@ export const DEMO_HOTELS: DemoHotel[] = [
     lng: -9.1446,
     timeZone: "Europe/Lisbon",
     description: "Chambres simples et économiques près des quais, pratiques pour rejoindre Belém ou Cascais en train.",
-    amenities: ["Wi-Fi", "Cuisine commune"],
+    amenities: ["wifi", "sharedKitchen"],
     checkInFrom: "15:00",
     checkInUntil: "23:00",
     checkOutUntil: "10:30",
@@ -120,8 +120,8 @@ export const DEMO_HOTELS: DemoHotel[] = [
     cityTaxMaxNights: 7,
     ratePlans: ["nonref", "property"],
     rooms: [
-      { id: "dbl", name: "Chambre double, salle de bain privée", beds: "1 lit double", sizeM2: 13, maxAdults: 2, maxChildren: 0, maxOccupancy: 2, amenities: ["Douche"], baseNight: 7200 },
-      { id: "triple", name: "Chambre triple", beds: "3 lits simples", sizeM2: 18, maxAdults: 3, maxChildren: 1, maxOccupancy: 3, amenities: ["Douche"], baseNight: 9600 },
+      { id: "dbl", name: "Chambre double, salle de bain privée", beds: "1 lit double", sizeM2: 13, maxAdults: 2, maxChildren: 0, maxOccupancy: 2, amenities: ["shower"], baseNight: 7200 },
+      { id: "triple", name: "Chambre triple", beds: "3 lits simples", sizeM2: 18, maxAdults: 3, maxChildren: 1, maxOccupancy: 3, amenities: ["shower"], baseNight: 9600 },
     ],
   },
   {
@@ -138,7 +138,7 @@ export const DEMO_HOTELS: DemoHotel[] = [
     lng: 12.4697,
     timeZone: "Europe/Rome",
     description: "Petit hôtel de démonstration autour d'une cour intérieure, dans les ruelles de Trastevere.",
-    amenities: ["Wi-Fi", "Climatisation", "Cour intérieure", "Lit bébé sur demande"],
+    amenities: ["wifi", "aircon", "courtyard", "cotOnRequest"],
     checkInFrom: "14:00",
     checkInUntil: "23:00",
     checkOutUntil: "11:00",
@@ -147,8 +147,8 @@ export const DEMO_HOTELS: DemoHotel[] = [
     cityTaxMaxNights: 10,
     ratePlans: ["nonref", "flex", "property"],
     rooms: [
-      { id: "dbl", name: "Chambre double", beds: "1 lit double", sizeM2: 17, maxAdults: 2, maxChildren: 1, maxOccupancy: 3, amenities: ["Douche", "Climatisation"], baseNight: 11800 },
-      { id: "quad", name: "Chambre quadruple familiale", beds: "1 lit double + 2 lits simples", sizeM2: 29, maxAdults: 2, maxChildren: 2, maxOccupancy: 4, amenities: ["Douche", "Climatisation", "Réfrigérateur"], baseNight: 16900 },
+      { id: "dbl", name: "Chambre double", beds: "1 lit double", sizeM2: 17, maxAdults: 2, maxChildren: 1, maxOccupancy: 3, amenities: ["shower", "aircon"], baseNight: 11800 },
+      { id: "quad", name: "Chambre quadruple familiale", beds: "1 lit double + 2 lits simples", sizeM2: 29, maxAdults: 2, maxChildren: 2, maxOccupancy: 4, amenities: ["shower", "aircon", "fridge"], baseNight: 16900 },
     ],
   },
   {
@@ -165,7 +165,7 @@ export const DEMO_HOTELS: DemoHotel[] = [
     lng: 12.4923,
     timeZone: "Europe/Rome",
     description: "Hôtel de démonstration dans un palais restauré du quartier Monti, à distance de marche du Colisée.",
-    amenities: ["Wi-Fi", "Réception 24 h/24", "Climatisation", "Petit-déjeuner servi en salle", "Accès PMR"],
+    amenities: ["wifi", "reception24", "aircon", "breakfastRoom", "accessible"],
     checkInFrom: "15:00",
     checkInUntil: null,
     checkOutUntil: "12:00",
@@ -174,8 +174,8 @@ export const DEMO_HOTELS: DemoHotel[] = [
     cityTaxMaxNights: 10,
     ratePlans: ["nonref", "flex", "flex_bb"],
     rooms: [
-      { id: "deluxe", name: "Chambre double deluxe", beds: "1 grand lit", sizeM2: 22, maxAdults: 2, maxChildren: 1, maxOccupancy: 3, amenities: ["Baignoire", "Machine à café"], baseNight: 19800 },
-      { id: "junior", name: "Junior suite", beds: "1 grand lit + 1 canapé-lit", sizeM2: 34, maxAdults: 3, maxChildren: 2, maxOccupancy: 4, amenities: ["Salon", "Baignoire"], baseNight: 26500 },
+      { id: "deluxe", name: "Chambre double deluxe", beds: "1 grand lit", sizeM2: 22, maxAdults: 2, maxChildren: 1, maxOccupancy: 3, amenities: ["bathtub", "coffeeMachine"], baseNight: 19800 },
+      { id: "junior", name: "Junior suite", beds: "1 grand lit + 1 canapé-lit", sizeM2: 34, maxAdults: 3, maxChildren: 2, maxOccupancy: 4, amenities: ["livingRoom", "bathtub"], baseNight: 26500 },
     ],
   },
   {
@@ -192,7 +192,7 @@ export const DEMO_HOTELS: DemoHotel[] = [
     lng: 12.4615,
     timeZone: "Europe/Rome",
     description: "Résidence de démonstration avec appartements familiaux, dans un quartier calme proche du Vatican.",
-    amenities: ["Wi-Fi", "Kitchenette", "Ascenseur", "Lit bébé sur demande"],
+    amenities: ["wifi", "kitchenette", "lift", "cotOnRequest"],
     checkInFrom: "15:00",
     checkInUntil: "20:00",
     checkOutUntil: "10:00",
@@ -201,8 +201,8 @@ export const DEMO_HOTELS: DemoHotel[] = [
     cityTaxMaxNights: 10,
     ratePlans: ["flex", "property"],
     rooms: [
-      { id: "apt-fam", name: "Appartement familial", beds: "1 lit double + 2 lits simples", sizeM2: 48, maxAdults: 4, maxChildren: 3, maxOccupancy: 5, amenities: ["Cuisine", "Lave-linge"], baseNight: 17800 },
-      { id: "dbl", name: "Chambre double", beds: "1 lit double", sizeM2: 18, maxAdults: 2, maxChildren: 1, maxOccupancy: 3, amenities: ["Douche"], baseNight: 10500 },
+      { id: "apt-fam", name: "Appartement familial", beds: "1 lit double + 2 lits simples", sizeM2: 48, maxAdults: 4, maxChildren: 3, maxOccupancy: 5, amenities: ["kitchen", "washer"], baseNight: 17800 },
+      { id: "dbl", name: "Chambre double", beds: "1 lit double", sizeM2: 18, maxAdults: 2, maxChildren: 1, maxOccupancy: 3, amenities: ["shower"], baseNight: 10500 },
     ],
   },
   {
@@ -219,7 +219,7 @@ export const DEMO_HOTELS: DemoHotel[] = [
     lng: -21.9361,
     timeZone: "Atlantic/Reykjavik",
     description: "Maison d'hôtes de démonstration près du vieux port, avec cuisine commune et casiers à bagages.",
-    amenities: ["Wi-Fi", "Cuisine commune", "Arrivée autonome"],
+    amenities: ["wifi", "sharedKitchen", "selfCheckIn"],
     checkInFrom: "15:00",
     checkInUntil: null,
     checkOutUntil: "11:00",
@@ -228,8 +228,8 @@ export const DEMO_HOTELS: DemoHotel[] = [
     cityTaxMaxNights: 0,
     ratePlans: ["nonref", "flex"],
     rooms: [
-      { id: "dbl", name: "Chambre double, salle de bain partagée", beds: "1 lit double", sizeM2: 12, maxAdults: 2, maxChildren: 0, maxOccupancy: 2, amenities: ["Lavabo"], baseNight: 13900 },
-      { id: "dbl-priv", name: "Chambre double, salle de bain privée", beds: "1 lit double", sizeM2: 15, maxAdults: 2, maxChildren: 1, maxOccupancy: 3, amenities: ["Douche"], baseNight: 17900 },
+      { id: "dbl", name: "Chambre double, salle de bain partagée", beds: "1 lit double", sizeM2: 12, maxAdults: 2, maxChildren: 0, maxOccupancy: 2, amenities: ["washbasin"], baseNight: 13900 },
+      { id: "dbl-priv", name: "Chambre double, salle de bain privée", beds: "1 lit double", sizeM2: 15, maxAdults: 2, maxChildren: 1, maxOccupancy: 3, amenities: ["shower"], baseNight: 17900 },
     ],
   },
   {
@@ -246,7 +246,7 @@ export const DEMO_HOTELS: DemoHotel[] = [
     lng: -22.5583,
     timeZone: "Atlantic/Reykjavik",
     description: "Hébergement de démonstration à quelques minutes de l'aéroport : utile pour une première nuit après une arrivée tardive.",
-    amenities: ["Wi-Fi", "Réception 24 h/24", "Navette aéroport (horaires à confirmer)", "Parking"],
+    amenities: ["wifi", "reception24", "airportShuttle", "parking"],
     checkInFrom: "14:00",
     checkInUntil: null,
     checkOutUntil: "11:00",
@@ -255,8 +255,8 @@ export const DEMO_HOTELS: DemoHotel[] = [
     cityTaxMaxNights: 0,
     ratePlans: ["nonref", "flex", "flex_bb"],
     rooms: [
-      { id: "dbl", name: "Chambre double", beds: "1 lit double", sizeM2: 17, maxAdults: 2, maxChildren: 1, maxOccupancy: 3, amenities: ["Douche"], baseNight: 15900 },
-      { id: "fam", name: "Chambre familiale", beds: "1 lit double + lits superposés", sizeM2: 25, maxAdults: 2, maxChildren: 2, maxOccupancy: 4, amenities: ["Douche"], baseNight: 21900 },
+      { id: "dbl", name: "Chambre double", beds: "1 lit double", sizeM2: 17, maxAdults: 2, maxChildren: 1, maxOccupancy: 3, amenities: ["shower"], baseNight: 15900 },
+      { id: "fam", name: "Chambre familiale", beds: "1 lit double + lits superposés", sizeM2: 25, maxAdults: 2, maxChildren: 2, maxOccupancy: 4, amenities: ["shower"], baseNight: 21900 },
     ],
   },
   {
@@ -273,7 +273,7 @@ export const DEMO_HOTELS: DemoHotel[] = [
     lng: -21.9606,
     timeZone: "Atlantic/Reykjavik",
     description: "Appartements de démonstration dans un quartier résidentiel, proches d'une piscine municipale et du front de mer.",
-    amenities: ["Wi-Fi", "Cuisine équipée", "Lave-linge"],
+    amenities: ["wifi", "equippedKitchen", "washer"],
     checkInFrom: "16:00",
     checkInUntil: "20:00",
     checkOutUntil: "10:00",
@@ -282,7 +282,7 @@ export const DEMO_HOTELS: DemoHotel[] = [
     cityTaxMaxNights: 0,
     ratePlans: ["flex", "property"],
     rooms: [
-      { id: "apt1", name: "Appartement une chambre", beds: "1 lit double + 1 canapé-lit", sizeM2: 42, maxAdults: 3, maxChildren: 2, maxOccupancy: 4, amenities: ["Cuisine", "Lave-linge"], baseNight: 24500 },
+      { id: "apt1", name: "Appartement une chambre", beds: "1 lit double + 1 canapé-lit", sizeM2: 42, maxAdults: 3, maxChildren: 2, maxOccupancy: 4, amenities: ["kitchen", "washer"], baseNight: 24500 },
     ],
   },
 ];

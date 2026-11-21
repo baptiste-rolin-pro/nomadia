@@ -2,11 +2,13 @@
 
 import { Search } from "lucide-react";
 import { describedBy } from "@/components/ui/field";
-import type { SearchIssue } from "@/lib/search/query";
+import { issueText, type SearchIssue, type ValidationCode } from "@/lib/search/query";
+import type { ClientFormatter } from "@/i18n/client";
 
-export function issuesToMap(issues: SearchIssue[]): Record<string, string> {
+/** Premier message par champ, dans la langue de la page. */
+export function issuesToMap(issues: SearchIssue[], messages: Record<ValidationCode, string>, f: Pick<ClientFormatter, "t" | "date" | "number">): Record<string, string> {
   const map: Record<string, string> = {};
-  for (const i of issues) if (!map[i.field]) map[i.field] = i.message;
+  for (const i of issues) if (!map[i.field]) map[i.field] = issueText(i, messages, f.t);
   return map;
 }
 

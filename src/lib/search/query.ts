@@ -8,7 +8,26 @@ import type { CarSearchParams, FlightSearchParams, HotelSearchParams } from "@/l
 
 export const MAX_BOOKING_HORIZON_DAYS = 330;
 
-export type SearchIssue = { field: string; message: string };
+/** Codes des messages de validation (textes : `search.validation` dans src/i18n/messages). */
+export const VALIDATION_CODES = [
+  "invalidDate", "invalidTime", "originRequired", "originFromList", "destinationRequired", "destinationFromList", "adultMin", "childAgeFlight",
+  "sameOriginDestination", "maxPassengers", "infantsPerAdult", "returnRequired", "returnBeforeDepart", "roomAdultMin", "roomAdultMax", "childAgeHotel",
+  "roomChildrenMax", "roomsMax", "checkOutAfter", "maxNights", "pickupRequired", "pickupFromList", "dropoffRequired", "driverMin", "residenceInvalid",
+  "dropoffAfterPickup", "maxRentalDays", "datePast", "dateTooFar", "invalid",
+] as const;
+export type ValidationCode = (typeof VALIDATION_CODES)[number];
+
+/** Problème de saisie : champ concerné et code du message (traduit par l'interface ou le serveur). */
+export type SearchIssue = { field: string; code: ValidationCode; params?: Record<string, number> };
+
+export function toValidationCode(message: string): ValidationCode {
+  return (VALIDATION_CODES as readonly string[]).includes(message) ? (message as ValidationCode) : "invalid";
+}
+
+/** Texte d'un problème de saisie dans la langue (messages `search.validation`). */
+export function issueText(issue: SearchIssue, messages: Record<ValidationCode, string>, format: (msg: string, params?: Record<string, number>) => string): string {
+  return format(messages[issue.code] ?? messages.invalid, issue.params);
+}
 
 /** Encodage des chambres : « 2-8.5|2 » = chambre 1 : 2 adultes + enfants de 8 et 5 ans ; chambre 2 : 2 adultes. */
 export function encodeRooms(rooms: RoomOccupancy[]): string {
@@ -67,8 +86,8 @@ export function dateWindowIssues(dates: { field: string; date: CivilDate }[], to
   const issues: SearchIssue[] = [];
   const max = addDays(today, MAX_BOOKING_HORIZON_DAYS);
   for (const d of dates) {
-    if (compareCivil(d.date, today) < 0) issues.push({ field: d.field, message: "Cette date est déjà passée." });
-    else if (compareCivil(d.date, max) > 0) issues.push({ field: d.field, message: `Les réservations ouvrent au plus ${MAX_BOOKING_HORIZON_DAYS} jours à l'avance.` });
+    if (compareCivil(d.date, today) < 0) issues.push({ field: d.field, code: "datePast" });
+    else if (compareCivil(d.date, max) > 0) issues.push({ field: d.field, code: "dateTooFar", params: { days: MAX_BOOKING_HORIZON_DAYS } });
   }
   return issues;
 }

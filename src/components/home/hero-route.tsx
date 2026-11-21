@@ -1,4 +1,6 @@
 import { Plane } from "lucide-react";
+import { getI18n } from "@/i18n/request";
+import { cityName } from "@/lib/content/localized";
 
 /**
  * Habillage animé du hero (CSS + SVG, aucun JavaScript) : un trajet en pointillés au départ de Paris, un avion
@@ -6,17 +8,25 @@ import { Plane } from "lucide-react";
  * avec chaque vol (le changement a lieu quand l'avion est invisible). Purement décoratif (`aria-hidden`).
  * Taille fixe en pixels : la trajectoire CSS (`offset-path`) et le tracé SVG coïncident (comme FlightPath).
  * Animé seulement avec JavaScript (bouton pause disponible) ; mouvement réduit : avion posé, première arrivée.
+ * Écriture de droite à gauche : le trajet est retourné (globals.css), les textes restent lisibles.
  */
 const ROUTE = "M18 186 C 84 92, 186 46, 302 38";
 
-const ARRIVALS = [
-  { city: "Lisbonne", coords: "38°43′ N · 9°08′ O" },
-  { city: "Reykjavik", coords: "64°08′ N · 21°56′ O" },
-  { city: "Rome", coords: "41°54′ N · 12°29′ E" },
-  { city: "Kyoto", coords: "35°00′ N · 135°46′ E" },
+/** Coordonnées : [degrés, minutes, hémisphère] pour la latitude puis la longitude. */
+type Coord = [number, number, "north" | "south" | "east" | "west"];
+const ARRIVALS: { city: string; lat: Coord; lng: Coord }[] = [
+  { city: "Lisbonne", lat: [38, 43, "north"], lng: [9, 8, "west"] },
+  { city: "Reykjavik", lat: [64, 8, "north"], lng: [21, 56, "west"] },
+  { city: "Rome", lat: [41, 54, "north"], lng: [12, 29, "east"] },
+  { city: "Kyoto", lat: [35, 0, "north"], lng: [135, 46, "east"] },
 ];
+const PARIS: { lat: Coord; lng: Coord } = { lat: [48, 51, "north"], lng: [2, 21, "east"] };
 
-export function HeroRoute({ className = "" }: { className?: string }) {
+export async function HeroRoute({ className = "" }: { className?: string }) {
+  const { locale, m, f } = await getI18n();
+  const t = m.home.hero;
+  const coord = ([deg, min, hemi]: Coord) => `${f.number(deg)}°${f.number(min, { minimumIntegerDigits: 2 })}′ ${t[hemi]}`;
+  const pair = (c: { lat: Coord; lng: Coord }) => `${coord(c.lat)} · ${coord(c.lng)}`;
   // Première arrivée répétée à la fin : le retour au début du cycle est invisible.
   const ticker = [...ARRIVALS, ARRIVALS[0]!];
   return (
@@ -31,14 +41,14 @@ export function HeroRoute({ className = "" }: { className?: string }) {
         <Plane className="size-full" strokeWidth={1.5} fill="currentColor" />
       </span>
       <p className="absolute left-0 top-[198px] whitespace-nowrap text-[0.7rem] font-semibold uppercase tracking-[0.16em]">
-        Paris <span className="font-normal normal-case tracking-normal text-white/80">48°51′ N · 2°21′ E</span>
+        {cityName("Paris", locale)} <span className="font-normal normal-case tracking-normal text-white/80">{pair(PARIS)}</span>
       </p>
       <div className="absolute bottom-[calc(100%-22px)] right-0 h-[2.6rem] overflow-hidden text-right">
         <ul className="hero-route__ticker hero-anim">
           {ticker.map((a, i) => (
             <li key={`${a.city}-${i}`} className="flex h-[2.6rem] flex-col justify-end">
-              <span className="font-serif text-xl leading-tight">{a.city}</span>
-              <span className="whitespace-nowrap text-[0.7rem] text-white/80">{a.coords}</span>
+              <span className="font-serif text-xl leading-tight">{cityName(a.city, locale)}</span>
+              <span className="whitespace-nowrap text-[0.7rem] text-white/80">{pair(a)}</span>
             </li>
           ))}
         </ul>

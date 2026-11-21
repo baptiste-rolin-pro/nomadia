@@ -17,6 +17,10 @@ import { opaqueId, prefixedId } from "@/lib/security";
 import { computeTotals } from "@/lib/booking/pricing";
 import { rentalDays } from "@/lib/providers/demo/cars";
 import { ProviderError, type Bookable, type BookingOps, type BookRequest, type OpContext, type ProviderBookingResult, type ProviderInfo } from "@/lib/providers/types";
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/config";
+import { getMessages } from "@/i18n/messages";
+
+const ops = (locale: Locale | undefined) => getMessages(locale ?? DEFAULT_LOCALE).domain.ops;
 
 export const TICKETING_DELAY_MS = 4000;
 
@@ -31,12 +35,12 @@ function reference(): string {
 }
 
 /** Applique la hausse de prix du scénario « prix modifié » (renvoyée par le fournisseur, pas par le navigateur). */
-function applyScenarioPrice(bookable: Bookable, scenario: string | null | undefined): Bookable {
+function applyScenarioPrice(bookable: Bookable, scenario: string | null | undefined, locale?: Locale): Bookable {
   if (scenario !== "prix-modifie") return bookable;
   const base = bookable.price.lines.filter((l) => l.kind === "base");
   const increase = ratio(sum(base.map((l) => l.amount), bookable.price.total.currency), 7, 100);
   const payable = base[0]?.payable ?? "now";
-  const lines = [...bookable.price.lines, { label: "Ajustement tarifaire du fournisseur (scénario de démonstration)", amount: increase, kind: "fee" as const, payable }];
+  const lines = [...bookable.price.lines, { label: ops(locale).priceAdjustment, amount: increase, kind: "fee" as const, payable }];
   const total = sum(lines.map((l) => l.amount));
   return {
     ...bookable,
@@ -50,7 +54,7 @@ function applyScenarioPrice(bookable: Bookable, scenario: string | null | undefi
   };
 }
 
-export function createDemoBookingOps(info: ProviderInfo, rebuild: (offerRef: string) => Bookable): BookingOps {
+export function createDemoBookingOps(info: ProviderInfo, rebuild: (offerRef: string, locale?: Locale) => Bookable): BookingOps {
   async function findByKey(key: string) {
     const database = await db();
     const rows = await database.select().from(demoProviderRecords).where(eq(demoProviderRecords.idempotencyKey, key)).limit(1);
@@ -74,20 +78,16 @@ export function createDemoBookingOps(info: ProviderInfo, rebuild: (offerRef: str
   }
 
   function toResult(record: { status: string; reference: string }): ProviderBookingResult {
-    const messages: Record<string, string> = {
-      confirmed: "Réservation confirmée par le fournisseur (démonstration).",
-      ticketed: "Billets émis par la compagnie (démonstration — aucun billet réel).",
-      failed: "Le fournisseur a refusé la réservation (démonstration).",
-      cancelled: "Réservation annulée chez le fournisseur (démonstration).",
-    };
+    const t = ops(DEFAULT_LOCALE);
+    const messages: Record<string, string> = { confirmed: t.confirmed, ticketed: t.ticketed, failed: t.failed, cancelled: t.cancelled };
     return { status: record.status as ProviderBookingResult["status"], providerReference: record.reference, message: messages[record.status] ?? record.status };
   }
 
   return {
     info,
     async reprice(offerRef: string, ctx: OpContext): Promise<Bookable> {
-      const fresh = rebuild(offerRef);
-      return applyScenarioPrice(fresh, ctx.scenario);
+      const fresh = rebuild(offerRef, ctx.locale);
+      return applyScenarioPrice(fresh, ctx.scenario, ctx.locale);
     },
 
     async book(req: BookRequest): Promise<ProviderBookingResult> {
@@ -123,14 +123,15 @@ export function createDemoBookingOps(info: ProviderInfo, rebuild: (offerRef: str
 
     async retrieve(lookup): Promise<ProviderBookingResult> {
       const record = (lookup.providerReference && (await findByRef(lookup.providerReference))) || (await findByKey(lookup.idempotencyKey));
-      if (!record) return { status: "failed", providerReference: null, message: "Aucune réservation correspondante chez le fournisseur." };
+      if (!record) return { status: "failed", providerReference: null, message: ops(DEFAULT_LOCALE).noRecord };
       return toResult(await progress(record));
     },
 
-    async cancellationQuote(providerReference: string) {
+    async cancellationQuote(providerReference: string, ctx: OpContext = {}) {
+      const t = ops(ctx.locale);
       const record = await findByRef(providerReference);
       if (!record || record.status === "cancelled" || record.status === "failed") {
-        return { allowed: false, fee: zero(), refund: zero(), message: "Aucune réservation active à annuler." };
+        return { allowed: false, fee: zero(), refund: zero(), message: t.nothingToCancel };
       }
       const payload = record.payload as RecordPayload;
       const total = money(payload.total.amount, payload.total.currency);
@@ -139,39 +140,39 @@ export function createDemoBookingOps(info: ProviderInfo, rebuild: (offerRef: str
       let message: string;
       if (payload.scenario === "annulation-frais") {
         fee = ratio(total, 30, 100);
-        message = "Annulation possible avec frais de 30 % appliqués par le fournisseur (scénario de démonstration).";
+        message = t.cancelFees30;
       } else if (payload.bookable.vertical === "flights") {
         const refundFee = payload.bookable.cancellation.feeAfter;
         const passengers = payload.bookable.travelers.kind === "passengers" ? payload.bookable.travelers.adults + payload.bookable.travelers.children : 1;
         if (!payload.bookable.cancellation.refundable) {
           fee = total;
-          message = "Billet non remboursable : aucun remboursement du tarif (démonstration).";
+          message = t.nonRefundableTicket;
         } else {
           fee = refundFee ? multiply(refundFee, passengers) : zero();
-          message = "Remboursement selon les conditions du tarif, frais par passager déduits.";
+          message = t.refundWithFees;
         }
       } else if (payload.bookable.vertical === "hotels") {
         const deadline = payload.bookable.cancellation.freeUntil;
         const before = deadline ? nowMs() < localToUtc(deadline.local, deadline.timeZone).instantMs : false;
         if (!payload.bookable.cancellation.refundable) {
           fee = total;
-          message = "Tarif non remboursable : le montant reste dû.";
+          message = t.nonRefundableRate;
         } else if (before) {
           fee = zero(total.currency);
-          message = "Annulation gratuite : l'échéance n'est pas dépassée.";
+          message = t.freeCancellation;
         } else {
           fee = payload.bookable.cancellation.feeAfter ?? total;
-          message = "Échéance d'annulation gratuite dépassée : des frais s'appliquent.";
+          message = t.deadlinePassed;
         }
       } else {
         const pickup = localToUtc(payload.bookable.start.local, payload.bookable.start.timeZone).instantMs;
         if (pickup - nowMs() > 48 * 3600_000) {
           fee = zero(total.currency);
-          message = "Annulation sans frais (plus de 48 h avant la prise en charge).";
+          message = t.carFree;
         } else {
           const days = rentalDays(payload.bookable.start, payload.bookable.end);
           fee = payload.bookable.price.lines[0] ? ratio(payload.bookable.price.lines[0].amount, 1, days) : zero();
-          message = "Moins de 48 h avant la prise en charge : une journée de location est retenue (règle de démonstration).";
+          message = t.carLate;
         }
       }
       if (fee.amount > total.amount) fee = total;

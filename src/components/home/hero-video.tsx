@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import { Pause, Play } from "lucide-react";
+import { useI18n } from "@/i18n/client";
 import { HERO_VIDEO_DESKTOP_QUERY, canPlayHeroVideo, coverWidth, pickHeroVideoSource, type HeroVideoSource } from "@/lib/hero-video";
 
 /**
@@ -138,6 +139,7 @@ export function HeroVideo({ sources }: { sources: readonly HeroVideoSource[] }) 
  * mouvement réduit (rien ne bouge alors).
  */
 export function HeroMotionToggle() {
+  const t = useI18n().m.home.hero;
   const paused = useSyncExternalStore(subscribePaused, getPaused, () => false);
   return (
     <button
@@ -147,8 +149,8 @@ export function HeroMotionToggle() {
       className="hero-toggle min-h-11 items-center gap-2 rounded-full border border-white/45 bg-ink/35 px-4 text-sm font-semibold text-white backdrop-blur-sm transition-colors hover:bg-ink/55"
     >
       {paused ? <Play aria-hidden className="size-4" fill="currentColor" /> : <Pause aria-hidden className="size-4" fill="currentColor" />}
-      <span>{paused ? "Lecture" : "Pause"}</span>
-      <span className="sr-only"> de l&apos;animation du bandeau</span>
+      <span>{paused ? t.play : t.pause}</span>
+      <span className="sr-only">{t.motionSr}</span>
     </button>
   );
 }

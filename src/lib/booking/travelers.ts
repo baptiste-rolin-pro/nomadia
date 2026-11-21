@@ -1,9 +1,13 @@
 /**
  * Validation des voyageurs selon les exigences de l'offre.
  * L'âge est calculé à la date de chaque trajet (aller ET retour), jamais à la date de réservation.
+ * Messages dans la langue de la réservation (`domain.travelers`).
  */
 import { ageOn, isCivilDate } from "@/lib/dates";
 import type { TravelerInput, TravelerRequirement } from "@/lib/providers/types";
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/config";
+import { formatMessage } from "@/i18n/format";
+import { getMessages } from "@/i18n/messages";
 
 export interface TravelerIssue {
   index: number;
@@ -11,7 +15,7 @@ export interface TravelerIssue {
   message: string;
 }
 
-const NAME_RE = /^[\p{L}][\p{L}' -]{0,59}$/u;
+const NAME_RE = /^[\p{L}][\p{L}\p{M}' -]{0,59}$/u;
 
 export function expectedTravelerTypes(req: TravelerRequirement): TravelerInput["type"][] {
   if (req.kind === "passengers") {
@@ -21,43 +25,45 @@ export function expectedTravelerTypes(req: TravelerRequirement): TravelerInput["
   return ["driver"];
 }
 
-export function validateTravelers(req: TravelerRequirement, travelers: TravelerInput[]): TravelerIssue[] {
+export function validateTravelers(req: TravelerRequirement, travelers: TravelerInput[], locale: Locale = DEFAULT_LOCALE): TravelerIssue[] {
+  const t = getMessages(locale).domain.travelers;
+  const fmt = (msg: string, params: Record<string, number>) => formatMessage(locale, msg, params);
   const issues: TravelerIssue[] = [];
   const expected = expectedTravelerTypes(req);
   if (travelers.length !== expected.length) {
-    return [{ index: -1, field: "general", message: `${expected.length} voyageur(s) attendu(s), ${travelers.length} reçu(s).` }];
+    return [{ index: -1, field: "general", message: fmt(t.count, { expected: expected.length, received: travelers.length }) }];
   }
-  travelers.forEach((t, index) => {
-    if (t.type !== expected[index]) issues.push({ index, field: "general", message: "Type de voyageur inattendu." });
-    if (!NAME_RE.test(t.firstName.trim())) issues.push({ index, field: "firstName", message: "Prénom requis, tel qu'il figure sur la pièce d'identité." });
-    if (!NAME_RE.test(t.lastName.trim())) issues.push({ index, field: "lastName", message: "Nom requis, tel qu'il figure sur la pièce d'identité." });
+  travelers.forEach((tr, index) => {
+    if (tr.type !== expected[index]) issues.push({ index, field: "general", message: t.unexpectedType });
+    if (!NAME_RE.test(tr.firstName.trim())) issues.push({ index, field: "firstName", message: t.firstName });
+    if (!NAME_RE.test(tr.lastName.trim())) issues.push({ index, field: "lastName", message: t.lastName });
     const needsBirth = req.kind === "passengers" || req.kind === "driver";
     if (!needsBirth) return;
-    if (!t.birthDate || !isCivilDate(t.birthDate)) {
-      issues.push({ index, field: "birthDate", message: "Date de naissance requise (JJ/MM/AAAA)." });
+    if (!tr.birthDate || !isCivilDate(tr.birthDate)) {
+      issues.push({ index, field: "birthDate", message: t.birthRequired });
       return;
     }
-    const ageStart = ageOn(t.birthDate, req.travelStart);
-    const ageEnd = ageOn(t.birthDate, req.travelEnd);
+    const ageStart = ageOn(tr.birthDate, req.travelStart);
+    const ageEnd = ageOn(tr.birthDate, req.travelEnd);
     if (ageStart < 0) {
-      issues.push({ index, field: "birthDate", message: "La date de naissance est postérieure au voyage." });
+      issues.push({ index, field: "birthDate", message: t.birthAfterTrip });
       return;
     }
-    if (t.type === "adult" && ageStart < 12) issues.push({ index, field: "birthDate", message: `Ce passager aura ${ageStart} ans au départ : il doit être enregistré comme enfant. Relancez la recherche avec la bonne répartition.` });
-    if (t.type === "child") {
-      if (ageStart < 2) issues.push({ index, field: "birthDate", message: `Cet enfant aura ${ageStart} an(s) au départ : il relève de la catégorie bébé. Relancez la recherche.` });
-      else if (ageEnd > 11) issues.push({ index, field: "birthDate", message: `Cet enfant aura ${ageEnd} ans au moment du retour : le tarif adulte s'applique sur ce trajet. Relancez la recherche avec un adulte supplémentaire.` });
+    if (tr.type === "adult" && ageStart < 12) issues.push({ index, field: "birthDate", message: fmt(t.adultUnder12, { age: ageStart }) });
+    if (tr.type === "child") {
+      if (ageStart < 2) issues.push({ index, field: "birthDate", message: fmt(t.childIsInfant, { age: ageStart }) });
+      else if (ageEnd > 11) issues.push({ index, field: "birthDate", message: fmt(t.childIsAdult, { age: ageEnd }) });
     }
-    if (t.type === "infant" && ageEnd >= 2) {
-      issues.push({ index, field: "birthDate", message: `Ce bébé aura ${ageEnd} ans au moment du retour : un siège enfant est obligatoire sur ce trajet. Relancez la recherche avec un enfant au lieu d'un bébé.` });
+    if (tr.type === "infant" && ageEnd >= 2) {
+      issues.push({ index, field: "birthDate", message: fmt(t.infantIsChild, { age: ageEnd }) });
     }
-    if (t.type === "driver" && req.kind === "driver" && ageStart !== req.declaredAge) {
-      issues.push({ index, field: "birthDate", message: `Le conducteur aura ${ageStart} ans à la prise en charge, alors que la recherche indiquait ${req.declaredAge} ans. Le tarif peut différer : relancez la recherche avec l'âge exact.` });
+    if (tr.type === "driver" && req.kind === "driver" && ageStart !== req.declaredAge) {
+      issues.push({ index, field: "birthDate", message: fmt(t.driverAge, { age: ageStart, declared: req.declaredAge }) });
     }
   });
   if (req.kind === "passengers") {
-    const adultsOk = travelers.filter((t) => t.type === "adult" && t.birthDate && isCivilDate(t.birthDate) && ageOn(t.birthDate, req.travelStart) >= 18).length;
-    if (adultsOk === 0 && issues.length === 0) issues.push({ index: -1, field: "general", message: "Au moins un passager doit avoir 18 ans ou plus au départ (règle de démonstration ; les conditions varient selon les compagnies)." });
+    const adultsOk = travelers.filter((tr) => tr.type === "adult" && tr.birthDate && isCivilDate(tr.birthDate) && ageOn(tr.birthDate, req.travelStart) >= 18).length;
+    if (adultsOk === 0 && issues.length === 0) issues.push({ index: -1, field: "general", message: t.adultRequired });
   }
   return issues;
 }

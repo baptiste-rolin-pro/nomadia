@@ -23,8 +23,8 @@ export function sharedDemoAccounts(): boolean {
 }
 
 export interface DemoCredential {
-  label: string;
-  description: string;
+  /** Libellé et description traduits par la page (`auth.signIn`). */
+  kind: "user" | "admin";
   email: string;
   password: string;
 }
@@ -34,16 +34,12 @@ export function demoCredentials(): DemoCredential[] {
   const e = env();
   const passwords = demoPasswords({ DEMO_USER_PASSWORD: e.DEMO_USER_PASSWORD, DEMO_ADMIN_PASSWORD: e.DEMO_ADMIN_PASSWORD });
   return [
-    { label: "Voyageur", description: "3 voyages de référence, réservations", email: DEMO_USER.email, password: passwords.user },
-    { label: "Administrateur", description: "zone /admin en consultation", email: DEMO_ADMIN.email, password: passwords.admin },
+    { kind: "user", email: DEMO_USER.email, password: passwords.user },
+    { kind: "admin", email: DEMO_ADMIN.email, password: passwords.admin },
   ];
 }
 
-export const SHARED_ACCOUNT_NOTICE =
-  "Site de démonstration : n'indiquez aucune donnée personnelle réelle. Les comptes de démonstration sont partagés : ce que vous saisissez peut être vu par les autres visiteurs.";
-
-export const FICTITIOUS_EMAIL_MESSAGE =
-  "Site de démonstration : utilisez une adresse fictive sur un domaine réservé (par exemple voyageur@exemple.test ou nom@example.com).";
+// Textes des avertissements de démonstration : `common.demo.sharedNotice` et `common.demo.fictitiousEmail`.
 
 const RESERVED_DOMAINS = ["example.com", "example.net", "example.org"];
 const RESERVED_TLDS = ["test", "example", "invalid", "localhost"];

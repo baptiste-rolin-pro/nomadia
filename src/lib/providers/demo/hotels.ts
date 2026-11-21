@@ -6,6 +6,10 @@ import { addDays, eachNight, nightsBetween, weekday, type CivilDate } from "@/li
 import { money, multiply, ratio, sum, type Money } from "@/lib/money";
 import { decodeRef, encodeRef } from "@/lib/providers/offer-ref";
 import { DEMO_HOTELS, demoHotelById, type DemoHotel } from "@/lib/providers/demo/hotels-data";
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/config";
+import { formatMessage } from "@/i18n/format";
+import { getMessages } from "@/i18n/messages";
+import { localizeRoom } from "@/lib/providers/localize";
 import {
   ProviderError,
   type Board,
@@ -23,7 +27,6 @@ export const HOTEL_OFFER_TTL_MINUTES = 30;
 type PlanCode = DemoHotel["ratePlans"][number];
 
 interface PlanDef {
-  name: string;
   board: Board;
   refundable: boolean;
   collector: PaymentCollector;
@@ -32,10 +35,10 @@ interface PlanDef {
 }
 
 const PLANS: Record<PlanCode, PlanDef> = {
-  nonref: { name: "Non remboursable — paiement à la réservation", board: "room_only", refundable: false, collector: "platform", factor: 88, breakfastPerAdult: 0 },
-  flex: { name: "Remboursable — paiement à la réservation", board: "room_only", refundable: true, collector: "platform", factor: 100, breakfastPerAdult: 0 },
-  flex_bb: { name: "Remboursable avec petit-déjeuner", board: "breakfast", refundable: true, collector: "platform", factor: 100, breakfastPerAdult: 1600 },
-  property: { name: "Paiement à l'établissement — remboursable", board: "room_only", refundable: true, collector: "property", factor: 104, breakfastPerAdult: 0 },
+  nonref: { board: "room_only", refundable: false, collector: "platform", factor: 88, breakfastPerAdult: 0 },
+  flex: { board: "room_only", refundable: true, collector: "platform", factor: 100, breakfastPerAdult: 0 },
+  flex_bb: { board: "breakfast", refundable: true, collector: "platform", factor: 100, breakfastPerAdult: 1600 },
+  property: { board: "room_only", refundable: true, collector: "property", factor: 104, breakfastPerAdult: 0 },
 };
 
 /** Hôtels couverts par une destination de recherche (identifiant de lieu « city:… »). */
@@ -61,16 +64,17 @@ export function roomFits(room: DemoHotel["rooms"][number], occ: RoomOccupancy): 
   return occ.adults <= room.maxAdults && occ.childrenAges.length <= room.maxChildren + (babies > 0 ? 1 : 0) && occ.adults + children <= room.maxOccupancy;
 }
 
-function cancellation(hotel: DemoHotel, plan: PlanDef, checkIn: CivilDate, total: Money): CancellationPolicy {
+function cancellation(hotel: DemoHotel, plan: PlanDef, checkIn: CivilDate, total: Money, locale: Locale): CancellationPolicy {
+  const t = getMessages(locale).domain.hotels;
   if (!plan.refundable) {
-    return { refundable: false, freeUntil: null, feeAfter: total, summary: "Non remboursable : le montant total reste dû en cas d'annulation ou de non-présentation." };
+    return { refundable: false, freeUntil: null, feeAfter: total, summary: t.nonrefSummary };
   }
   const deadline = addDays(checkIn, -3);
   return {
     refundable: true,
     freeUntil: { local: `${deadline}T18:00`, timeZone: hotel.timeZone },
     feeAfter: total,
-    summary: "Annulation gratuite jusqu'à l'échéance indiquée (heure locale de l'établissement). Ensuite, frais indiqués ci-dessous.",
+    summary: t.refundableSummary,
   };
 }
 
@@ -84,13 +88,15 @@ export interface HotelRefPayload {
   t: number;
 }
 
-export function buildRateOffer(p: HotelRefPayload): HotelRateOffer {
+export function buildRateOffer(p: HotelRefPayload, locale: Locale = DEFAULT_LOCALE): HotelRateOffer {
+  const t = getMessages(locale).domain.hotels;
   const hotel = demoHotelById(p.h);
-  if (!hotel) throw new ProviderError("OFFER_NOT_FOUND", "Établissement introuvable.");
-  const room = hotel.rooms.find((r) => r.id === p.r);
+  if (!hotel) throw new ProviderError("OFFER_NOT_FOUND", t.notFound);
+  const baseRoom = hotel.rooms.find((r) => r.id === p.r);
   const planDef = PLANS[p.p];
-  if (!room || !planDef || !hotel.ratePlans.includes(p.p)) throw new ProviderError("OFFER_NOT_FOUND", "Tarif introuvable.");
-  if (!p.rooms.every((occ) => roomFits(room, occ))) throw new ProviderError("OFFER_NOT_FOUND", "Cette chambre ne convient pas à l'occupation demandée.");
+  if (!baseRoom || !planDef || !hotel.ratePlans.includes(p.p)) throw new ProviderError("OFFER_NOT_FOUND", t.rateNotFound);
+  if (!p.rooms.every((occ) => roomFits(baseRoom, occ))) throw new ProviderError("OFFER_NOT_FOUND", t.roomNotSuitable);
+  const room = localizeRoom(hotel.id, baseRoom, locale);
   const nights = nightsBetween(p.ci, p.co);
   const roomsCount = p.rooms.length;
   const nightly = eachNight(p.ci, p.co).map((date) => ({ date, amount: ratio(nightlyPrice(room.baseNight, date), planDef.factor, 100) }));
@@ -99,25 +105,25 @@ export function buildRateOffer(p: HotelRefPayload): HotelRateOffer {
   const adults = p.rooms.reduce((n, r) => n + r.adults, 0);
   const lines: PriceBreakdown["lines"] = [];
   const payable = planDef.collector === "platform" ? "now" : "on_site";
-  lines.push({ label: `Hébergement : ${roomsCount} × ${room.name}, ${nights} nuit${nights > 1 ? "s" : ""}`, amount: accommodation, kind: "base", payable });
+  lines.push({ label: formatMessage(locale, t.accommodation, { rooms: roomsCount, room: room.name, nights }), amount: accommodation, kind: "base", payable });
   if (planDef.breakfastPerAdult) {
-    lines.push({ label: `Petits-déjeuners (${adults} adulte${adults > 1 ? "s" : ""} × ${nights} nuit${nights > 1 ? "s" : ""})`, amount: money(planDef.breakfastPerAdult * adults * nights), kind: "base", payable });
+    lines.push({ label: formatMessage(locale, t.breakfasts, { adults, nights }), amount: money(planDef.breakfastPerAdult * adults * nights), kind: "base", payable });
   }
   let taxes: PriceBreakdown["taxes"] = "included";
-  const notes = ["TVA incluse dans le prix de l'hébergement (démonstration)."];
+  const notes = [t.vatNote];
   if (hotel.cityTaxPerAdultNight === null) {
     taxes = "unknown";
-    notes.push("Taxe locale d'hébergement : montant non communiqué par l'établissement de démonstration ; elle peut être due sur place.");
+    notes.push(t.unknownTaxNote);
   } else {
     const taxNights = Math.min(nights, hotel.cityTaxMaxNights);
     const cityTax = money(hotel.cityTaxPerAdultNight * adults * taxNights);
-    lines.push({ label: `Taxe de séjour (montant fictif, ${adults} adulte${adults > 1 ? "s" : ""}, ${taxNights} nuit${taxNights > 1 ? "s" : ""})`, amount: cityTax, kind: "tax", payable: "on_site" });
+    lines.push({ label: formatMessage(locale, t.cityTax, { adults, nights: taxNights }), amount: cityTax, kind: "tax", payable: "on_site" });
   }
   const total = sum(lines.map((l) => l.amount));
   const payNow = sum(lines.filter((l) => l.payable === "now").map((l) => l.amount));
   const payOnSite = sum(lines.filter((l) => l.payable === "on_site").map((l) => l.amount));
   const stayPrice = sum(lines.filter((l) => l.kind === "base").map((l) => l.amount));
-  const policy = cancellation(hotel, planDef, p.ci, stayPrice);
+  const policy = cancellation(hotel, planDef, p.ci, stayPrice, locale);
   if (policy.refundable && nightly[0]) policy.feeAfter = multiply(nightly[0].amount, roomsCount);
   return {
     id: encodeRef("dht", p as unknown as Record<string, unknown>),
@@ -125,7 +131,7 @@ export function buildRateOffer(p: HotelRefPayload): HotelRateOffer {
     mode: "demo",
     hotelId: hotel.id,
     room,
-    rateName: planDef.name,
+    rateName: t.plans[p.p],
     board: planDef.board,
     cancellation: policy,
     paymentCollector: planDef.collector,
@@ -144,21 +150,25 @@ export function decodeHotelRef(ref: string): HotelRefPayload | null {
   return decodeRef<HotelRefPayload>("dht", ref);
 }
 
-export function ratesForHotel(hotel: DemoHotel, checkIn: CivilDate, checkOut: CivilDate, rooms: RoomOccupancy[], t: number): HotelRateOffer[] {
+export function ratesForHotel(hotel: DemoHotel, checkIn: CivilDate, checkOut: CivilDate, rooms: RoomOccupancy[], t: number, locale: Locale = DEFAULT_LOCALE): HotelRateOffer[] {
   const offers: HotelRateOffer[] = [];
   for (const room of hotel.rooms) {
     if (!rooms.every((occ) => roomFits(room, occ))) continue;
     for (const plan of hotel.ratePlans) {
-      offers.push(buildRateOffer({ h: hotel.id, r: room.id, p: plan, ci: checkIn, co: checkOut, rooms, t }));
+      offers.push(buildRateOffer({ h: hotel.id, r: room.id, p: plan, ci: checkIn, co: checkOut, rooms, t }, locale));
     }
   }
   return offers.sort((a, b) => a.price.total.amount - b.price.total.amount);
 }
 
-export function searchDemoHotels(placeId: string, checkIn: CivilDate, checkOut: CivilDate, rooms: RoomOccupancy[], t: number): HotelSearchResult[] {
+/**
+ * Résultats d'une recherche. Les établissements gardent leurs valeurs de base (clés d'équipement, quartier) pour
+ * le filtrage ; `localizeHotel` fournit les libellés d'affichage (route de recherche).
+ */
+export function searchDemoHotels(placeId: string, checkIn: CivilDate, checkOut: CivilDate, rooms: RoomOccupancy[], t: number, locale: Locale = DEFAULT_LOCALE): HotelSearchResult[] {
   return hotelsForPlace(placeId)
     .map((hotel) => {
-      const rates = ratesForHotel(hotel, checkIn, checkOut, rooms, t);
+      const rates = ratesForHotel(hotel, checkIn, checkOut, rooms, t, locale);
       if (!rates.length) return null;
       const { rooms: _rooms, cityTaxPerAdultNight: _t, cityTaxMaxNights: _m, ratePlans: _p, ...property } = hotel;
       return {
