@@ -414,7 +414,6 @@ const part: Pick<Messages, "domain" | "results" | "offers"> = {
       emptyText: "演示门店位于里斯本、罗马和雷克雅未克/凯夫拉维克的机场和市中心。",
       noMatch: "没有符合筛选条件的车辆",
       modelNote: "— 保证车型类别，不保证具体车型",
-      orSimilar: "{model} 或同级车型",
       cardLabel: "{category}，{supplier}，{price}",
       perDay: "约 {price} / 天",
       airCon: "空调",

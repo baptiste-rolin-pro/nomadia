@@ -422,7 +422,6 @@ const part: Pick<Messages, "domain" | "results" | "offers"> = {
       emptyText: "تقع المكاتب التجريبية في مطارات ووسط لشبونة وروما وريكيافيك/كيفلافيك.",
       noMatch: "لا توجد سيارة تطابق عوامل التصفية",
       modelNote: "— الفئة مضمونة والطراز غير مضمون",
-      orSimilar: "{model} أو ما يماثلها",
       cardLabel: "{category}، {supplier}، {price}",
       perDay: "≈ {price} / يوم",
       airCon: "تكييف هواء",

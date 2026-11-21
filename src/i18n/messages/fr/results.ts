@@ -165,7 +165,6 @@ const results = {
     emptyText: "Les agences de démonstration se trouvent aux aéroports et centres-villes de Lisbonne, Rome et Reykjavik/Keflavík.",
     noMatch: "Aucune voiture ne correspond aux filtres",
     modelNote: "— catégorie garantie, modèle non garanti",
-    orSimilar: "{model} ou similaire",
     cardLabel: "{category}, {supplier}, {price}",
     perDay: "≈ {price} / jour",
     airCon: "Climatisation",

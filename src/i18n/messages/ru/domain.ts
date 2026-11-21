@@ -419,7 +419,6 @@ const part: Pick<Messages, "domain" | "results" | "offers"> = {
       emptyText: "Демонстрационные пункты проката находятся в аэропортах и центрах Лиссабона, Рима и Рейкьявика/Кеблавика.",
       noMatch: "Ни один автомобиль не подходит под фильтры",
       modelNote: "— категория гарантирована, модель нет",
-      orSimilar: "{model} или аналог",
       cardLabel: "{category}, {supplier}, {price}",
       perDay: "≈ {price} / день",
       airCon: "Кондиционер",

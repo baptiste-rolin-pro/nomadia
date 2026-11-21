@@ -200,7 +200,7 @@ function CarCard({ offer, query, tripId }: { offer: CarOffer; query: string; tri
           </Badge>
         </div>
         <p className="mt-1 text-sm">
-          {f.t(t.orSimilar, { model: offer.exampleModel })} <span className="text-ink-soft">{t.modelNote}</span>
+          {offer.exampleModel} <span className="text-ink-soft">{t.modelNote}</span>
         </p>
         <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-soft">
           <li className="inline-flex items-center gap-1">

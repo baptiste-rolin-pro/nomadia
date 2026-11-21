@@ -21,6 +21,8 @@ const CASES = [
     lang: "fr",
     prefix: "",
     refuse: "Tout refuser",
+    carSection: "Résultats de location",
+    carModel: { similar: "ou similaire", note: "catégorie garantie, modèle non garanti" },
     pages: [
       { path: `/vols?${flights}`, section: "Résultats de vols", name: /^Vol [A-Z]{3} vers LIS, .*€/, cta: /Voir le détail/, stub: /Total pour 2 voyageurs/ },
       { path: `/hotels?${hotels}`, section: "Résultats d'hébergements", name: /, à partir de .*€/, cta: /Voir les chambres/, stub: /\/ nuit \/ chambre/ },
@@ -31,6 +33,8 @@ const CASES = [
     lang: "en",
     prefix: "/en",
     refuse: "Refuse all",
+    carSection: "Rental results",
+    carModel: { similar: "or similar", note: "category guaranteed, model not guaranteed" },
     pages: [
       { path: `/vols?${flights}`, section: "Flight results", name: /LIS/, cta: /See details/, stub: /€/ },
       { path: `/hotels?${hotels}`, section: "Accommodation results", name: /, from .*€/, cta: /See rooms/, stub: /€/ },
@@ -56,6 +60,16 @@ for (const c of CASES) {
       const border = await stub.evaluate((el) => getComputedStyle(el).borderInlineStartStyle);
       expect(border).toBe("dashed");
     }
+    // Ligne du modèle des voitures : « ou similaire » une seule fois (le modèle traduit le contient déjà),
+    // mention « catégorie garantie, modèle non garanti » conservée.
+    await page.goto(`${c.prefix}/voitures?${cars}`);
+    const modelLine = page
+      .locator(`section[aria-label="${c.carSection}"] article`)
+      .first()
+      .locator("p", { hasText: c.carModel.note });
+    await expect(modelLine).toHaveCount(1);
+    const text = (await modelLine.innerText()).trim();
+    expect(text.split(c.carModel.similar).length - 1, text).toBe(1);
   });
 }
 

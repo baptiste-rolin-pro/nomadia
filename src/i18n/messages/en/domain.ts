@@ -414,7 +414,6 @@ const part: Pick<Messages, "domain" | "results" | "offers"> = {
       emptyText: "Demo desks are at the airports and city centres of Lisbon, Rome and Reykjavik/Keflavík.",
       noMatch: "No car matches the filters",
       modelNote: "— category guaranteed, model not guaranteed",
-      orSimilar: "{model} or similar",
       cardLabel: "{category}, {supplier}, {price}",
       perDay: "≈ {price} / day",
       airCon: "Air conditioning",
