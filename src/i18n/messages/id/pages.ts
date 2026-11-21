@@ -209,6 +209,8 @@ const part: Pick<Messages, "legal" | "content" | "auth" | "account" | "admin"> =
         renters: "Perusahaan rental yang teramati",
         note: "Informasi diamati pada {date}, hanya sebagai panduan. Rute, maskapai, dan agen dapat berubah: periksa ke operator sebelum memesan. Tidak ada kemitraan dengan merek yang disebutkan.",
         searchTitle: "Cari di Nomadia",
+        searchFlights: "Cari penerbangan dari Paris",
+        searchCars: "Cari mobil sewaan",
       },
     },
     guides: {

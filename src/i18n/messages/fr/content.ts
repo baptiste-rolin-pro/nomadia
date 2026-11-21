@@ -65,6 +65,8 @@ const content = {
       renters: "Loueurs relevés",
       note: "Informations relevées le {date}, à titre indicatif. Liaisons, compagnies et agences évoluent : vérifiez auprès de l'opérateur avant de réserver. Aucun partenariat avec les marques citées.",
       searchTitle: "Rechercher sur Nomadia",
+      searchFlights: "Rechercher un vol depuis Paris",
+      searchCars: "Rechercher une voiture de location",
     },
   },
   guides: {

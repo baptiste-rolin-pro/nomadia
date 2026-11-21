@@ -2,7 +2,37 @@
 
 Toutes les vérifications ci-dessous ont été **réellement exécutées** le 2026-11-09 sur Windows 11, Node.js 26.13, npm 11.20, Chromium (Playwright 1.65). Rien n'est déclaré réussi sans exécution.
 
-Dernière passe : **multilingue** (2026-11-21, branche `feat/i18n`, section dédiée ci-dessous). Passes précédentes : assistant local, Claude en repli (2026-11-12) ; assistant IA et retrait du bouton « Démo » (2026-11-11) ; hero vidéo (2026-11-11). Le tableau « Résultats » date de la passe « préparation Vercel » (2026-11-10) ; les trois dernières lignes datent de la passe initiale et n'ont pas été relancées.
+Dernière passe : **informations pratiques des destinations** (2026-11-21, branche `feat/destination-practical-info`, section dédiée ci-dessous). Passes précédentes : multilingue (2026-11-21) ; assistant local, Claude en repli (2026-11-12) ; assistant IA et retrait du bouton « Démo » (2026-11-11) ; hero vidéo (2026-11-11). Le tableau « Résultats » date de la passe « préparation Vercel » (2026-11-10) ; les trois dernières lignes datent de la passe initiale et n'ont pas été relancées.
+
+## Informations pratiques des destinations (2026-11-21)
+
+Exécuté sur Windows 11, Node.js 26.13, Chromium (Playwright 1.65), après vérification qu'aucun serveur ne tenait les ports 3000 / 3005 / 3100 / 3101 (avant et après ; seuls des processus Node sans rapport — Codex, Adobe — tournaient). Serveur de mesure `next start` :3000 avec une base PGlite jetable (`.data/pglite-measure`, supprimée ensuite), arrêté après chaque mesure. **Aucun appel à l'API Anthropic réelle.**
+
+| Vérification | Commande | Résultat |
+| --- | --- | --- |
+| Types | `npx tsc --noEmit` | OK, code de sortie 0 |
+| Lint | `npx eslint .` | OK, 0 erreur, 0 avertissement (corrigé en cours de route : expression à virgule dans un test) |
+| Tests unitaires | `npx vitest run` | **463/463** (16 fichiers ; +12 : `tests/unit/practical.test.ts`). 12 destinations couvertes une fois chacune ; codes IATA en trois majuscules ; liaison vers l'aéroport d'accès et relevé de location présents, 1 à 6 modèles sans doublon ; chaque compagnie et chaque loueur lié résout une fiche d'annuaire au même nom, et aucune marque de l'annuaire n'est citée sans lien ; aucune clé hébergement / source / URL, aucune URL ni mention du site source dans les données ; noms de lieux dans les 10 langues ; accès depuis Paris (direct, correspondance Bali via SIN, dernier tronçon Lofoten via BOO) ; écart connu avec le catalogue limité à `lofoten:SVJ` ; annuaires : `indexable: false`, codes IATA / OACI et sites bien formés, IATA uniques ; aucune marque réelle comme fournisseur ou compagnie de démonstration. `tests/unit/i18n.test.ts` couvre les nouvelles clés (messages et packs de contenu) sans modification |
+| Build | `npx next build` | OK, **806 pages** (686 avant : +12 fiches d'annuaire × 10 langues), aucun avertissement |
+| Parcours | `npx playwright test` | **78/78** en 3,4 min (+4 : `practical.spec.ts`). `/destinations/lisbonne` : titre, aéroport, accès direct, liens d'annuaire (TAP Air Portugal, Ryanair, Alamo), loueur sans fiche en texte simple, modèles, mention datée, aucun lien vers le site source, recherches préremplies, lien d'annuaire qui aboutit ; `/en/destinations/lisbonne` : textes anglais et liens préfixés ; Bali (correspondance SIN) et Lofoten (dernier tronçon BOO, relevé SUV) ; `/ar` à 375 px (Lisbonne, Le Cap, Bali, Lofoten) : `dir="rtl"`, aucun débordement horizontal. Première exécution : 77/78 — `navigation.spec.ts` « images indisponibles » trouvait deux liens « Vols depuis Paris » (encadré et nouvelle section) : les liens de la section ont reçu des libellés propres (« Rechercher un vol depuis Paris », « Rechercher une voiture de location »), puis 78/78 |
+
+**Poids** (`next start`, même méthode : HTML puis chaque `<script src>` avec `Accept-Encoding: gzip`, octets transférés ; référence mesurée sur `main` à `9650b8b`) :
+
+| Page | Référence | Après | Écart |
+| --- | --- | --- | --- |
+| Accueil `/` (JS initial, 12 fichiers) | 205 666 o | **205 666 o** | 0 |
+| `/destinations/lisbonne` (JS initial, 11 fichiers) | 197 549 o | **197 549 o** | 0 |
+| `/destinations/lisbonne` (HTML gzip) | 25 070 o | 28 281 o | +3 211 o (section rendue côté serveur et sa charge utile RSC) |
+| `/en/destinations/lisbonne` (HTML gzip) | 24 013 o | 27 110 o | +3 097 o |
+| `/destinations/lofoten` (HTML gzip) | 24 347 o | 27 417 o | +3 070 o |
+| `/ar/destinations/bali` (HTML gzip) | 25 750 o | 29 063 o | +3 313 o |
+| `/compagnies-aeriennes`, `/loueurs` (HTML gzip) | 19 905 o, 18 406 o | 20 750 o, 19 684 o | +6 fiches chacun ; JS inchangé (193 950 o) |
+
+La section est un composant serveur : aucun fichier JavaScript nouveau ni modifié. Aucune chaîne de la section dans `.next/static` (recherche de « Klass Wagen », « Svolvær-Helle », « Liaisons sans escale relevées »).
+
+**Inspection visuelle** (navigateur intégré, `next start`) : `/destinations/lisbonne` à 800 px (deux colonnes Y aller / Sur place, mention, recherches) ; `/ar/destinations/le-cap` à 375 px : flèche des liaisons retournée (`rtl:-scale-x-100`), codes et marques isolés (`<bdi>`), séparateur « ، », `scrollWidth − clientWidth = 0`.
+
+**Non vérifié** : relecture des nouvelles traductions par des locuteurs natifs ; exactitude actuelle des liaisons, compagnies et agences (relevé du fichier fourni, non revérifié ; doutes Jetstar et KLM sur SIN–DPS dans `docs/data-sources.md`) ; sites officiels de Nissan Rent-A-Car et FlySafair (page d'accueil non concluante), `npm run links:check` non relancé ; lecteur d'écran ; Firefox et Safari.
 
 ## Multilingue (2026-11-21)
 

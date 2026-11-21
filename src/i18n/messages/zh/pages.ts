@@ -209,6 +209,8 @@ const part: Pick<Messages, "legal" | "content" | "auth" | "account" | "admin"> =
         renters: "已观察到的租车公司",
         note: "信息观察于{date}，仅供参考。航线、航空公司和门店会有变化：预订前请向运营方核实。与所提及的品牌无任何合作关系。",
         searchTitle: "在 Nomadia 上搜索",
+        searchFlights: "搜索从巴黎出发的航班",
+        searchCars: "搜索租车",
       },
     },
     guides: {

@@ -178,8 +178,8 @@ export default async function DestinationPage({ params }: { params: Promise<{ sl
                 t={t.practical}
                 f={f}
                 listSep={m.common.listSep}
-                flights={{ href: flightsUrl, label: t.flightsFromParis }}
-                cars={carsUrl ? { href: carsUrl, label: t.cars } : null}
+                flights={{ href: flightsUrl, label: t.practical.searchFlights }}
+                cars={carsUrl ? { href: carsUrl, label: t.practical.searchCars } : null}
               />
             ) : null}
           </div>

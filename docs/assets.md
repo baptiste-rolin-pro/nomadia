@@ -26,6 +26,10 @@ Les scripts respectent les limites de débit de Wikimedia (pause et reprise sur 
 
 Aucun logo de compagnie aérienne ou de loueur : pas de droit d'usage documenté. Un monogramme textuel (code IATA ou initiales) les remplace. La présence d'une marque dans l'annuaire ne suggère aucun partenariat.
 
+## Données pratiques des destinations
+
+Aéroport d'accès, liaisons sans escale, compagnies, modèles de location « ou similaires » et loueurs relevés le 2026-11-21 (section « Y aller / Sur place ») : source, sélection, exclusions (hôtels, annuaires en masse, liens vers la source) et statut « observé, non garanti » dans `docs/data-sources.md`.
+
 ## Icônes et polices
 
 - Icônes : lucide-react (licence ISC).

@@ -209,6 +209,8 @@ const part: Pick<Messages, "legal" | "content" | "auth" | "account" | "admin"> =
         renters: "شركات التأجير المرصودة",
         note: "معلومات رُصدت في {date}، للاسترشاد فقط. تتغير الرحلات وشركات الطيران والفروع: تحقق لدى المشغّل قبل الحجز. لا شراكة مع العلامات التجارية المذكورة.",
         searchTitle: "البحث في Nomadia",
+        searchFlights: "البحث عن رحلات من باريس",
+        searchCars: "البحث عن سيارة للإيجار",
       },
     },
     guides: {

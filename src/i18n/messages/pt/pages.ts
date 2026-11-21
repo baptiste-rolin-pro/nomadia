@@ -209,6 +209,8 @@ const part: Pick<Messages, "legal" | "content" | "auth" | "account" | "admin"> =
         renters: "Locadoras observadas",
         note: "Informações observadas em {date}, apenas como referência. Rotas, companhias e agências mudam: confirme com o operador antes de reservar. Nenhuma parceria com as marcas citadas.",
         searchTitle: "Pesquisar na Nomadia",
+        searchFlights: "Pesquisar voos a partir de Paris",
+        searchCars: "Pesquisar carro de aluguel",
       },
     },
     guides: {

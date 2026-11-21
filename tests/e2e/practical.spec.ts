@@ -32,8 +32,8 @@ test("/destinations/lisbonne : aéroport, liaison, compagnies, location, mention
   await expect(section).toContainText("Aucun partenariat avec les marques citées.");
   // Aucune URL de la source publiée.
   expect(await section.locator("a[href*='kayak']").count()).toBe(0);
-  await expect(section.getByRole("link", { name: "Vols depuis Paris" })).toHaveAttribute("href", /^\/vols\?o=city%3APAR&d=city%3ALIS&/);
-  await expect(section.getByRole("link", { name: "Voitures" })).toHaveAttribute("href", /^\/voitures\?pu=airport%3ALIS&/);
+  await expect(section.getByRole("link", { name: "Rechercher un vol depuis Paris" })).toHaveAttribute("href", /^\/vols\?o=city%3APAR&d=city%3ALIS&/);
+  await expect(section.getByRole("link", { name: "Rechercher une voiture de location" })).toHaveAttribute("href", /^\/voitures\?pu=airport%3ALIS&/);
   // Le lien de la fiche annuaire aboutit.
   await section.getByRole("link", { name: "Ryanair" }).click();
   await expect(page).toHaveURL(/\/compagnies-aeriennes\/ryanair$/);
@@ -48,7 +48,7 @@ test("/en/destinations/lisbonne : section en anglais, liens préfixés", async (
   await expect(section).toContainText("Information observed on 21 November 2026, for guidance only.");
   await expect(section).toContainText("No partnership with the brands mentioned.");
   await expect(section.getByRole("link", { name: "TAP Air Portugal" })).toHaveAttribute("href", "/en/compagnies-aeriennes/tap-air-portugal");
-  await expect(section.getByRole("link", { name: "Flights from Paris" })).toHaveAttribute("href", /^\/en\/vols\?/);
+  await expect(section.getByRole("link", { name: "Search flights from Paris" })).toHaveAttribute("href", /^\/en\/vols\?/);
 });
 
 test("Bali et Lofoten : correspondance relevée et dernier tronçon", async ({ page }) => {

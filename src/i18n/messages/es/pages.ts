@@ -209,6 +209,8 @@ const part: Pick<Messages, "legal" | "content" | "auth" | "account" | "admin"> =
         renters: "Empresas de alquiler observadas",
         note: "Información observada el {date}, solo orientativa. Las rutas, aerolíneas y oficinas cambian: compruébelo con el operador antes de reservar. Sin colaboración con las marcas mencionadas.",
         searchTitle: "Buscar en Nomadia",
+        searchFlights: "Buscar vuelos desde París",
+        searchCars: "Buscar un coche de alquiler",
       },
     },
     guides: {
