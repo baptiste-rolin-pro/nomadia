@@ -225,6 +225,106 @@
 }
 
 /*
+ * Billets de résultats (vols, hébergements, voitures) : partie « informations » + talon de prix,
+ * séparés par une ligne pointillée et deux encoches en demi-cercle découpées dans le bord de la carte.
+ * Chaque partie est une surface blanche masquée à ses deux coins côté séparation (radial-gradient) ;
+ * l'ombre est un `drop-shadow` sur l'article, qui suit la découpe. Propriétés logiques et miroir en RTL.
+ * < 640 px : talon sous les informations, séparation horizontale, encoches sur les côtés.
+ */
+@layer components {
+  .ticket {
+    --notch: 11px;
+    --ticket-stub: 13.5rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    filter: drop-shadow(0 1px 1px rgb(20 43 42 / 0.06)) drop-shadow(0 10px 14px rgb(20 43 42 / 0.1));
+    transition:
+      transform 180ms var(--ease-out-soft),
+      filter 180ms var(--ease-out-soft);
+  }
+  .ticket:focus-within {
+    transform: translateY(-2px);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .ticket:hover {
+      transform: translateY(-2px);
+      filter: drop-shadow(0 1px 1px rgb(20 43 42 / 0.06)) drop-shadow(0 16px 18px rgb(20 43 42 / 0.16));
+    }
+  }
+  .ticket__info,
+  .ticket__stub {
+    min-width: 0;
+    background: var(--color-white);
+    border: 1px solid var(--color-line);
+  }
+  .ticket--warn .ticket__info,
+  .ticket--warn .ticket__stub {
+    border-color: color-mix(in srgb, var(--color-warning) 45%, var(--color-white));
+  }
+  /* Mobile : séparation horizontale. Informations en haut (encoches en bas), talon en bas (encoches en haut). */
+  .ticket__info {
+    border-bottom: 0;
+    border-start-start-radius: var(--radius-lg);
+    border-start-end-radius: var(--radius-lg);
+    mask:
+      radial-gradient(circle var(--notch) at 0 100%, #0000 97%, #000) left / 51% 100% no-repeat,
+      radial-gradient(circle var(--notch) at 100% 100%, #0000 97%, #000) right / 51% 100% no-repeat;
+  }
+  .ticket__stub {
+    border-top: 2px dashed var(--color-sand);
+    border-end-start-radius: var(--radius-lg);
+    border-end-end-radius: var(--radius-lg);
+    mask:
+      radial-gradient(circle var(--notch) at 0 0, #0000 97%, #000) left / 51% 100% no-repeat,
+      radial-gradient(circle var(--notch) at 100% 0, #0000 97%, #000) right / 51% 100% no-repeat;
+  }
+  @media (min-width: 640px) {
+    .ticket {
+      grid-template-columns: minmax(0, 1fr) var(--ticket-stub);
+    }
+    /* Séparation verticale : encoches en haut et en bas, côté fin de ligne des informations. */
+    .ticket__info {
+      border-bottom: 1px solid var(--color-line);
+      border-inline-end: 0;
+      border-radius: 0;
+      border-start-start-radius: var(--radius-lg);
+      border-end-start-radius: var(--radius-lg);
+      mask:
+        radial-gradient(circle var(--notch) at 100% 0, #0000 97%, #000) top / 100% 51% no-repeat,
+        radial-gradient(circle var(--notch) at 100% 100%, #0000 97%, #000) bottom / 100% 51% no-repeat;
+    }
+    .ticket__stub {
+      border-top: 1px solid var(--color-line);
+      border-inline-start: 2px dashed var(--color-sand);
+      border-radius: 0;
+      border-start-end-radius: var(--radius-lg);
+      border-end-end-radius: var(--radius-lg);
+      mask:
+        radial-gradient(circle var(--notch) at 0 0, #0000 97%, #000) top / 100% 51% no-repeat,
+        radial-gradient(circle var(--notch) at 0 100%, #0000 97%, #000) bottom / 100% 51% no-repeat;
+    }
+    .ticket--warn .ticket__stub {
+      border-top-color: color-mix(in srgb, var(--color-warning) 45%, var(--color-white));
+    }
+    /* Droite à gauche : le talon passe à gauche, les encoches suivent. */
+    [dir="rtl"] .ticket__info {
+      mask:
+        radial-gradient(circle var(--notch) at 0 0, #0000 97%, #000) top / 100% 51% no-repeat,
+        radial-gradient(circle var(--notch) at 0 100%, #0000 97%, #000) bottom / 100% 51% no-repeat;
+    }
+    [dir="rtl"] .ticket__stub {
+      mask:
+        radial-gradient(circle var(--notch) at 100% 0, #0000 97%, #000) top / 100% 51% no-repeat,
+        radial-gradient(circle var(--notch) at 100% 100%, #0000 97%, #000) bottom / 100% 51% no-repeat;
+    }
+  }
+  .ticket--skeleton .ticket__info,
+  .ticket--skeleton .ticket__stub {
+    background: rgb(255 255 255 / 0.7);
+  }
+}
+
+/*
  * Révélations éditoriales, une fois par bloc : invisibles seulement si JavaScript est actif.
  * Repli CSS à 2,5 s tant que le script n'a pas pris la main (`html.reveal-ready`, posé par RevealObserver) :
  * si le JavaScript échoue, rien ne reste caché.
@@ -688,7 +788,10 @@
   .card-lift,
   .card-lift:hover,
   .card-lift:focus-visible,
-  .card-cue {
+  .card-cue,
+  .ticket,
+  .ticket:hover,
+  .ticket:focus-within {
     transform: none !important;
   }
 }

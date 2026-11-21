@@ -2,13 +2,13 @@
 
 import { Link } from "@/i18n/link";
 import { useEffect } from "react";
-import { AlertTriangle, CarFront, Fuel, Luggage, Settings2, Users } from "lucide-react";
+import { AlertTriangle, Building2, CarFront, Fuel, Luggage, Plane, Settings2, Snowflake, Users } from "lucide-react";
 import { civilDateOf } from "@/lib/dates";
 import { parseCarFilters } from "@/lib/search/filters";
 import type { CarOffer } from "@/lib/providers/types";
 import { useI18n } from "@/i18n/client";
 import { useSearch, setQueryParams, toggleListParam } from "@/components/results/use-search";
-import { ActiveFilters, CheckboxFilter, FilterGroup, FiltersPanel, LoadMore, ResultsStatus, SearchError, SkeletonList, SortSelect } from "@/components/results/common";
+import { ActiveFilters, CheckboxFilter, FilterGroup, FiltersPanel, LoadMore, ResultsStatus, SearchError, SkeletonList, SortSelect, Ticket } from "@/components/results/common";
 import { AddToTripButton } from "@/components/results/add-to-trip";
 import { Badge, EmptyState } from "@/components/ui/misc";
 import { track } from "@/lib/analytics-client";
@@ -154,16 +154,53 @@ function CarCard({ offer, query, tripId }: { offer: CarOffer; query: string; tri
     q.delete("page");
     return `/voitures?${q.toString()}`;
   };
+  const total = f.money(offer.price.total);
+  const perDay = offer.rentalDays > 1 ? f.money({ amount: Math.round(offer.price.total.amount / offer.rentalDays), currency: offer.price.total.currency }) : null;
+  const atAirport = offer.pickupAgency.placeId.startsWith("airport:");
   return (
-    <article className={`grid gap-5 rounded-[var(--radius-lg)] border bg-white p-5 shadow-[var(--shadow-card)] md:grid-cols-[1fr_13rem] ${offer.bookable ? "border-line" : "border-warning/50"}`}>
+    <Ticket
+      warn={!offer.bookable}
+      label={f.t(t.cardLabel, { category: offer.category, supplier: offer.supplier.name, price: total })}
+      stub={
+        <>
+          <div>
+            <p className="font-tabular text-3xl font-semibold leading-tight">{total}</p>
+            <p className="text-xs text-ink-soft">{f.t(t.totalFor, { n: offer.rentalDays })}</p>
+            {perDay ? <p className="mt-1 text-sm font-medium tabular-nums">{f.t(t.perDay, { price: perDay })}</p> : null}
+            <p className="mt-1 text-xs">
+              {offer.price.payNow.amount > 0 ? f.t(t.prepaid, { amount: f.money(offer.price.payNow) }) : t.nothingOnline}
+              {offer.price.payOnSite.amount > 0 ? f.t(t.atAgency, { amount: f.money(offer.price.payOnSite) }) : ""}
+            </p>
+            {offer.mileage.unlimited ? (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <Badge tone="success">{t.unlimited}</Badge>
+              </div>
+            ) : null}
+            {offer.youngDriverFeePerDay ? <p className="mt-1 text-xs text-warning">{t.youngDriver}</p> : null}
+            {offer.oneWayFee ? <p className="mt-1 text-xs text-ink-soft">{t.oneWay}</p> : null}
+          </div>
+          <div className="flex flex-col gap-2">
+            <Link href={`/voitures/offre/${encodeURIComponent(offer.id)}?retour=${encodeURIComponent(back.toString())}`} onClick={() => track("select_offer", { vertical: "cars" })} className="inline-flex min-h-10 items-center justify-center rounded-[var(--radius-md)] bg-forest px-4 text-sm font-semibold text-white hover:bg-forest-deep">
+              {m.results.common.seeDetail}
+              <span className="sr-only">{f.t(t.detailSr, { category: offer.category, supplier: offer.supplier.name })}</span>
+            </Link>
+            {tripId ? <AddToTripButton tripId={tripId} offerRef={offer.id} /> : null}
+          </div>
+        </>
+      }
+    >
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
           <CarFront aria-hidden className="size-5 text-forest" />
           <h2 className="font-serif text-2xl">{offer.category}</h2>
           <Badge tone="terracotta">{offer.supplier.name}</Badge>
+          <Badge>
+            {atAirport ? <Plane aria-hidden className="size-3.5" /> : <Building2 aria-hidden className="size-3.5" />}
+            {atAirport ? t.location.airport : t.location.city}
+          </Badge>
         </div>
         <p className="mt-1 text-sm">
-          {offer.exampleModel} <span className="text-ink-soft">{t.modelNote}</span>
+          {f.t(t.orSimilar, { model: offer.exampleModel })} <span className="text-ink-soft">{t.modelNote}</span>
         </p>
         <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-soft">
           <li className="inline-flex items-center gap-1">
@@ -175,10 +212,15 @@ function CarCard({ offer, query, tripId }: { offer: CarOffer; query: string; tri
           <li className="inline-flex items-center gap-1">
             <Settings2 aria-hidden className="size-4" /> {offer.transmission === "automatic" ? t.automatic : t.manual}
           </li>
+          {offer.airConditioning ? (
+            <li className="inline-flex items-center gap-1">
+              <Snowflake aria-hidden className="size-4" /> {t.airCon}
+            </li>
+          ) : null}
           <li className="inline-flex items-center gap-1">
             <Fuel aria-hidden className="size-4" /> {m.results.energies[offer.energy]}
           </li>
-          <li>{offer.mileage.unlimited ? t.unlimited : f.t(t.kmPerDay, { n: offer.mileage.kmPerDay ?? 0 })}</li>
+          {offer.mileage.unlimited ? null : <li>{f.t(t.kmPerDay, { n: offer.mileage.kmPerDay ?? 0 })}</li>}
         </ul>
         <dl className="mt-3 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
           <div>
@@ -216,23 +258,6 @@ function CarCard({ offer, query, tripId }: { offer: CarOffer; query: string; tri
           </div>
         ) : null}
       </div>
-      <div className="flex flex-col justify-between gap-3 border-t border-line pt-4 md:border-s md:border-t-0 md:ps-5 md:pt-0">
-        <div>
-          <p className="font-tabular text-2xl font-semibold">{f.money(offer.price.total)}</p>
-          <p className="text-xs text-ink-soft">{f.t(t.totalFor, { n: offer.rentalDays })}</p>
-          <p className="mt-1 text-xs">
-            {offer.price.payNow.amount > 0 ? f.t(t.prepaid, { amount: f.money(offer.price.payNow) }) : t.nothingOnline}
-            {offer.price.payOnSite.amount > 0 ? f.t(t.atAgency, { amount: f.money(offer.price.payOnSite) }) : ""}
-          </p>
-          {offer.youngDriverFeePerDay ? <p className="mt-1 text-xs text-warning">{t.youngDriver}</p> : null}
-          {offer.oneWayFee ? <p className="mt-1 text-xs text-ink-soft">{t.oneWay}</p> : null}
-        </div>
-        <Link href={`/voitures/offre/${encodeURIComponent(offer.id)}?retour=${encodeURIComponent(back.toString())}`} onClick={() => track("select_offer", { vertical: "cars" })} className="inline-flex min-h-10 items-center justify-center rounded-[var(--radius-md)] bg-forest px-4 text-sm font-semibold text-white hover:bg-forest-deep">
-          {m.results.common.seeDetail}
-          <span className="sr-only">{f.t(t.detailSr, { category: offer.category, supplier: offer.supplier.name })}</span>
-        </Link>
-        {tripId ? <AddToTripButton tripId={tripId} offerRef={offer.id} /> : null}
-      </div>
-    </article>
+    </Ticket>
   );
 }

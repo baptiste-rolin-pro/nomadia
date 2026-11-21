@@ -3,12 +3,12 @@
 import dynamic from "next/dynamic";
 import { Link } from "@/i18n/link";
 import { useEffect, useState } from "react";
-import { BedDouble, Map as MapIcon } from "lucide-react";
+import { BedDouble, Map as MapIcon, MapPin } from "lucide-react";
 import { civilDateOf } from "@/lib/dates";
 import { parseHotelFilters } from "@/lib/search/filters";
 import type { HotelSearchResult } from "@/lib/providers/types";
 import { useSearch, setQueryParams, toggleListParam } from "@/components/results/use-search";
-import { ActiveFilters, CheckboxFilter, FilterGroup, FiltersPanel, LoadMore, ResultsStatus, SearchError, SkeletonList, SortSelect } from "@/components/results/common";
+import { ActiveFilters, CheckboxFilter, FilterGroup, FiltersPanel, LoadMore, ResultsStatus, SearchError, SkeletonList, SortSelect, Ticket } from "@/components/results/common";
 import { Badge, EmptyState } from "@/components/ui/misc";
 import { track } from "@/lib/analytics-client";
 import { useI18n } from "@/i18n/client";
@@ -151,49 +151,70 @@ function HotelCard({ result, href }: { result: HotelSearchResult; href: string }
   const t = m.results.hotels;
   const { hotel, cheapest } = result;
   const deadline = cheapest.cancellation.freeUntil;
+  const total = f.money(cheapest.price.total);
   return (
-    <article className="grid gap-5 rounded-[var(--radius-lg)] border border-line bg-white p-5 shadow-[var(--shadow-card)] md:grid-cols-[9rem_1fr_13rem]">
-      <div className="flex aspect-square flex-col items-center justify-center rounded-[var(--radius-md)] bg-ivory-deep p-3 text-center text-xs text-ink-soft">
-        <BedDouble aria-hidden className="mb-2 size-7 text-forest" />
-        {t.noPhotos}
-      </div>
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <h2 className="font-serif text-2xl">{hotel.name}</h2>
-          <Badge tone="terracotta">{t.fictional}</Badge>
+    <Ticket
+      label={f.t(t.cardLabel, { name: hotel.name, price: total })}
+      stub={
+        <>
+          <div>
+            <p className="text-xs text-ink-soft">{t.from}</p>
+            <p className="font-tabular text-3xl font-semibold leading-tight">{total}</p>
+            <p className="text-xs text-ink-soft">{f.t(t.forStay, { nights: cheapest.nights, rooms: cheapest.rooms.length, average: f.money(cheapest.averagePerNight) })}</p>
+            <p className="mt-1 text-xs text-ink-soft">
+              {cheapest.price.payOnSite.amount > 0 ? f.t(t.onSite, { amount: f.money(cheapest.price.payOnSite) }) : t.nothingOnSite}
+              {cheapest.price.taxes === "unknown" ? t.taxesUnknown : ""}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {cheapest.cancellation.refundable && deadline ? (
+                <Badge tone="success">{f.t(t.freeUntil, { date: f.date(civilDateOf(deadline.local), "short"), time: f.time(deadline.local) })}</Badge>
+              ) : (
+                <Badge tone="warning">{t.nonRefundable}</Badge>
+              )}
+              {result.freeCancellationAvailable && !cheapest.cancellation.refundable ? <Badge tone="success">{t.refundableAlso}</Badge> : null}
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Link href={href} onClick={() => track("select_offer", { vertical: "hotels" })} className="inline-flex min-h-10 items-center justify-center rounded-[var(--radius-md)] bg-forest px-4 text-sm font-semibold text-white hover:bg-forest-deep">
+              {t.seeRooms}
+              <span className="sr-only">{f.t(t.seeRoomsSr, { name: hotel.name })}</span>
+            </Link>
+            <p className="text-center text-xs text-ink-soft">{f.t(t.rates, { n: result.rateCount })}</p>
+          </div>
+        </>
+      }
+    >
+      <div className="grid gap-4 sm:grid-cols-[7.5rem_minmax(0,1fr)]">
+        <div className="flex aspect-[4/3] flex-col items-center justify-center rounded-[var(--radius-md)] bg-ivory-deep p-3 text-center text-xs text-ink-soft sm:aspect-square">
+          <BedDouble aria-hidden className="mb-2 size-7 text-forest" />
+          {t.noPhotos}
         </div>
-        <p className="mt-1 text-sm text-ink-soft">
-          {hotel.category ? f.t(t.declaredCategory, { n: hotel.category }) : hotel.categoryNote} · {hotel.neighborhood}, {hotel.city}
-        </p>
-        <p className="mt-2 line-clamp-2 text-sm">{hotel.description}</p>
-        <p className="mt-2 text-xs text-ink-soft">{hotel.amenities.join(" · ")}</p>
-        <div className="mt-3 flex flex-wrap gap-2 text-xs">
-          <Badge>{cheapest.room.name}</Badge>
-          <Badge>{m.results.boards[cheapest.board]}</Badge>
-          {cheapest.cancellation.refundable && deadline ? (
-            <Badge tone="success">{f.t(t.freeUntil, { date: f.date(civilDateOf(deadline.local), "short"), time: f.time(deadline.local) })}</Badge>
-          ) : (
-            <Badge tone="warning">{t.nonRefundable}</Badge>
-          )}
-          {result.freeCancellationAvailable && !cheapest.cancellation.refundable ? <Badge tone="success">{t.refundableAlso}</Badge> : null}
-        </div>
-      </div>
-      <div className="flex flex-col justify-between gap-3 border-t border-line pt-4 md:border-s md:border-t-0 md:ps-5 md:pt-0">
-        <div>
-          <p className="text-xs text-ink-soft">{t.from}</p>
-          <p className="font-tabular text-2xl font-semibold">{f.money(cheapest.price.total)}</p>
-          <p className="text-xs text-ink-soft">{f.t(t.forStay, { nights: cheapest.nights, rooms: cheapest.rooms.length, average: f.money(cheapest.averagePerNight) })}</p>
-          <p className="mt-1 text-xs text-ink-soft">
-            {cheapest.price.payOnSite.amount > 0 ? f.t(t.onSite, { amount: f.money(cheapest.price.payOnSite) }) : t.nothingOnSite}
-            {cheapest.price.taxes === "unknown" ? t.taxesUnknown : ""}
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="font-serif text-2xl">{hotel.name}</h2>
+            <Badge tone="terracotta">{t.fictional}</Badge>
+          </div>
+          <p className="mt-1 inline-flex items-center gap-1 text-sm text-ink-soft">
+            <MapPin aria-hidden className="size-3.5 shrink-0" />
+            {hotel.neighborhood}, {hotel.city}
           </p>
+          <p className="mt-1 text-sm text-ink-soft">{hotel.category ? f.t(t.declaredCategory, { n: hotel.category }) : hotel.categoryNote}</p>
+          <p className="mt-2 line-clamp-2 text-sm">{hotel.description}</p>
+          <ul className="mt-3 flex flex-wrap gap-1.5 text-xs">
+            {hotel.amenities.slice(0, 3).map((a) => (
+              <li key={a} className="rounded-full border border-line px-2.5 py-0.5 text-ink-soft">
+                {a}
+              </li>
+            ))}
+            <li>
+              <Badge>{m.results.boards[cheapest.board]}</Badge>
+            </li>
+            <li>
+              <Badge>{cheapest.room.name}</Badge>
+            </li>
+          </ul>
         </div>
-        <Link href={href} onClick={() => track("select_offer", { vertical: "hotels" })} className="inline-flex min-h-10 items-center justify-center rounded-[var(--radius-md)] bg-forest px-4 text-sm font-semibold text-white hover:bg-forest-deep">
-          {t.seeRooms}
-          <span className="sr-only">{f.t(t.seeRoomsSr, { name: hotel.name })}</span>
-        </Link>
-        <p className="text-center text-xs text-ink-soft">{f.t(t.rates, { n: result.rateCount })}</p>
       </div>
-    </article>
+    </Ticket>
   );
 }
