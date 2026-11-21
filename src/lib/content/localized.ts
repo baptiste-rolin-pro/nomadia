@@ -11,6 +11,7 @@ import { GUIDES, type Guide } from "@/lib/content/guides";
 import { AIRLINES, RENTERS, type AirlineEntry, type RenterEntry } from "@/lib/content/directory";
 import { PHOTOS, photo as basePhoto, type Photo } from "@/lib/content/photos";
 import { FAQ_FR } from "@/lib/content/faq";
+import { PRACTICAL_AIRPORTS, PRACTICAL_TOWNS } from "@/lib/content/practical";
 import { places as PLACES } from "@/lib/content/places";
 import { DEMO_HOTELS } from "@/lib/providers/demo/hotels-data";
 import { DEMO_AGENCIES } from "@/lib/providers/demo/cars";
@@ -53,6 +54,11 @@ export interface ContentPack {
   airlines: Record<string, { summary: string; country: string }>;
   renters: Record<string, { summary: string; countriesNote: string }>;
   faq: { q: string; a: string }[];
+  /**
+   * Informations pratiques (src/lib/content/practical.ts) : aéroports absents du référentiel de recherche (clé = code
+   * IATA) et localités qui ne sont pas des destinations éditoriales. Les autres lieux viennent de `places` ci-dessous.
+   */
+  practical: { airports: Record<string, string>; towns: Record<string, string> };
   /**
    * Lieux du référentiel (src/lib/content/places.ts) : nom de ville (clé = nom français de `Place.city`) et nom
    * d'aéroport (clé = code IATA). Les pays viennent d'Intl.DisplayNames (code ISO).
@@ -99,6 +105,7 @@ function frenchPack(): ContentPack {
     airlines: Object.fromEntries(AIRLINES.map((a) => [a.slug, { summary: a.summary, country: a.country }])),
     renters: Object.fromEntries(RENTERS.map((r) => [r.slug, { summary: r.summary, countriesNote: r.countriesNote }])),
     faq: FAQ_FR,
+    practical: { airports: { ...PRACTICAL_AIRPORTS }, towns: { ...PRACTICAL_TOWNS } },
     places: {
       cities: Object.fromEntries(PLACES.map((p) => [p.city, p.city])),
       airports: Object.fromEntries(PLACES.filter((p) => p.kind === "airport").map((p) => [p.code, p.name])),
@@ -173,4 +180,18 @@ export function cityName(frenchCity: string, locale: Locale): string {
 /** Nom affiché d'une destination éditoriale (par son identifiant). */
 export function destinationName(slug: string, locale: Locale): string {
   return contentPack(locale).destinations[slug]?.name ?? contentPack("fr").destinations[slug]?.name ?? slug;
+}
+
+/**
+ * Nom d'un aéroport cité dans les informations pratiques : référentiel de recherche d'abord, puis aéroports propres
+ * aux informations pratiques ; `undefined` si le code est inconnu (vérifié par tests/unit/practical.test.ts).
+ */
+export function practicalAirportName(code: string, locale: Locale): string | undefined {
+  const pack = contentPack(locale);
+  return pack.places.airports[code] ?? pack.practical.airports[code];
+}
+
+/** Nom d'une localité des informations pratiques : localité propre (« svolvaer ») ou destination éditoriale (« kyoto »). */
+export function practicalTownName(key: string, locale: Locale): string {
+  return contentPack(locale).practical.towns[key] ?? destinationName(key, locale);
 }

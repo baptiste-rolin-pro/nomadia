@@ -452,6 +452,12 @@ const pack: ContentPack = {
     wideroe: { summary: "挪威支线航空公司，服务该国北部的众多小型机场。", country: "挪威" },
     easyjet: { summary: "欧洲低成本航空公司。", country: "英国" },
     vueling: { summary: "以巴塞罗那为基地的西班牙低成本航空公司。", country: "西班牙" },
+    ryanair: { summary: "总部位于都柏林的爱尔兰低成本航空公司。", country: "爱尔兰" },
+    "wizz-air": { summary: "总部位于布达佩斯的低成本航空公司；集团旗下其他航空公司以同一品牌、各自的代码运营。", country: "匈牙利" },
+    "sky-express": { summary: "希腊航空公司，运营国内航线（尤其是前往各岛屿）及国际航线。", country: "希腊" },
+    "singapore-airlines": { summary: "新加坡国家航空公司，以樟宜机场为基地。", country: "新加坡" },
+    airlink: { summary: "南非航空公司，以约翰内斯堡为中心服务南部非洲。", country: "南非" },
+    flysafair: { summary: "由 Safair 运营的南非低成本航空公司。", country: "南非" },
   },
   renters: {
     hertz: { summary: "在众多机场设有门店的国际租车公司。", countriesNote: "Nomadia 未核实其覆盖国家：请在官网使用门店查询。" },
@@ -460,6 +466,12 @@ const pack: ContentPack = {
     sixt: { summary: "源自德国的租车公司。", countriesNote: "Nomadia 未核实其覆盖国家：请在官网使用门店查询。" },
     enterprise: { summary: "源自美国的租车公司。", countriesNote: "Nomadia 未核实其覆盖国家：请在官网使用门店查询。" },
     budget: { summary: "汽车租赁公司。", countriesNote: "Nomadia 未核实其覆盖国家：请在官网使用门店查询。" },
+    alamo: { summary: "源自美国的租车公司，隶属 Enterprise Mobility。", countriesNote: "Nomadia 未核实其覆盖国家：请在官网使用门店查询。" },
+    centauro: { summary: "源自西班牙的租车公司（Centauro Rent a Car），总部位于阿利坎特省。", countriesNote: "Nomadia 未核实其覆盖国家：请在官网使用门店查询。" },
+    dollar: { summary: "源自美国的租车公司，Hertz 集团旗下品牌。", countriesNote: "Nomadia 未核实其覆盖国家：请在官网使用门店查询。" },
+    thrifty: { summary: "源自美国的租车公司，Hertz 集团旗下品牌。", countriesNote: "Nomadia 未核实其覆盖国家：请在官网使用门店查询。" },
+    "toyota-rent-a-car": { summary: "Toyota 集团在日本的租车网络。", countriesNote: "Nomadia 未核实其覆盖国家：请在官网使用门店查询。" },
+    "nissan-rent-a-car": { summary: "与汽车制造商 Nissan 相关的日本租车网络。", countriesNote: "Nomadia 未核实其覆盖国家：请在官网使用门店查询。" },
   },
   faq: [
     { q: "可以一次付款同时预订航班、酒店和租车吗？", a: "不可以。每项服务单独预订，各有自己的条款和供应商。旅行手册会为您的预算汇总金额，但不会生成打包产品。" },
@@ -470,6 +482,10 @@ const pack: ContentPack = {
     { q: "这个版本能真正预订吗？", a: "不能。这是演示版：报价、价格和供应商均为虚构，不会收取任何款项。生成的文件都标有“演示”字样。" },
     { q: "照片是如何挑选的？", a: "照片来自维基共享资源，采用知识共享许可，展示的是所标注的目的地。完整的署名信息见专门页面。不会用示意照片来代表所售的酒店或车辆。" },
   ],
+  practical: {
+    airports: { SIN: "新加坡樟宜机场", JNB: "约翰内斯堡奥利弗·坦博国际机场", SVJ: "斯沃尔韦尔黑勒机场" },
+    towns: { svolvaer: "斯沃尔韦尔" },
+  },
   places: {
     cities: {
       Paris: "巴黎",

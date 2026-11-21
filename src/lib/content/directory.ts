@@ -36,6 +36,14 @@ export const AIRLINES: AirlineEntry[] = [
   { slug: "wideroe", name: "Widerøe", iata: "WF", icao: "WIF", country: "Norvège", website: "https://www.wideroe.no/", summary: "Compagnie régionale norvégienne qui dessert de nombreux petits aéroports du nord du pays.", indexable: false },
   { slug: "easyjet", name: "easyJet", iata: "U2", icao: "EZY", country: "Royaume-Uni", website: "https://www.easyjet.com/", summary: "Compagnie européenne à bas coûts.", indexable: false },
   { slug: "vueling", name: "Vueling", iata: "VY", icao: "VLG", country: "Espagne", website: "https://www.vueling.com/", summary: "Compagnie espagnole à bas coûts basée à Barcelone.", indexable: false },
+  // Ajoutées avec les informations pratiques des destinations (src/lib/content/practical.ts) : codes, pays et site
+  // officiel rédigés d'après des faits publics connus, sans reprendre d'annuaire tiers (docs/data-sources.md).
+  { slug: "ryanair", name: "Ryanair", iata: "FR", icao: "RYR", country: "Irlande", website: "https://www.ryanair.com/", summary: "Compagnie irlandaise à bas coûts, basée à Dublin.", indexable: false },
+  { slug: "wizz-air", name: "Wizz Air", iata: "W6", icao: "WZZ", country: "Hongrie", website: "https://wizzair.com/", summary: "Compagnie à bas coûts basée à Budapest ; d'autres compagnies du groupe volent sous la même marque avec leurs propres codes.", indexable: false },
+  { slug: "sky-express", name: "Sky Express", iata: "GQ", icao: "SEH", country: "Grèce", website: "https://www.skyexpress.gr/", summary: "Compagnie grecque qui exploite des lignes intérieures, vers les îles notamment, et des lignes internationales.", indexable: false },
+  { slug: "singapore-airlines", name: "Singapore Airlines", iata: "SQ", icao: "SIA", country: "Singapour", website: "https://www.singaporeair.com/", summary: "Compagnie nationale de Singapour, basée à l'aéroport de Changi.", indexable: false },
+  { slug: "airlink", name: "Airlink", iata: "4Z", icao: "LNK", country: "Afrique du Sud", website: "https://www.flyairlink.com/", summary: "Compagnie sud-africaine qui dessert l'Afrique australe depuis Johannesburg.", indexable: false },
+  { slug: "flysafair", name: "FlySafair", iata: "FA", icao: "SFR", country: "Afrique du Sud", website: "https://www.flysafair.co.za/", summary: "Compagnie sud-africaine à bas coûts, exploitée par Safair.", indexable: false },
 ];
 
 export interface RenterEntry {
@@ -54,6 +62,13 @@ export const RENTERS: RenterEntry[] = [
   { slug: "sixt", name: "Sixt", website: "https://www.sixt.fr/", summary: "Loueur d'origine allemande.", countriesNote: "Pays de présence non vérifiés par Nomadia : consultez la recherche d'agences sur le site officiel.", indexable: false },
   { slug: "enterprise", name: "Enterprise Rent-A-Car", website: "https://www.enterprise.fr/", summary: "Loueur d'origine américaine.", countriesNote: "Pays de présence non vérifiés par Nomadia : consultez la recherche d'agences sur le site officiel.", indexable: false },
   { slug: "budget", name: "Budget", website: "https://www.budget.fr/", summary: "Loueur de véhicules.", countriesNote: "Pays de présence non vérifiés par Nomadia : consultez la recherche d'agences sur le site officiel.", indexable: false },
+  // Ajoutés avec les informations pratiques des destinations (voir ci-dessus).
+  { slug: "alamo", name: "Alamo", website: "https://www.alamo.com/", summary: "Loueur d'origine américaine, du groupe Enterprise Mobility.", countriesNote: "Pays de présence non vérifiés par Nomadia : consultez la recherche d'agences sur le site officiel.", indexable: false },
+  { slug: "centauro", name: "Centauro", website: "https://www.centauro.net/", summary: "Loueur d'origine espagnole (Centauro Rent a Car), dont le siège est dans la province d'Alicante.", countriesNote: "Pays de présence non vérifiés par Nomadia : consultez la recherche d'agences sur le site officiel.", indexable: false },
+  { slug: "dollar", name: "Dollar", website: "https://www.dollar.com/", summary: "Loueur d'origine américaine, marque du groupe Hertz.", countriesNote: "Pays de présence non vérifiés par Nomadia : consultez la recherche d'agences sur le site officiel.", indexable: false },
+  { slug: "thrifty", name: "Thrifty", website: "https://www.thrifty.com/", summary: "Loueur d'origine américaine, marque du groupe Hertz.", countriesNote: "Pays de présence non vérifiés par Nomadia : consultez la recherche d'agences sur le site officiel.", indexable: false },
+  { slug: "toyota-rent-a-car", name: "Toyota Rent a Car", website: "https://rent.toyota.co.jp/", summary: "Réseau de location du groupe Toyota au Japon.", countriesNote: "Pays de présence non vérifiés par Nomadia : consultez la recherche d'agences sur le site officiel.", indexable: false },
+  { slug: "nissan-rent-a-car", name: "Nissan Rent-A-Car", website: "https://nissan-rentacar.com/", summary: "Réseau de location lié au constructeur Nissan, au Japon.", countriesNote: "Pays de présence non vérifiés par Nomadia : consultez la recherche d'agences sur le site officiel.", indexable: false },
 ];
 
 export function getAirline(slug: string): AirlineEntry | undefined {
