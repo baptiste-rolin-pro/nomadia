@@ -5,6 +5,8 @@ import { notFound } from "next/navigation";
 import { BedDouble, CalendarRange, CarFront, ExternalLink, MapPin, Plane } from "lucide-react";
 import { DESTINATIONS, SOURCES_CHECKED_ON, getDestination } from "@/lib/content/destinations";
 import { ambiances, destinationText, photoIn } from "@/lib/content/localized";
+import { getPractical } from "@/lib/content/practical";
+import { PracticalSection } from "@/components/content/practical-section";
 import { today } from "@/lib/clock";
 import { addDays } from "@/lib/dates";
 import { siteUrl } from "@/lib/env";
@@ -54,6 +56,7 @@ export default async function DestinationPage({ params }: { params: Promise<{ sl
   const flightsUrl = `/vols?${new URLSearchParams({ o: "city:PAR", d: d.search.flights, type: "ar", dep, ret, adt: "2" })}`;
   const hotelsUrl = d.search.hotels ? `/hotels?${new URLSearchParams({ dest: d.search.hotels, arr: dep, dep: ret, ch: "2" })}` : null;
   const carsUrl = d.search.cars ? `/voitures?${new URLSearchParams({ pu: d.search.cars, pud: dep, put: "10:00", dod: ret, dot: "10:00", age: "30" })}` : null;
+  const practical = getPractical(d.slug);
   const labels = ambiances(locale);
   const ambianceLabels = d.ambiances.map((a) => labels.find((x) => x.id === a)?.label).filter(Boolean);
   const abs = (path: string) => `${siteUrl()}${localizePath(locale, path)}`;
@@ -167,6 +170,18 @@ export default async function DestinationPage({ params }: { params: Promise<{ sl
                 . {f.t(t.linksChecked, { date: f.date(SOURCES_CHECKED_ON) })}
               </p>
             </section>
+
+            {practical ? (
+              <PracticalSection
+                info={practical}
+                locale={locale}
+                t={t.practical}
+                f={f}
+                listSep={m.common.listSep}
+                flights={{ href: flightsUrl, label: t.practical.searchFlights }}
+                cars={carsUrl ? { href: carsUrl, label: t.practical.searchCars } : null}
+              />
+            ) : null}
           </div>
 
           <aside className="space-y-6 lg:sticky lg:top-[calc(var(--header-height)+1.5rem)] lg:self-start" aria-label={f.t(t.prepareAside, { name: dt.name })}>

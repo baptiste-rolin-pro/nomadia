@@ -452,6 +452,12 @@ const pack: ContentPack = {
     wideroe: { summary: "Companhia regional norueguesa que atende muitos aeroportos pequenos do norte do país.", country: "Noruega" },
     easyjet: { summary: "Companhia europeia de baixo custo.", country: "Reino Unido" },
     vueling: { summary: "Companhia espanhola de baixo custo sediada em Barcelona.", country: "Espanha" },
+    ryanair: { summary: "Companhia aérea irlandesa de baixo custo, sediada em Dublin.", country: "Irlanda" },
+    "wizz-air": { summary: "Companhia de baixo custo sediada em Budapeste; outras companhias do grupo voam com a mesma marca e códigos próprios.", country: "Hungria" },
+    "sky-express": { summary: "Companhia aérea grega que opera rotas domésticas, sobretudo para as ilhas, e rotas internacionais.", country: "Grécia" },
+    "singapore-airlines": { summary: "Companhia aérea nacional de Singapura, sediada no aeroporto de Changi.", country: "Singapura" },
+    airlink: { summary: "Companhia aérea sul-africana que atende o sul da África a partir de Joanesburgo.", country: "África do Sul" },
+    flysafair: { summary: "Companhia aérea sul-africana de baixo custo operada pela Safair.", country: "África do Sul" },
   },
   renters: {
     hertz: { summary: "Locadora internacional presente em muitos aeroportos.", countriesNote: "Países de atuação não verificados pela Nomadia: consulte a busca de lojas no site oficial." },
@@ -460,6 +466,12 @@ const pack: ContentPack = {
     sixt: { summary: "Locadora de origem alemã.", countriesNote: "Países de atuação não verificados pela Nomadia: consulte a busca de lojas no site oficial." },
     enterprise: { summary: "Locadora de origem norte-americana.", countriesNote: "Países de atuação não verificados pela Nomadia: consulte a busca de lojas no site oficial." },
     budget: { summary: "Locadora de veículos.", countriesNote: "Países de atuação não verificados pela Nomadia: consulte a busca de lojas no site oficial." },
+    alamo: { summary: "Locadora de origem americana, do grupo Enterprise Mobility.", countriesNote: "Países de atuação não verificados pela Nomadia: consulte a busca de lojas no site oficial." },
+    centauro: { summary: "Locadora de origem espanhola (Centauro Rent a Car), com sede na província de Alicante.", countriesNote: "Países de atuação não verificados pela Nomadia: consulte a busca de lojas no site oficial." },
+    dollar: { summary: "Locadora de origem americana, marca do grupo Hertz.", countriesNote: "Países de atuação não verificados pela Nomadia: consulte a busca de lojas no site oficial." },
+    thrifty: { summary: "Locadora de origem americana, marca do grupo Hertz.", countriesNote: "Países de atuação não verificados pela Nomadia: consulte a busca de lojas no site oficial." },
+    "toyota-rent-a-car": { summary: "Rede de locação do grupo Toyota no Japão.", countriesNote: "Países de atuação não verificados pela Nomadia: consulte a busca de lojas no site oficial." },
+    "nissan-rent-a-car": { summary: "Rede de locação ligada à montadora Nissan, no Japão.", countriesNote: "Países de atuação não verificados pela Nomadia: consulte a busca de lojas no site oficial." },
   },
   faq: [
     { q: "Posso reservar voo, hotel e carro num só pagamento?", a: "Não. Cada serviço é reservado separadamente, com suas próprias condições e seu próprio fornecedor. O caderno de viagem soma os valores para o seu orçamento, mas não cria um pacote." },
@@ -470,6 +482,10 @@ const pack: ContentPack = {
     { q: "Esta versão permite reservar de verdade?", a: "Não. É uma demonstração: ofertas, preços e fornecedores são fictícios e nenhum pagamento é cobrado. Os documentos gerados trazem a menção “demonstração”." },
     { q: "Como as fotos são escolhidas?", a: "As fotografias vêm do Wikimedia Commons, sob licenças Creative Commons, e mostram o destino indicado. Os créditos completos estão na página dedicada. Nenhuma foto ilustrativa é usada para representar um hotel ou um veículo à venda." },
   ],
+  practical: {
+    airports: { SIN: "Aeroporto de Singapura-Changi", JNB: "Aeroporto Internacional O. R. Tambo de Joanesburgo", SVJ: "Aeroporto de Svolvær-Helle" },
+    towns: { svolvaer: "Svolvær" },
+  },
   places: {
     cities: {
       Paris: "Paris",

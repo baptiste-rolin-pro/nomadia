@@ -452,6 +452,12 @@ const pack: ContentPack = {
     wideroe: { summary: "Maskapai regional Norwegia yang melayani banyak bandara kecil di utara negara itu.", country: "Norwegia" },
     easyjet: { summary: "Maskapai berbiaya rendah Eropa.", country: "Britania Raya" },
     vueling: { summary: "Maskapai berbiaya rendah Spanyol berbasis di Barcelona.", country: "Spanyol" },
+    ryanair: { summary: "Maskapai berbiaya rendah asal Irlandia yang berbasis di Dublin.", country: "Irlandia" },
+    "wizz-air": { summary: "Maskapai berbiaya rendah yang berbasis di Budapest; maskapai lain dalam grupnya terbang dengan merek yang sama dan kode sendiri.", country: "Hongaria" },
+    "sky-express": { summary: "Maskapai Yunani yang melayani rute domestik, terutama ke pulau-pulau, dan rute internasional.", country: "Yunani" },
+    "singapore-airlines": { summary: "Maskapai nasional Singapura yang berbasis di Bandara Changi.", country: "Singapura" },
+    airlink: { summary: "Maskapai Afrika Selatan yang melayani kawasan Afrika bagian selatan dari Johannesburg.", country: "Afrika Selatan" },
+    flysafair: { summary: "Maskapai berbiaya rendah Afrika Selatan yang dioperasikan oleh Safair.", country: "Afrika Selatan" },
   },
   renters: {
     hertz: { summary: "Perusahaan sewa internasional yang hadir di banyak bandara.", countriesNote: "Negara operasional tidak diverifikasi Nomadia: gunakan pencarian kantor di situs resminya." },
@@ -460,6 +466,12 @@ const pack: ContentPack = {
     sixt: { summary: "Perusahaan sewa asal Jerman.", countriesNote: "Negara operasional tidak diverifikasi Nomadia: gunakan pencarian kantor di situs resminya." },
     enterprise: { summary: "Perusahaan sewa asal Amerika Serikat.", countriesNote: "Negara operasional tidak diverifikasi Nomadia: gunakan pencarian kantor di situs resminya." },
     budget: { summary: "Perusahaan sewa kendaraan.", countriesNote: "Negara operasional tidak diverifikasi Nomadia: gunakan pencarian kantor di situs resminya." },
+    alamo: { summary: "Perusahaan rental asal Amerika Serikat, bagian dari Enterprise Mobility.", countriesNote: "Negara operasional tidak diverifikasi Nomadia: gunakan pencarian kantor di situs resminya." },
+    centauro: { summary: "Perusahaan rental asal Spanyol (Centauro Rent a Car) yang berkantor pusat di Provinsi Alicante.", countriesNote: "Negara operasional tidak diverifikasi Nomadia: gunakan pencarian kantor di situs resminya." },
+    dollar: { summary: "Perusahaan rental asal Amerika Serikat, merek milik grup Hertz.", countriesNote: "Negara operasional tidak diverifikasi Nomadia: gunakan pencarian kantor di situs resminya." },
+    thrifty: { summary: "Perusahaan rental asal Amerika Serikat, merek milik grup Hertz.", countriesNote: "Negara operasional tidak diverifikasi Nomadia: gunakan pencarian kantor di situs resminya." },
+    "toyota-rent-a-car": { summary: "Jaringan rental grup Toyota di Jepang.", countriesNote: "Negara operasional tidak diverifikasi Nomadia: gunakan pencarian kantor di situs resminya." },
+    "nissan-rent-a-car": { summary: "Jaringan rental yang terkait dengan produsen mobil Nissan, di Jepang.", countriesNote: "Negara operasional tidak diverifikasi Nomadia: gunakan pencarian kantor di situs resminya." },
   },
   faq: [
     { q: "Bisakah saya memesan penerbangan, hotel, dan mobil dalam satu pembayaran?", a: "Tidak. Setiap layanan dipesan terpisah, dengan ketentuan dan penyedianya masing-masing. Buku perjalanan menjumlahkan biayanya untuk anggaran Anda, tetapi tidak membuat paket wisata." },
@@ -470,6 +482,10 @@ const pack: ContentPack = {
     { q: "Apakah versi ini benar-benar bisa memesan?", a: "Tidak. Ini adalah demo: penawaran, harga, dan penyedia bersifat fiktif dan tidak ada pembayaran yang ditagih. Dokumen yang dibuat diberi tanda “demonstrasi”." },
     { q: "Bagaimana foto-foto dipilih?", a: "Foto berasal dari Wikimedia Commons, dengan lisensi Creative Commons, dan menampilkan destinasi yang disebutkan. Kredit lengkap ada di halaman khusus. Tidak ada foto ilustrasi yang digunakan untuk mewakili hotel atau kendaraan yang dijual." },
   ],
+  practical: {
+    airports: { SIN: "Bandara Changi Singapura", JNB: "Bandara Internasional O. R. Tambo, Johannesburg", SVJ: "Bandara Svolvær-Helle" },
+    towns: { svolvaer: "Svolvær" },
+  },
   places: {
     cities: {
       Paris: "Paris",
