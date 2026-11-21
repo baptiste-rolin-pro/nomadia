@@ -28,7 +28,11 @@ const renterRefs: BrandRef[] = PRACTICAL.flatMap((p) => p.cars.flatMap((c) => c.
 /** Toutes les clés d'objets, à toute profondeur. */
 function keysDeep(node: unknown, out: string[] = []): string[] {
   if (Array.isArray(node)) node.forEach((v) => keysDeep(v, out));
-  else if (node && typeof node === "object") for (const [k, v] of Object.entries(node)) (out.push(k), keysDeep(v, out));
+  else if (node && typeof node === "object")
+    for (const [k, v] of Object.entries(node)) {
+      out.push(k);
+      keysDeep(v, out);
+    }
   return out;
 }
 

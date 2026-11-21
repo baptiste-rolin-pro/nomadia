@@ -149,7 +149,7 @@ export function PracticalSection({
         </div>
       </div>
 
-      <Notice className="mt-6">{f.t(t.note, { date: f.date(PRACTICAL_OBSERVED_ON) })}</Notice>
+      <Notice className="mt-6">{f.t(t.note, { date: f.date(PRACTICAL_OBSERVED_ON, "medium") })}</Notice>
 
       <h3 className="mt-6 text-sm font-semibold">{t.searchTitle}</h3>
       <ul className="mt-2 flex flex-wrap gap-3">
