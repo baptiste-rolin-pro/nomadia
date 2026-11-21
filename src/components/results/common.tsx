@@ -161,14 +161,39 @@ export function LoadMore({ shown, total, onMore }: { shown: number; total: numbe
   );
 }
 
-/** Premier chargement des résultats : avion de marque (décoratif, le statut ci-dessus annonce déjà la recherche) + gabarits. */
+/**
+ * Billet de résultat : `article` nommé (trajet / établissement / véhicule + prix), partie informations
+ * puis talon de prix séparé par une ligne pointillée et deux encoches (CSS `.ticket` dans globals.css).
+ * Le talon porte l'unique action principale ; la carte elle-même n'est pas un lien.
+ */
+export function Ticket({ label, stub, children, warn = false }: { label: string; stub: ReactNode; children: ReactNode; warn?: boolean }) {
+  return (
+    <article aria-label={label} className={`ticket${warn ? " ticket--warn" : ""}`}>
+      <div className="ticket__info p-4 sm:p-5">{children}</div>
+      <div className="ticket__stub flex flex-col justify-between gap-3 p-4 sm:p-5">{stub}</div>
+    </article>
+  );
+}
+
+/** Premier chargement des résultats : avion de marque (décoratif, le statut ci-dessus annonce déjà la recherche) + gabarits en forme de billet. */
 export function SkeletonList({ count = 3, label }: { count?: number; label: string }) {
   return (
     <div className="space-y-4">
       <PlaneLoader label={label} announce={false} className="rounded-[var(--radius-lg)] bg-white/70 py-7" />
       <ul aria-hidden className="space-y-4">
         {Array.from({ length: count }, (_, i) => (
-          <li key={i} className="h-40 animate-pulse rounded-[var(--radius-lg)] bg-white/70" />
+          <li key={i} className="ticket ticket--skeleton pointer-events-none animate-pulse">
+            <div className="ticket__info space-y-3 p-5">
+              <div className="h-5 w-2/3 rounded bg-ivory-deep" />
+              <div className="h-5 w-1/2 rounded bg-ivory-deep" />
+              <div className="h-3 w-3/4 rounded bg-ivory-deep" />
+            </div>
+            <div className="ticket__stub space-y-3 p-5">
+              <div className="h-7 w-24 rounded bg-ivory-deep" />
+              <div className="h-3 w-28 rounded bg-ivory-deep" />
+              <div className="h-10 rounded-[var(--radius-md)] bg-ivory-deep" />
+            </div>
+          </li>
         ))}
       </ul>
     </div>

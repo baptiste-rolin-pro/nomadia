@@ -6,10 +6,10 @@ import { BaggageClaim, Briefcase, Luggage } from "lucide-react";
 import { parseFlightFilters } from "@/lib/search/filters";
 import type { FlightOffer } from "@/lib/providers/types";
 import { useSearch, setQueryParams, toggleListParam } from "@/components/results/use-search";
-import { ActiveFilters, CheckboxFilter, FilterGroup, FiltersPanel, LoadMore, ResultsStatus, SearchError, SkeletonList, SortSelect } from "@/components/results/common";
+import { ActiveFilters, CheckboxFilter, FilterGroup, FiltersPanel, LoadMore, ResultsStatus, SearchError, SkeletonList, SortSelect, Ticket } from "@/components/results/common";
 import { SliceSummary } from "@/components/results/flight-slice";
 import { AddToTripButton } from "@/components/results/add-to-trip";
-import { EmptyState } from "@/components/ui/misc";
+import { Badge, EmptyState } from "@/components/ui/misc";
 import { track } from "@/lib/analytics-client";
 import { useI18n } from "@/i18n/client";
 
@@ -146,10 +146,33 @@ function FlightCard({ offer, query, tripId }: { offer: FlightOffer; query: strin
   back.delete("page");
   const detailHref = `/vols/offre/${encodeURIComponent(offer.id)}?retour=${encodeURIComponent(back.toString())}`;
   const price = f.money(offer.price.total);
+  const adult = offer.perPassenger.find((p) => p.type === "adult");
   return (
-    <article
-      className="grid gap-4 rounded-[var(--radius-lg)] border border-line bg-white p-5 shadow-[var(--shadow-card)] md:grid-cols-[1fr_13rem]"
-      aria-label={f.t(t.cardLabel, { from: offer.slices[0]!.segments[0]!.origin.code, to: offer.slices[0]!.segments.at(-1)!.destination.code, price })}
+    <Ticket
+      label={f.t(t.cardLabel, { from: offer.slices[0]!.segments[0]!.origin.code, to: offer.slices[0]!.segments.at(-1)!.destination.code, price })}
+      stub={
+        <>
+          <div>
+            <p className="font-tabular text-3xl font-semibold leading-tight">{price}</p>
+            <p className="text-xs text-ink-soft">{f.t(t.totalFor, { n: pax })}</p>
+            {adult && pax > 1 ? <p className="mt-1 text-sm font-medium tabular-nums">{f.t(t.perAdult, { price: f.money(adult.unit) })}</p> : null}
+            {offer.fare.checkedBags || offer.fare.refund === "free" ? (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {offer.fare.checkedBags ? <Badge tone="success">{t.checkedIncluded}</Badge> : null}
+                {offer.fare.refund === "free" ? <Badge tone="success">{t.refundable}</Badge> : null}
+              </div>
+            ) : null}
+            <p className="mt-2 text-xs text-ink-soft">{t.indicative}</p>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Link href={detailHref} onClick={() => track("select_offer", { vertical: "flights" })} className="inline-flex min-h-10 items-center justify-center rounded-[var(--radius-md)] bg-forest px-4 text-sm font-semibold text-white hover:bg-forest-deep">
+              {m.results.common.seeDetail}
+              <span className="sr-only">{f.t(t.detailSr, { price })}</span>
+            </Link>
+            {tripId ? <AddToTripButton tripId={tripId} offerRef={offer.id} /> : null}
+          </div>
+        </>
+      }
     >
       <div className="space-y-4">
         {offer.slices.map((s, i) => (
@@ -170,20 +193,6 @@ function FlightCard({ offer, query, tripId }: { offer: FlightOffer; query: strin
         </div>
         {offer.separateTickets ? <p className="rounded-[var(--radius-md)] bg-danger-soft p-2 text-xs text-danger">{t.separateTickets}</p> : null}
       </div>
-      <div className="flex flex-col justify-between gap-3 border-t border-line pt-4 md:border-s md:border-t-0 md:ps-5 md:pt-0">
-        <div>
-          <p className="font-tabular text-2xl font-semibold">{price}</p>
-          <p className="text-xs text-ink-soft">{f.t(t.totalFor, { n: pax })}</p>
-          <p className="mt-1 text-xs text-ink-soft">{t.indicative}</p>
-        </div>
-        <div className="flex flex-col gap-2">
-          <Link href={detailHref} onClick={() => track("select_offer", { vertical: "flights" })} className="inline-flex min-h-10 items-center justify-center rounded-[var(--radius-md)] bg-forest px-4 text-sm font-semibold text-white hover:bg-forest-deep">
-            {m.results.common.seeDetail}
-            <span className="sr-only">{f.t(t.detailSr, { price })}</span>
-          </Link>
-          {tripId ? <AddToTripButton tripId={tripId} offerRef={offer.id} /> : null}
-        </div>
-      </div>
-    </article>
+    </Ticket>
   );
 }
