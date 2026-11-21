@@ -449,6 +449,28 @@ describe("limitation de débit en base et route /api/assistant", () => {
     expect(await service.assistantStatus("mock").json()).toEqual({ available: true, fallback: true });
   });
 
+  it("langue du visiteur : réponse, aide et erreurs dans sa langue, chemins préfixés ; le modèle n'est pas appelé", async () => {
+    await reset();
+    const { factory } = spyClient();
+    const d = deps({ mode: "off", client: factory });
+    const send = async (body: unknown, headers: Record<string, string> = {}) => read(await service.handleAssistantPost(post(body, headers), d));
+
+    const ar = await send({ text: "فندق في لشبونة ٣ ليالٍ ابتداءً من ١٠ أبريل، شخصان بالغان", locale: "ar" });
+    expect(ar.body).toMatchObject({ status: "ok", engine: "local", result: { type: "actions" } });
+    const arAction = ar.body.status === "ok" && ar.body.result.type === "actions" ? ar.body.result.actions[0]! : null;
+    expect(arAction?.href).toBe("/ar/hotels?dest=city%3ALIS&arr=2027-04-10&dep=2027-04-13&ch=2");
+    expect(arAction?.title).toBe("الإقامة في لشبونة");
+    expect(isAssistantHref(arAction?.href)).toBe(true);
+
+    const en = await send({ text: "write me a poem", locale: "en" });
+    expect(en.body).toMatchObject({ status: "ok", engine: "local", result: { type: "help", message: "I did not understand your request. Give a destination or a service (flight, hotel, car), for example:" } });
+    // Langue inconnue : français par défaut ; corps invalide : erreur dans la langue de la page d'origine (Referer).
+    expect((await send({ text: "Hôtel à Rome", locale: "de" })).body).toMatchObject({ status: "ok", result: { type: "clarification", question: "Pour quelles dates d'arrivée et de départ ?" } });
+    const invalid = await send({ text: "" }, { referer: "http://localhost:3000/ru/vols" });
+    expect(invalid).toMatchObject({ status: 400, body: { status: "error", message: expect.stringContaining("символов") } });
+    expect(factory).not.toHaveBeenCalled();
+  });
+
   it("avec clé : le modèle n'est appelé que pour les demandes que l'analyse locale ne comprend pas", async () => {
     await reset();
     const { seen, factory } = spyClient();

@@ -8,34 +8,7 @@ export type ProviderStatus = "not_started" | "pending" | "confirmed" | "ticketed
 export type DocumentStatus = "none" | "available";
 export type BookingStep = "travelers" | "options" | "review" | "payment" | "processing" | "done";
 
-export const PAYMENT_LABELS: Record<PaymentStatus, string> = {
-  not_required: "Aucun paiement en ligne (réglé sur place)",
-  requires_payment: "En attente de paiement",
-  processing: "Paiement en cours",
-  requires_action: "Authentification supplémentaire requise",
-  declined: "Paiement refusé",
-  paid: "Payé",
-  refund_requested: "Remboursement demandé",
-  refunded: "Remboursement confirmé",
-};
-
-export const PROVIDER_LABELS: Record<ProviderStatus, string> = {
-  not_started: "Non transmise au fournisseur",
-  pending: "Transmise, en attente du fournisseur",
-  confirmed: "Confirmée par le fournisseur",
-  ticketed: "Billets émis",
-  failed: "Refusée par le fournisseur",
-  unknown: "Statut en cours de vérification auprès du fournisseur",
-  cancel_requested: "Annulation demandée",
-  cancelled: "Annulée",
-};
-
-export const FLIGHT_CONFIRMED_LABEL = "Dossier créé — billets en cours d'émission";
-
-export const DOCUMENT_LABELS: Record<DocumentStatus, string> = {
-  none: "Aucun document disponible",
-  available: "Récapitulatif de démonstration disponible",
-};
+// Libellés des statuts : `booking.status` dans src/i18n/messages (une traduction par langue).
 
 /**
  * Ordre de progression des paiements : un événement qui ferait reculer l'état (événement en retard
@@ -60,21 +33,40 @@ export function isProviderTerminal(s: ProviderStatus): boolean {
   return s === "confirmed" || s === "ticketed" || s === "failed" || s === "cancelled";
 }
 
-export function bookingHeadline(b: { paymentStatus: string; providerStatus: string; vertical: string }): { tone: "ok" | "warn" | "error" | "pending"; text: string } {
+export type HeadlineKey =
+  | "ticketed"
+  | "confirmed"
+  | "confirmedFlight"
+  | "cancelledRefunded"
+  | "cancelledRefundRequested"
+  | "cancelled"
+  | "failedRefundRequested"
+  | "failedRefunded"
+  | "failed"
+  | "unknownPaid"
+  | "unknown"
+  | "processingProvider"
+  | "declined"
+  | "requiresAction"
+  | "processingPayment"
+  | "notFinalized";
+
+/** Titre de l'état d'une réservation : ton et clé du message (`booking.headline`). */
+export function bookingHeadline(b: { paymentStatus: string; providerStatus: string; vertical: string }): { tone: "ok" | "warn" | "error" | "pending"; key: HeadlineKey } {
   const p = b.providerStatus as ProviderStatus;
   const pay = b.paymentStatus as PaymentStatus;
-  if (p === "ticketed") return { tone: "ok", text: "Réservation confirmée, billets émis (démonstration)." };
-  if (p === "confirmed") return { tone: "ok", text: b.vertical === "flights" ? "Réservation confirmée par la compagnie ; émission des billets en cours." : "Réservation confirmée par le fournisseur." };
-  if (p === "cancelled") return { tone: "warn", text: pay === "refunded" ? "Réservation annulée, remboursement confirmé." : pay === "refund_requested" ? "Réservation annulée, remboursement demandé (non encore confirmé)." : "Réservation annulée." };
+  if (p === "ticketed") return { tone: "ok", key: "ticketed" };
+  if (p === "confirmed") return { tone: "ok", key: b.vertical === "flights" ? "confirmedFlight" : "confirmed" };
+  if (p === "cancelled") return { tone: "warn", key: pay === "refunded" ? "cancelledRefunded" : pay === "refund_requested" ? "cancelledRefundRequested" : "cancelled" };
   if (p === "failed") {
-    if (pay === "refund_requested") return { tone: "error", text: "Paiement reçu mais réservation refusée par le fournisseur. Remboursement demandé, en attente de confirmation." };
-    if (pay === "refunded") return { tone: "error", text: "Réservation refusée par le fournisseur. Remboursement confirmé." };
-    return { tone: "error", text: "La réservation a été refusée par le fournisseur." };
+    if (pay === "refund_requested") return { tone: "error", key: "failedRefundRequested" };
+    if (pay === "refunded") return { tone: "error", key: "failedRefunded" };
+    return { tone: "error", key: "failed" };
   }
-  if (p === "unknown") return { tone: "pending", text: pay === "paid" ? "Paiement reçu. Le fournisseur n'a pas encore confirmé : vérification en cours, aucune nouvelle réservation ne sera lancée automatiquement." : "Vérification en cours auprès du fournisseur." };
-  if (pay === "paid" || p === "pending") return { tone: "pending", text: "Paiement reçu, réservation en cours de traitement par le fournisseur." };
-  if (pay === "declined") return { tone: "error", text: "Paiement refusé : aucune réservation n'a été transmise." };
-  if (pay === "requires_action") return { tone: "pending", text: "Authentification bancaire supplémentaire requise." };
-  if (pay === "processing") return { tone: "pending", text: "Paiement en cours de traitement." };
-  return { tone: "pending", text: "Réservation non finalisée." };
+  if (p === "unknown") return { tone: "pending", key: pay === "paid" ? "unknownPaid" : "unknown" };
+  if (pay === "paid" || p === "pending") return { tone: "pending", key: "processingProvider" };
+  if (pay === "declined") return { tone: "error", key: "declined" };
+  if (pay === "requires_action") return { tone: "pending", key: "requiresAction" };
+  if (pay === "processing") return { tone: "pending", key: "processingPayment" };
+  return { tone: "pending", key: "notFinalized" };
 }

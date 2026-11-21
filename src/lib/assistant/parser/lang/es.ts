@@ -1,0 +1,50 @@
+import type { LangPack } from "@/lib/assistant/parser/lang/types";
+
+/** Espagnol. */
+const es: LangPack = {
+  locale: "es",
+  dropDeInDates: true,
+  pre: [
+    [/\ba las (\d{1,2})(?::(\d{2}))?\b/gi, (_m, h, mm) => `a ${h}h${mm ?? ""}`],
+    [/\b(?:dentro de|en)\s+(\d+|un|una|dos|tres|cuatro|cinco)\s+(d[ií]as?|semanas?|mes(?:es)?)\b/gi, "dentro de $1 $2"],
+  ],
+  words: {
+    vuelo: "vol", vuelos: "vol", volar: "vol", avion: "avion", billete: "billet", billetes: "billet", boleto: "billet", boletos: "billet", pasaje: "billet", pasajes: "billet",
+    "ida y vuelta": "aller-retour", "solo ida": "aller simple", "de ida": "aller simple", "billete de ida": "aller simple",
+    hotel: "hotel", hoteles: "hotel", alojamiento: "hebergement", alojamientos: "hebergement", hospedaje: "hebergement", habitacion: "chambre", habitaciones: "chambres",
+    noche: "nuit", noches: "nuits", apartamento: "appartement", hostal: "auberge", albergue: "auberge", dormir: "dormir", estancia: "sejour", estadia: "sejour", alojarme: "dormir",
+    coche: "voiture", coches: "voiture", carro: "voiture", auto: "voiture", "alquiler de coche": "location voiture", "alquiler de coches": "location voiture", "alquilar un coche": "louer un voiture",
+    alquiler: "location", alquilar: "louer", rentar: "louer", conducir: "conduire", manejar: "conduire", conductor: "conducteur", conductora: "conducteur", "joven conductor": "jeune conducteur",
+    viaje: "voyage", viajes: "voyage", viajar: "voyager", vacaciones: "vacances", escapada: "escapade", organiza: "organise", organizar: "organise", organizame: "organise",
+    planifica: "planifie", planificar: "planifie", planea: "planifie", planear: "planifie", itinerario: "itineraire", visitar: "visiter", "road trip": "roadtrip",
+    descubrir: "decouvrir", conocer: "decouvrir", informacion: "infos", info: "infos", "hablame de": "infos", muestrame: "montre moi", ideas: "idees",
+    reservar: "reserver", reserva: "reserver", reservame: "reserver", pagar: "payer", pago: "paiement", comprar: "acheter", compra: "acheter", tarjeta: "carte",
+    de: "de", desde: "depuis", a: "a", al: "au", hacia: "vers", para: "pour", en: "en", con: "avec", entre: "entre", y: "et", e: "et", el: "le", del: "du", la: "", los: "", las: "", un: "un", una: "un",
+    hasta: "jusqu au", "hasta el": "jusqu au", "a partir del": "a partir du", "a partir de": "a partir du", "dentro de": "dans",
+    regreso: "retour", vuelta: "retour", volver: "retour", "de vuelta": "retour", devolver: "rendre", devolucion: "rendre", recoger: "prise", recogida: "prise",
+    mediodia: "midi", medianoche: "minuit", "por la manana": "matin", "por la tarde": "soir", "esta noche": "ce soir",
+    enero: "janvier", febrero: "fevrier", marzo: "mars", abril: "avril", mayo: "mai", junio: "juin", julio: "juillet", agosto: "aout", septiembre: "septembre", setiembre: "septembre", octubre: "octobre", noviembre: "novembre", diciembre: "decembre",
+    lunes: "lundi", martes: "mardi", miercoles: "mercredi", jueves: "jeudi", viernes: "vendredi", sabado: "samedi", domingo: "dimanche",
+    "proximo lunes": "lundi prochain", "proximo martes": "mardi prochain", "proximo miercoles": "mercredi prochain", "proximo jueves": "jeudi prochain", "proximo viernes": "vendredi prochain", "proximo sabado": "samedi prochain", "proximo domingo": "dimanche prochain",
+    "lunes que viene": "lundi prochain", "viernes que viene": "vendredi prochain", "sabado que viene": "samedi prochain",
+    hoy: "aujourd'hui", manana: "demain", "pasado manana": "apres-demain",
+    "este fin de semana": "ce week-end", "el proximo fin de semana": "le week-end prochain", "proximo fin de semana": "le week-end prochain", "el fin de semana que viene": "le week-end prochain", "fin de semana": "week-end", findesemana: "week-end",
+    "la proxima semana": "la semaine prochaine", "proxima semana": "la semaine prochaine", "la semana que viene": "la semaine prochaine", "semana que viene": "la semaine prochaine", "esta semana": "cette semaine",
+    "el proximo mes": "le mois prochain", "proximo mes": "le mois prochain", "el mes que viene": "le mois prochain",
+    semana: "semaine", semanas: "semaines", dia: "jour", dias: "jours", mes: "mois", meses: "mois", quincena: "quinzaine",
+    "principios de": "debut", "comienzos de": "debut", "inicios de": "debut", "a principios de": "debut", "mediados de": "mi", "a mediados de": "mi", "finales de": "fin", "a finales de": "fin", "fines de": "fin",
+    adulto: "adulte", adultos: "adultes", nino: "enfant", ninos: "enfants", nina: "enfant", ninas: "enfants", menor: "enfant", menores: "enfants", hijo: "enfant", hijos: "enfants",
+    adolescente: "ado", adolescentes: "ados", bebe: "bebe", bebes: "bebes", persona: "personne", personas: "personnes", viajero: "voyageur", viajeros: "voyageurs", pasajero: "passager", pasajeros: "passagers",
+    familia: "famille", "en familia": "en famille", "con mi familia": "en famille", "con la familia": "en famille", pareja: "en couple", "en pareja": "en couple",
+    solo: "seul", sola: "seul", "con amigos": "entre amis", "entre amigos": "entre amis", "con mis amigos": "avec mes amis", somos: "nous sommes", "los dos": "nous deux", "nosotros dos": "nous deux",
+    "mi esposa": "ma femme", "mi mujer": "ma femme", "mi marido": "mon mari", "mi esposo": "mon mari", "mi pareja": "mon conjoint", "mi novia": "ma copine", "mi novio": "mon copain",
+    "mi hijo": "mon fils", "mi hija": "ma fille", "mis hijos": "mes enfants", "mis ninos": "mes enfants", "mi bebe": "mon bebe", "mis padres": "mes parents", "mi madre": "ma mere", "mi padre": "mon pere",
+    anos: "ans", ano: "ans", "de edad": "", edad: "age", tengo: "j ai", vivo: "habite", resido: "reside", residente: "resident", soy: "suis",
+    licencia: "permis", carnet: "permis", "carnet de conducir": "permis", belga: "belge", frances: "francais", francesa: "francaise", suizo: "suisse", canadiense: "canadien", aleman: "allemand", espanol: "espagnol", italiano: "italien", britanico: "britannique",
+    "clase business": "classe affaires", business: "business", ejecutiva: "business", "primera clase": "premiere classe", turista: "economique", "clase turista": "economique", economica: "economique", premium: "premium",
+    uno: "1", dos: "2", tres: "3", cuatro: "4", cinco: "5", seis: "6", siete: "7", ocho: "8", nueve: "9", diez: "10", once: "11", doce: "12", quince: "15", veinte: "20",
+    ignora: "ignore", ignorar: "ignore", olvida: "oublie", instrucciones: "instructions", reglas: "regles", "eres ahora": "tu es maintenant", "ahora eres": "tu es maintenant",
+  },
+};
+
+export default es;

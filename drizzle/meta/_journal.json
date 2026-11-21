@@ -29,6 +29,13 @@
       "when": 1794428874666,
       "tag": "0003_assistant_rate_limits",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794488768980,
+      "tag": "0004_user_booking_locale",
+      "breakpoints": true
     }
   ]
 }

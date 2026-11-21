@@ -1,11 +1,13 @@
 "use client";
 
-import Link from "next/link";
+import { Link } from "@/i18n/link";
 import { useMemo, useState } from "react";
 import { normalize } from "@/lib/content/places";
+import { useI18n } from "@/i18n/client";
 
 /** Annuaire filtrable côté client (nom, pays, codes) ; la liste complète reste dans le HTML initial. */
 export function DirectoryFilter({ items, basePath, label }: { items: { slug: string; name: string; meta: string; codes: string[] }[]; basePath: string; label: string }) {
+  const { m, f } = useI18n();
   const [q, setQ] = useState("");
   const list = useMemo(() => {
     const n = normalize(q);
@@ -16,9 +18,9 @@ export function DirectoryFilter({ items, basePath, label }: { items: { slug: str
       <label htmlFor="dir-q" className="text-sm font-semibold">
         {label}
       </label>
-      <input id="dir-q" type="search" value={q} onChange={(e) => setQ(e.target.value)} className="field-input mt-1.5 max-w-md" placeholder="Nom, pays ou code" />
+      <input id="dir-q" type="search" value={q} onChange={(e) => setQ(e.target.value)} className="field-input mt-1.5 max-w-md" placeholder={m.content.directory.placeholder} />
       <p role="status" className="mt-2 text-sm text-ink-soft">
-        {list.length} résultat{list.length > 1 ? "s" : ""}
+        {f.t(m.content.directory.count, { n: list.length })}
       </p>
       <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {list.map((i) => (

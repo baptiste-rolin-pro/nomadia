@@ -4,11 +4,10 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import { useRouter } from "next/navigation";
 import { CreditCard, Loader2, ShieldCheck } from "lucide-react";
-import { formatMoney } from "@/lib/money";
 import type { AncillaryDef, TravelerInput } from "@/lib/providers/types";
-import { cancelBookingAction, payAction, saveOptionsAction, saveTravelersAction, submitReviewAction, type ActionState } from "@/app/reservation/actions";
-
-const TYPE_LABEL: Record<TravelerInput["type"], string> = { adult: "Adulte (12 ans et plus)", child: "Enfant (2 à 11 ans)", infant: "Bébé (moins de 2 ans)", guest: "Voyageur principal de la chambre", driver: "Conducteur principal" };
+import { useI18n } from "@/i18n/client";
+import { inline } from "@/components/content/rich-text";
+import { cancelBookingAction, payAction, saveOptionsAction, saveTravelersAction, submitReviewAction, type ActionState } from "@/app/[locale]/reservation/actions";
 
 function SubmitButton({ children, pendingLabel }: { children: React.ReactNode; pendingLabel: string }) {
   const { pending } = useFormStatus();
@@ -51,6 +50,8 @@ export function TravelersStep({
   /** Site de démonstration public : adresse fictive obligatoire, aucun voyageur enregistré dans le compte partagé. */
   sharedDemo?: boolean;
 }) {
+  const { m, f } = useI18n();
+  const t = m.booking.form;
   const [state, action] = useActionState<ActionState, FormData>(saveTravelersAction, {});
   const [values, setValues] = useState(types.map((type, i) => ({ type, firstName: initial[i]?.firstName ?? "", lastName: initial[i]?.lastName ?? "", birthDate: initial[i]?.birthDate ?? "" })));
   const formRef = useRef<HTMLFormElement>(null);
@@ -72,13 +73,13 @@ export function TravelersStep({
       {values.map((v, i) => (
         <fieldset key={i} className="rounded-[var(--radius-lg)] border border-line bg-white p-5">
           <legend className="px-1 font-semibold">
-            Voyageur {i + 1} — {TYPE_LABEL[v.type]}
+            {f.t(t.traveler, { n: i + 1, type: t.travelerTypes[v.type] })}
           </legend>
           <input type="hidden" name={`t${i}.type`} value={v.type} />
           {saved.length ? (
             <div className="mb-4">
               <label htmlFor={`saved-${i}`} className="text-sm font-semibold">
-                Utiliser un voyageur enregistré
+                {t.useSaved}
               </label>
               <select
                 id={`saved-${i}`}
@@ -89,7 +90,7 @@ export function TravelersStep({
                   if (s) setValues((all) => all.map((x, j) => (j === i ? { ...x, firstName: s.firstName, lastName: s.lastName, birthDate: s.birthDate ?? "" } : x)));
                 }}
               >
-                <option value="">— Choisir —</option>
+                <option value="">{t.choose}</option>
                 {saved.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.firstName} {s.lastName}
@@ -102,7 +103,7 @@ export function TravelersStep({
             {(["firstName", "lastName"] as const).map((field) => (
               <div key={field} className="flex flex-col gap-1.5">
                 <label htmlFor={`t${i}-${field}`} className="text-sm font-semibold">
-                  {field === "firstName" ? "Prénom" : "Nom"}
+                  {field === "firstName" ? t.firstName : t.lastName}
                 </label>
                 <input
                   id={`t${i}-${field}`}
@@ -125,7 +126,7 @@ export function TravelersStep({
             {needsBirthDate ? (
               <div className="flex flex-col gap-1.5">
                 <label htmlFor={`t${i}-birth`} className="text-sm font-semibold">
-                  Date de naissance
+                  {t.birthDate}
                 </label>
                 <input
                   id={`t${i}-birth`}
@@ -140,7 +141,7 @@ export function TravelersStep({
                   required
                 />
                 <p id={`t${i}-birth-hint`} className="text-xs text-ink-soft">
-                  L&apos;âge est vérifié à la date de chaque trajet.
+                  {t.birthHint}
                 </p>
                 {issue(i, "birthDate") ? (
                   <p id={`t${i}-birth-error`} className="text-sm font-medium text-danger">
@@ -154,7 +155,7 @@ export function TravelersStep({
       ))}
       <div className="rounded-[var(--radius-lg)] border border-line bg-white p-5">
         <label htmlFor="contactEmail" className="text-sm font-semibold">
-          Email de contact pour la confirmation
+          {t.contactEmail}
         </label>
         <input
           id="contactEmail"
@@ -164,22 +165,21 @@ export function TravelersStep({
           defaultValue={contactEmail}
           placeholder={sharedDemo ? "voyageur@exemple.test" : undefined}
           aria-describedby="contactEmail-hint"
+          dir="ltr"
           className="field-input mt-1.5"
           required
         />
         <p id="contactEmail-hint" className="mt-1 text-xs text-ink-soft">
-          {sharedDemo
-            ? "Adresse fictive obligatoire (domaine .test, .example ou example.com). Aucun email n'est envoyé par cette démonstration."
-            : "En local, l'email est capturé dans la boîte de test et n'est pas envoyé."}
+          {sharedDemo ? t.contactHintShared : t.contactHint}
         </p>
         {loggedIn && !sharedDemo ? (
           <label className="mt-4 flex items-start gap-2 text-sm">
             <input type="checkbox" name="saveToAccount" className="mt-0.5 size-4 accent-[var(--color-forest)]" />
-            <span>J&apos;accepte que ces voyageurs (nom, prénom, date de naissance) soient enregistrés dans mon compte pour mes prochaines réservations. Facultatif, modifiable dans mon profil.</span>
+            <span>{t.saveTravelers}</span>
           </label>
         ) : null}
       </div>
-      <SubmitButton pendingLabel="Vérification…">Continuer vers les options</SubmitButton>
+      <SubmitButton pendingLabel={t.checking}>{t.toOptions}</SubmitButton>
     </form>
   );
 }
@@ -187,14 +187,16 @@ export function TravelersStep({
 // ---------------------------------------------------------------------------
 
 export function OptionsStep({ bookingId, options, selected, days }: { bookingId: string; options: AncillaryDef[]; selected: Record<string, number>; days: number }) {
+  const { m, f } = useI18n();
+  const t = m.booking.form;
   const [state, action] = useActionState<ActionState, FormData>(saveOptionsAction, {});
   const [qty, setQty] = useState<Record<string, number>>(Object.fromEntries(options.map((o) => [o.id, selected[o.id] ?? 0])));
   return (
     <form action={action} className="space-y-5">
       <input type="hidden" name="bookingId" value={bookingId} />
       <FormError state={state} />
-      <p className="text-sm text-ink-soft">Aucune option n&apos;est présélectionnée. Ajoutez uniquement ce qui vous est utile.</p>
-      {options.length === 0 ? <p>Aucune option disponible pour cette offre.</p> : null}
+      <p className="text-sm text-ink-soft">{t.noneSelected}</p>
+      {options.length === 0 ? <p>{t.noOptions}</p> : null}
       <ul className="space-y-3">
         {options.map((o) => (
           <li key={o.id} className="flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-line bg-white p-4">
@@ -205,17 +207,20 @@ export function OptionsStep({ bookingId, options, selected, days }: { bookingId:
               </label>
               <p className="text-sm text-ink-soft">{o.description}</p>
               <p className="mt-1 text-sm">
-                {o.unitPrice.amount === 0 ? "Sans supplément annoncé" : `${formatMoney(o.unitPrice)} ${o.per === "day" ? `par jour (${days} jour${days > 1 ? "s" : ""})` : o.per === "passenger" ? "par passager et par trajet" : "par réservation"}`} · {o.payable === "now" ? "payé en ligne" : "payable sur place"}
-                {!o.guaranteed ? " · demande non garantie" : ""}
+                {o.unitPrice.amount === 0
+                  ? t.noSupplement
+                  : f.t(o.per === "day" ? t.perDay : o.per === "passenger" ? t.perPassenger : o.per === "room_night" ? t.perRoomNight : t.perBooking, { price: f.money(o.unitPrice), days })}{" "}
+                · {o.payable === "now" ? t.paidOnline : t.payableOnSite}
+                {!o.guaranteed ? t.notGuaranteed : ""}
               </p>
             </div>
             {o.maxQuantity > 1 ? (
               <div className="flex items-center gap-2">
-                <span className="sr-only">Quantité</span>
+                <span className="sr-only">{t.quantity}</span>
                 <select id={`opt-${o.id}`} name={`qty.${o.id}`} value={qty[o.id]} onChange={(e) => setQty({ ...qty, [o.id]: Number(e.target.value) })} className="field-input w-24">
                   {Array.from({ length: o.maxQuantity + 1 }, (_, n) => (
                     <option key={n} value={n}>
-                      {n}
+                      {f.number(n)}
                     </option>
                   ))}
                 </select>
@@ -229,14 +234,16 @@ export function OptionsStep({ bookingId, options, selected, days }: { bookingId:
           </li>
         ))}
       </ul>
-      <SubmitButton pendingLabel="Calcul du total…">Continuer vers la vérification</SubmitButton>
+      <SubmitButton pendingLabel={t.computing}>{t.toReview}</SubmitButton>
     </form>
   );
 }
 
 // ---------------------------------------------------------------------------
 
-export function ReviewStep({ bookingId, scenarios, currentScenario, payNow, collector }: { bookingId: string; scenarios: Record<string, string> | null; currentScenario: string | null; payNow: string; collector: string }) {
+export function ReviewStep({ bookingId, scenarios, currentScenario, payNow, collector }: { bookingId: string; scenarios: string[] | null; currentScenario: string | null; payNow: string; collector: string }) {
+  const { m, f } = useI18n();
+  const t = m.booking.form;
   const [state, action] = useActionState<ActionState, FormData>(submitReviewAction, {});
   return (
     <form action={action} className="space-y-5">
@@ -245,28 +252,26 @@ export function ReviewStep({ bookingId, scenarios, currentScenario, payNow, coll
       {scenarios ? (
         <div className="rounded-[var(--radius-lg)] border border-dashed border-terracotta/60 bg-terracotta-soft/40 p-4">
           <label htmlFor="scenario" className="text-sm font-semibold">
-            Outil de démonstration — scénario fournisseur / paiement
+            {t.scenarioTool}
           </label>
           <select id="scenario" name="scenario" className="field-input mt-1.5" defaultValue={currentScenario ?? "nominal"}>
-            {Object.entries(scenarios).map(([k, v]) => (
+            {scenarios.map((k) => (
               <option key={k} value={k}>
-                {v}
+                {(m.booking.scenarios as Record<string, string>)[k] ?? k}
               </option>
             ))}
           </select>
-          <p className="mt-1 text-xs text-ink-soft">Disponible uniquement en mode DEMO ; sans effet sur un fournisseur réel.</p>
+          <p className="mt-1 text-xs text-ink-soft">{t.scenarioHint}</p>
         </div>
       ) : null}
       <label className="flex items-start gap-3 rounded-[var(--radius-lg)] border border-line bg-white p-4 text-sm">
         <input type="checkbox" name="terms" required className="mt-0.5 size-5 shrink-0 accent-[var(--color-forest)]" />
-        <span>
-          J&apos;ai lu les conditions de l&apos;offre (bagages, annulation, modification, montants payables sur place) et les conditions du fournisseur, et je les accepte. Le prix et la disponibilité vont être vérifiés une dernière fois.
-        </span>
+        <span>{t.terms}</span>
       </label>
       <p className="text-sm text-ink-soft">
-        {collector === "platform" ? `Montant qui sera demandé à l'étape suivante : ${payNow} (paiement simulé).` : "Aucun paiement en ligne : la prestation se règle sur place."}
+        {collector === "platform" ? f.t(t.payNext, { amount: payNow }) : t.payOnSite}
       </p>
-      <SubmitButton pendingLabel="Actualisation du prix…">Valider et vérifier le prix</SubmitButton>
+      <SubmitButton pendingLabel={t.refreshing}>{t.validate}</SubmitButton>
     </form>
   );
 }
@@ -274,6 +279,8 @@ export function ReviewStep({ bookingId, scenarios, currentScenario, payNow, coll
 // ---------------------------------------------------------------------------
 
 export function PaymentStep({ bookingId, idempotencyKey, amount, status }: { bookingId: string; idempotencyKey: string; amount: string; status: string }) {
+  const { m, f } = useI18n();
+  const t = m.booking.form;
   const [state, action, pending] = useActionState<ActionState, FormData>(payAction, {});
   return (
     <form action={action} className="space-y-5">
@@ -282,23 +289,23 @@ export function PaymentStep({ bookingId, idempotencyKey, amount, status }: { boo
       <FormError state={state} />
       {status === "declined" ? (
         <p role="alert" className="rounded-[var(--radius-md)] bg-danger-soft p-3 text-sm">
-          Le paiement précédent a été <strong>refusé</strong> (simulation). Aucune réservation n&apos;a été transmise au fournisseur. Vous pouvez réessayer.
+          {inline(t.declined)}
         </p>
       ) : null}
       <div className="rounded-[var(--radius-lg)] border border-line bg-white p-5">
         <p className="flex items-center gap-2 font-semibold">
-          <CreditCard aria-hidden className="size-5 text-forest" /> Paiement simulé
+          <CreditCard aria-hidden className="size-5 text-forest" /> {t.simulated}
         </p>
         <p className="mt-2 text-sm text-ink-soft">
-          Aucune donnée bancaire n&apos;est demandée ni stockée. En exploitation, cette étape utiliserait une page de paiement hébergée par un prestataire agréé ; le numéro de carte ne transiterait jamais par les serveurs de Nomadia.
+          {t.noCard}
         </p>
         <p className="mt-4 flex items-center gap-2 text-sm">
-          <ShieldCheck aria-hidden className="size-4 text-success" /> Montant calculé par le serveur à partir de l&apos;offre fournisseur : <strong>{amount}</strong>
+          <ShieldCheck aria-hidden className="size-4 text-success" /> {t.serverAmount} <strong>{amount}</strong>
         </p>
       </div>
       <button type="submit" disabled={pending} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-forest px-6 font-semibold text-white hover:bg-forest-deep disabled:opacity-60" data-testid="pay-button">
         {pending ? <Loader2 aria-hidden className="size-4 animate-spin" /> : null}
-        {pending ? "Paiement en cours…" : `Payer ${amount} (simulation)`}
+        {pending ? t.paying : f.t(t.pay, { amount })}
       </button>
     </form>
   );
@@ -325,28 +332,28 @@ export function StatusPoller({ active }: { active: boolean }) {
 }
 
 export function CancelPanel({ bookingId, fee, refund, message }: { bookingId: string; fee: { amount: number; currency: string }; refund: { amount: number; currency: string }; message: string }) {
+  const { m, f } = useI18n();
+  const t = m.booking.form;
   const [state, action] = useActionState<ActionState, FormData>(cancelBookingAction, {});
   const [confirming, setConfirming] = useState(false);
   if (state.notice) return <p role="status" className="text-sm font-semibold text-success">{state.notice}</p>;
   return (
     <div className="space-y-3 text-sm">
       <p>{message}</p>
-      <p>
-        Frais d&apos;annulation : <strong>{formatMoney(fee)}</strong> · Remboursement prévu : <strong>{formatMoney(refund)}</strong> (confirmé uniquement après le retour du prestataire de paiement).
-      </p>
+      <p>{inline(f.t(t.cancelFees, { fee: f.money(fee), refund: f.money(refund) }))}</p>
       <FormError state={state} />
       {!confirming ? (
         <button type="button" onClick={() => setConfirming(true)} className="min-h-11 rounded-[var(--radius-md)] border border-danger px-5 font-semibold text-danger hover:bg-danger-soft">
-          Annuler la réservation…
+          {t.cancelButton}
         </button>
       ) : (
         <form action={action} className="flex flex-wrap items-center gap-3 rounded-[var(--radius-md)] bg-danger-soft p-3">
           <input type="hidden" name="bookingId" value={bookingId} />
           <input type="hidden" name="acceptedFee" value={fee.amount} />
-          <p className="font-semibold">Confirmer l&apos;annulation avec {formatMoney(fee)} de frais ? Cette action est irréversible.</p>
-          <SubmitButton pendingLabel="Annulation…">Confirmer l&apos;annulation</SubmitButton>
+          <p className="font-semibold">{f.t(t.cancelConfirm, { fee: f.money(fee) })}</p>
+          <SubmitButton pendingLabel={t.cancelling}>{t.confirmCancel}</SubmitButton>
           <button type="button" onClick={() => setConfirming(false)} className="font-semibold underline">
-            Garder la réservation
+            {t.keep}
           </button>
         </form>
       )}

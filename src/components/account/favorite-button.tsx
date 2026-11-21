@@ -1,13 +1,16 @@
 "use client";
 
-import Link from "next/link";
+import { Link } from "@/i18n/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Heart } from "lucide-react";
+import { useI18n } from "@/i18n/client";
 
 /** Favori (destination ou hébergement) : nécessite un compte ; l'état est lu et modifié côté serveur. */
 export function FavoriteButton({ kind, refId, label, tone = "default" }: { kind: "destination" | "hotel"; refId: string; label: string; tone?: "default" | "light" }) {
   const pathname = usePathname();
+  const { m, f } = useI18n();
+  const t = m.content.favorite;
   const [state, setState] = useState<{ loggedIn: boolean; favorite: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -28,7 +31,7 @@ export function FavoriteButton({ kind, refId, label, tone = "default" }: { kind:
   if (state && !state.loggedIn) {
     return (
       <Link href={`/connexion?retour=${encodeURIComponent(pathname)}`} className={base}>
-        <Heart aria-hidden className="size-4" /> Se connecter pour ajouter aux favoris
+        <Heart aria-hidden className="size-4" /> {t.signIn}
       </Link>
     );
   }
@@ -46,7 +49,7 @@ export function FavoriteButton({ kind, refId, label, tone = "default" }: { kind:
             if (res.ok) {
               const j = (await res.json()) as { favorite: boolean };
               setState({ loggedIn: true, favorite: j.favorite });
-              setMessage(j.favorite ? `${label} ajouté aux favoris` : `${label} retiré des favoris`);
+              setMessage(f.t(j.favorite ? t.added : t.removed, { label }));
             }
           } finally {
             setBusy(false);
@@ -54,7 +57,7 @@ export function FavoriteButton({ kind, refId, label, tone = "default" }: { kind:
         }}
       >
         <Heart aria-hidden className={`size-4 ${state?.favorite ? "fill-current" : ""}`} />
-        {state?.favorite ? "Dans mes favoris" : "Ajouter aux favoris"}
+        {state?.favorite ? t.inFavorites : t.add}
       </button>
       <span className="sr-only" aria-live="polite">
         {message}

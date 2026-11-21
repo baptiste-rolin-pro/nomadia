@@ -20,6 +20,9 @@ import {
   type PassengerCounts,
   type PriceBreakdown,
 } from "@/lib/providers/types";
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/config";
+import { formatMessage } from "@/i18n/format";
+import { getMessages } from "@/i18n/messages";
 
 export const DEMO_FLIGHT_PROVIDER_ID = "demo-flights";
 export const OFFER_TTL_MINUTES = 30;
@@ -193,10 +196,11 @@ function slicePrice(slice: FlightSlice, factor: number, date: CivilDate): Money 
   return money(Math.ceil(withFactor.amount / 100) * 100);
 }
 
-export function priceFlight(slices: FlightSlice[], fareCode: string, pax: PassengerCounts, baseFactors: number[], dates: CivilDate[]): {
+export function priceFlight(slices: FlightSlice[], fareCode: string, pax: PassengerCounts, baseFactors: number[], dates: CivilDate[], locale: Locale = DEFAULT_LOCALE): {
   price: PriceBreakdown;
   perPassenger: FlightOffer["perPassenger"];
 } {
+  const t = getMessages(locale).domain.flights;
   const fareFactor = FARE_FACTOR[fareCode] ?? 100;
   const adultFare = sum(slices.map((s, i) => slicePrice(s, ratio(money(baseFactors[i] ?? 100), fareFactor, 100).amount, dates[i]!)));
   const segmentsCount = slices.reduce((n, s) => n + s.segments.length, 0);
@@ -207,22 +211,22 @@ export function priceFlight(slices: FlightSlice[], fareCode: string, pax: Passen
   const lines: PriceBreakdown["lines"] = [];
   const perPassenger: FlightOffer["perPassenger"] = [];
   if (pax.adults) {
-    lines.push({ label: `Tarif adulte × ${pax.adults}`, amount: multiply(adultFare, pax.adults), kind: "base", payable: "now" });
+    lines.push({ label: formatMessage(locale, t.adultFare, { n: pax.adults }), amount: multiply(adultFare, pax.adults), kind: "base", payable: "now" });
     perPassenger.push({ type: "adult", count: pax.adults, unit: add(adultFare, seatTax) });
   }
   if (pax.children) {
-    lines.push({ label: `Tarif enfant (2–11 ans) × ${pax.children}`, amount: multiply(childFare, pax.children), kind: "base", payable: "now" });
+    lines.push({ label: formatMessage(locale, t.childFare, { n: pax.children }), amount: multiply(childFare, pax.children), kind: "base", payable: "now" });
     perPassenger.push({ type: "child", count: pax.children, unit: add(childFare, seatTax) });
   }
   if (pax.infants) {
-    lines.push({ label: `Tarif bébé (moins de 2 ans, sans siège) × ${pax.infants}`, amount: multiply(infantFare, pax.infants), kind: "base", payable: "now" });
+    lines.push({ label: formatMessage(locale, t.infantFare, { n: pax.infants }), amount: multiply(infantFare, pax.infants), kind: "base", payable: "now" });
     perPassenger.push({ type: "infant", count: pax.infants, unit: add(infantFare, infantTax) });
   }
   const taxes = add(multiply(seatTax, pax.adults + pax.children), multiply(infantTax, pax.infants));
-  lines.push({ label: "Taxes et redevances (montants fictifs de démonstration)", amount: taxes, kind: "tax", payable: "now" });
+  lines.push({ label: t.taxes, amount: taxes, kind: "tax", payable: "now" });
   const total = sum(lines.map((l) => l.amount));
   return {
-    price: { lines, total, payNow: total, payOnSite: zero(), deposit: null, taxes: "included", notes: ["Prix total pour tous les passagers, taxes incluses."] },
+    price: { lines, total, payNow: total, payOnSite: zero(), deposit: null, taxes: "included", notes: [t.totalNote] },
     perPassenger,
   };
 }
@@ -242,7 +246,7 @@ export interface FlightRefPayload {
   t: number;
 }
 
-export function buildFlightOffer(p: FlightRefPayload): FlightOffer {
+export function buildFlightOffer(p: FlightRefPayload, locale: Locale = DEFAULT_LOCALE): FlightOffer {
   const outOptions = itineraryOptions(p.o, p.d, p.dd);
   const out = outOptions[p.out];
   if (!out) throw new ProviderError("OFFER_NOT_FOUND", "Offre introuvable.");
@@ -261,13 +265,14 @@ export function buildFlightOffer(p: FlightRefPayload): FlightOffer {
   const fareDef = FARES[p.f];
   if (!fareDef || !faresFor(p.cab, separate).includes(p.f)) throw new ProviderError("OFFER_NOT_FOUND", "Tarif indisponible.");
   const pax = { adults: p.a, children: p.c.length, infants: p.i };
-  const { price, perPassenger } = priceFlight(slices, p.f, pax, factors, dates);
+  const { price, perPassenger } = priceFlight(slices, p.f, pax, factors, dates, locale);
+  const fareName = (getMessages(locale).domain.fares as Record<string, string>)[fareDef.code] ?? fareDef.name;
   return {
     id: encodeRef("dfl", p as unknown as Record<string, unknown>),
     providerId: DEMO_FLIGHT_PROVIDER_ID,
     mode: "demo",
     slices,
-    fare: { ...fareDef, cabin: p.cab },
+    fare: { ...fareDef, name: fareName, cabin: p.cab },
     validatingCarrier: slices[0]!.segments[0]!.marketingCarrier,
     passengers: pax,
     price,
@@ -294,7 +299,7 @@ export interface FlightGenInput {
   generatedAtSec: number;
 }
 
-export function generateFlightOffers(input: FlightGenInput): FlightOffer[] {
+export function generateFlightOffers(input: FlightGenInput, locale: Locale = DEFAULT_LOCALE): FlightOffer[] {
   const offers: FlightOffer[] = [];
   for (const o of input.originAirports) {
     for (const d of input.destinationAirports) {
@@ -333,7 +338,7 @@ export function generateFlightOffers(input: FlightGenInput): FlightOffer[] {
               inb: ii,
               f,
               t: input.generatedAtSec,
-            }),
+            }, locale),
           );
         }
       }

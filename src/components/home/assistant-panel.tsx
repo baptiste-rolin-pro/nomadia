@@ -1,7 +1,9 @@
 "use client";
 
-import Link from "next/link";
+import { Link } from "@/i18n/link";
 import { useRouter } from "next/navigation";
+import { useI18n } from "@/i18n/client";
+import { localizePath } from "@/i18n/config";
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { ArrowRight, MessageCircleQuestion, Send } from "lucide-react";
 import {
@@ -25,30 +27,20 @@ import {
  * Accessibilité : libellé visible, région `status` pour l'avancement, focus déplacé sur le résultat ou sur le champ.
  */
 
-const EXAMPLES = ["Un week-end à Lisbonne en mars pour 2", "Vol Paris–Rome le 12 juin, retour le 16, avec une voiture sur place", "Organise-moi 5 jours en Islande en famille"];
 /** Délai avant l'ouverture automatique d'une action unique : le temps de lire ce qui a été compris. */
 export const AUTO_OPEN_DELAY_MS = 2200;
-const UNREACHABLE = "L'assistant est injoignable pour le moment. Les onglets Mon voyage, Vols, Hôtels et Voitures fonctionnent normalement.";
 
 type Previous = { request: string; question: string };
 export type ClassicTab = "voyage" | "vols" | "hotels" | "voitures";
-const CLASSIC_TABS: { id: ClassicTab; label: string }[] = [
-  { id: "voyage", label: "Mon voyage" },
-  { id: "vols", label: "Vols" },
-  { id: "hotels", label: "Hôtels" },
-  { id: "voitures", label: "Voitures" },
-];
-
-const OPEN_LABEL: Record<AssistantAction["kind"], string> = {
-  search_flights: "Ouvrir la recherche de vols",
-  search_hotels: "Ouvrir la recherche d'hébergement",
-  search_cars: "Ouvrir la recherche de voitures",
-  open_destination: "Ouvrir la fiche destination",
-  plan_trip: "Ouvrir le formulaire du voyage",
-};
+const CLASSIC_TABS: ClassicTab[] = ["voyage", "vols", "hotels", "voitures"];
 
 export default function AssistantPanel({ active, onOpenTab }: { active: boolean; onOpenTab?: (tab: ClassicTab) => void }) {
   const router = useRouter();
+  const { locale, m, f } = useI18n();
+  const t = m.assistantUi;
+  const EXAMPLES = t.examples;
+  const UNREACHABLE = t.unreachable;
+  const OPEN_LABEL: Record<AssistantAction["kind"], string> = t.open;
   const ids = useId();
   const fieldId = `${ids}-texte`;
   /** Repli vers Claude configuré sur le serveur (null : pas encore connu). */
@@ -82,7 +74,7 @@ export default function AssistantPanel({ active, onOpenTab }: { active: boolean;
   const cancelAutoOpen = (announce: boolean) => {
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = null;
-    if (autoOpen && announce) setStatus("Ouverture annulée. Le lien reste disponible.");
+    if (autoOpen && announce) setStatus(t.cancelled);
     setAutoOpen(null);
   };
 
@@ -106,7 +98,7 @@ export default function AssistantPanel({ active, onOpenTab }: { active: boolean;
       setPrevious((p) => ({ request: (p ? `${p.request}${ASSISTANT_TURN_SEPARATOR}${sent}` : sent).slice(0, ASSISTANT_MAX_INPUT), question: r.question }));
       setResult(r);
       setText("");
-      setStatus(`Question de l'assistant : ${r.question}`);
+      setStatus(f.t(t.questionStatus, { question: r.question }));
       requestAnimationFrame(() => fieldRef.current?.focus());
       return;
     }
@@ -125,16 +117,18 @@ export default function AssistantPanel({ active, onOpenTab }: { active: boolean;
     setResult({ type: "actions", actions });
     if (actions.length === 1) {
       const only = actions[0]!;
-      router.prefetch(only.href);
-      setStatus(`J'ai compris : ${only.title}. ${only.details.join(". ")}. Ouverture dans un instant.`);
-      setAutoOpen(only.href);
+      // Le serveur construit déjà le chemin dans la langue de la page (/en/vols…) ; localizePath ne double jamais le préfixe.
+      const target = localizePath(locale, only.href);
+      router.prefetch(target);
+      setStatus(f.t(t.understoodStatus, { title: only.title, details: only.details.join(". ") }));
+      setAutoOpen(target);
       timerRef.current = setTimeout(() => {
         timerRef.current = null;
         setAutoOpen(null);
-        if (activeRef.current) router.push(only.href);
+        if (activeRef.current) router.push(target);
       }, AUTO_OPEN_DELAY_MS);
     } else {
-      setStatus(`Plan en ${actions.length} étapes prêt : ${actions.map((a) => a.title).join(", ")}. Choisissez l'étape à ouvrir.`);
+      setStatus(f.t(t.planStatus, { n: actions.length, titles: actions.map((a) => a.title).join(m.common.listSep) }));
     }
     requestAnimationFrame(() => resultRef.current?.focus());
   };
@@ -142,7 +136,7 @@ export default function AssistantPanel({ active, onOpenTab }: { active: boolean;
   const submit = async () => {
     const value = text.trim();
     if (!value) {
-      setFieldError("Décrivez votre voyage en quelques mots.");
+      setFieldError(t.empty);
       fieldRef.current?.focus();
       return;
     }
@@ -153,12 +147,12 @@ export default function AssistantPanel({ active, onOpenTab }: { active: boolean;
     abortRef.current = ctrl;
     setPending(true);
     setError(null);
-    setStatus("Analyse de votre demande…");
+    setStatus(t.analysing);
     try {
       const res = await fetch("/api/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: value, previous }),
+        body: JSON.stringify({ text: value, previous, locale }),
         signal: ctrl.signal,
       });
       const body = (await res.json().catch(() => null)) as AssistantResponseBody | null;
@@ -209,7 +203,7 @@ export default function AssistantPanel({ active, onOpenTab }: { active: boolean;
     setEngine(null);
     setError(null);
     setText("");
-    setStatus("Nouvelle demande.");
+    setStatus(t.restarted);
     fieldRef.current?.focus();
   };
 
@@ -222,21 +216,18 @@ export default function AssistantPanel({ active, onOpenTab }: { active: boolean;
   const engineBadge =
     engine === "ia" && result ? (
       <p className="text-xs text-ink-soft" data-testid="assistant-moteur">
-        Demande interprétée par Claude (Anthropic) : l&apos;analyse de Nomadia ne l&apos;avait pas comprise.
+        {t.engine}
       </p>
     ) : null;
 
-  if (fallback === null) return <p className="py-6 text-sm text-ink-soft">Chargement de l&apos;assistant…</p>;
+  if (fallback === null) return <p className="py-6 text-sm text-ink-soft">{t.loading}</p>;
 
   return (
     <div className="space-y-4" data-testid="assistant">
       <p className="text-sm text-ink-soft" data-testid="assistant-intro">
-        Décrivez votre voyage en une phrase : l&apos;assistant prépare la recherche ou le voyage correspondant et vous montre ce qu&apos;il a compris avant d&apos;ouvrir la page. Il ne réserve rien.{" "}
-        {fallback
-          ? "Votre demande est d'abord analysée par Nomadia ; si elle n'est pas comprise, elle est transmise à Anthropic (Claude) pour être interprétée : n'y mettez aucune donnée personnelle ("
-          : "Votre demande est analysée par Nomadia, sans service extérieur, et n'est pas enregistrée ("}
+        {t.intro} {fallback ? t.introFallback : t.introLocal}
         <Link href="/confidentialite#assistant" className="font-semibold text-forest underline underline-offset-4">
-          en savoir plus
+          {t.learnMore}
         </Link>
         ).
       </p>
@@ -245,17 +236,17 @@ export default function AssistantPanel({ active, onOpenTab }: { active: boolean;
         <div id={questionId} className="flex gap-3 rounded-[var(--radius-md)] border border-forest/25 bg-forest-soft p-3 text-sm" data-testid="assistant-question">
           <MessageCircleQuestion aria-hidden className="mt-0.5 size-4 shrink-0 text-forest" />
           <p>
-            <span className="sr-only">Question de l&apos;assistant : </span>
+            <span className="sr-only">{t.questionPrefix}</span>
             {question}
           </p>
         </div>
       ) : null}
       {question ? engineBadge : null}
 
-      <form onSubmit={onSubmit} noValidate aria-label="Demande à l'assistant" aria-busy={pending} className="space-y-3">
+      <form onSubmit={onSubmit} noValidate aria-label={t.formLabel} aria-busy={pending} className="space-y-3">
         <div className="flex flex-col gap-1.5">
           <label htmlFor={fieldId} className="text-sm font-semibold">
-            {question ? "Votre réponse" : "Décrivez votre voyage"}
+            {question ? t.answerLabel : t.requestLabel}
           </label>
           <textarea
             ref={fieldRef}
@@ -264,7 +255,7 @@ export default function AssistantPanel({ active, onOpenTab }: { active: boolean;
             rows={2}
             maxLength={ASSISTANT_MAX_INPUT}
             className="field-input min-h-[4.5rem] resize-y py-3"
-            placeholder={question ? "Par exemple : 2 adultes et 2 enfants, du 10 au 14 avril" : `Par exemple : ${EXAMPLES[0]}`}
+            placeholder={question ? t.answerPlaceholder : f.t(t.placeholder, { example: EXAMPLES[0] ?? "" })}
             value={text}
             onChange={(e) => {
               setText(e.target.value);
@@ -275,9 +266,9 @@ export default function AssistantPanel({ active, onOpenTab }: { active: boolean;
             aria-describedby={[question ? questionId : null, hintId, fieldError ? errorId : null].filter(Boolean).join(" ")}
           />
           <p id={hintId} className="flex flex-wrap justify-between gap-2 text-xs text-ink-soft">
-            <span>Entrée pour envoyer, Maj + Entrée pour aller à la ligne. {ASSISTANT_MAX_INPUT} caractères au plus.</span>
+            <span>{f.t(t.keys, { max: f.number(ASSISTANT_MAX_INPUT) })}</span>
             <span aria-hidden>
-              {text.length}/{ASSISTANT_MAX_INPUT}
+              {f.number(text.length)}/{f.number(ASSISTANT_MAX_INPUT)}
             </span>
           </p>
           {fieldError ? (
@@ -291,14 +282,14 @@ export default function AssistantPanel({ active, onOpenTab }: { active: boolean;
         {!question && result?.type !== "help" ? (
           <div>
             <p className="text-xs font-semibold text-ink-soft" id={`${ids}-exemples`}>
-              Exemples
+              {t.examplesTitle}
             </p>
             <ul className="mt-1.5 flex flex-wrap gap-2" aria-labelledby={`${ids}-exemples`}>
               {EXAMPLES.map((ex) => (
                 <li key={ex}>
                   <button
                     type="button"
-                    className="rounded-full border border-line bg-white px-3 py-1.5 text-left text-xs font-medium text-ink transition-colors hover:border-sand hover:bg-ivory"
+                    className="rounded-full border border-line bg-white px-3 py-1.5 text-start text-xs font-medium text-ink transition-colors hover:border-sand hover:bg-ivory"
                     onClick={() => {
                       setText(ex);
                       setFieldError(null);
@@ -314,16 +305,16 @@ export default function AssistantPanel({ active, onOpenTab }: { active: boolean;
         ) : null}
 
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-xs text-ink-soft">Les dates supposées sont toujours signalées ; vérifiez-les avant de réserver.</p>
+          <p className="text-xs text-ink-soft">{t.datesNote}</p>
           <div className="flex flex-wrap items-center gap-2">
             {previous || result ? (
               <button type="button" onClick={restart} className="inline-flex min-h-12 items-center rounded-[var(--radius-md)] px-4 text-sm font-semibold text-forest underline underline-offset-4">
-                Nouvelle demande
+                {t.restart}
               </button>
             ) : null}
             <button type="submit" disabled={pending} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius-md)] bg-forest px-6 font-semibold text-white transition-colors hover:bg-forest-deep disabled:opacity-60">
               <Send aria-hidden className="size-4" />
-              {pending ? "Analyse…" : question ? "Répondre" : "Demander à l'assistant"}
+              {pending ? t.pending : question ? t.answer : t.ask}
             </button>
           </div>
         </div>
@@ -356,7 +347,7 @@ export default function AssistantPanel({ active, onOpenTab }: { active: boolean;
               <li key={ex}>
                 <button
                   type="button"
-                  className="rounded-full border border-line bg-white px-3 py-1.5 text-left text-xs font-medium text-ink transition-colors hover:border-sand"
+                  className="rounded-full border border-line bg-white px-3 py-1.5 text-start text-xs font-medium text-ink transition-colors hover:border-sand"
                   onClick={() => {
                     setText(ex);
                     setFieldError(null);
@@ -370,10 +361,10 @@ export default function AssistantPanel({ active, onOpenTab }: { active: boolean;
           </ul>
           {onOpenTab ? (
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span className="text-ink-soft">Ou utilisez la recherche classique :</span>
+              <span className="text-ink-soft">{t.classic}</span>
               {CLASSIC_TABS.map((tab) => (
-                <button key={tab.id} type="button" onClick={() => onOpenTab(tab.id)} className="inline-flex min-h-11 items-center rounded-[var(--radius-md)] border border-forest px-3 text-sm font-semibold text-forest hover:bg-forest-soft">
-                  {tab.label}
+                <button key={tab} type="button" onClick={() => onOpenTab(tab)} className="inline-flex min-h-11 items-center rounded-[var(--radius-md)] border border-forest px-3 text-sm font-semibold text-forest hover:bg-forest-soft">
+                  {t.tabs[tab]}
                 </button>
               ))}
             </div>
@@ -384,7 +375,7 @@ export default function AssistantPanel({ active, onOpenTab }: { active: boolean;
       {result?.type === "actions" ? (
         <section aria-labelledby={`${ids}-resultat`} className="rounded-[var(--radius-lg)] border border-line bg-ivory p-4" data-testid="assistant-resultat">
           <h3 ref={resultRef} id={`${ids}-resultat`} tabIndex={-1} className="font-serif text-lg outline-none">
-            {result.actions.length === 1 ? "Voici ce que j'ai compris" : `Votre plan en ${result.actions.length} étapes`}
+            {result.actions.length === 1 ? t.understoodTitle : f.t(t.planTitle, { n: result.actions.length })}
           </h3>
           {engineBadge ? <div className="mt-1">{engineBadge}</div> : null}
           <ol className="mt-3 space-y-4">
@@ -394,7 +385,7 @@ export default function AssistantPanel({ active, onOpenTab }: { active: boolean;
               return (
                 <li key={`${a.kind}-${i}`} className="rounded-[var(--radius-md)] bg-white p-3 shadow-[var(--shadow-card)]" data-testid="assistant-etape">
                   <p id={titleId} className="font-semibold">
-                    {many ? `Étape ${i + 1} · ` : ""}
+                    {many ? f.t(t.step, { n: i + 1 }) : ""}
                     {a.title}
                   </p>
                   <ul className="mt-1 space-y-0.5 text-sm text-ink-soft">
@@ -404,8 +395,8 @@ export default function AssistantPanel({ active, onOpenTab }: { active: boolean;
                   </ul>
                   {a.assumptions.length ? (
                     <div className="mt-2 rounded-[var(--radius-sm,0.375rem)] bg-warning-soft px-3 py-2 text-sm">
-                      <p className="font-semibold text-warning">Supposé par l&apos;assistant, à vérifier</p>
-                      <ul className="mt-0.5 list-disc pl-5">
+                      <p className="font-semibold text-warning">{t.assumed}</p>
+                      <ul className="mt-0.5 list-disc ps-5">
                         {a.assumptions.map((s) => (
                           <li key={s}>{s}</li>
                         ))}
@@ -425,7 +416,7 @@ export default function AssistantPanel({ active, onOpenTab }: { active: boolean;
                     onClick={() => cancelAutoOpen(false)}
                     className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-[var(--radius-md)] bg-forest px-4 text-sm font-semibold text-white hover:bg-forest-deep"
                   >
-                    {many ? `Ouvrir l'étape ${i + 1}` : OPEN_LABEL[a.kind]}
+                    {many ? f.t(t.openStep, { n: i + 1 }) : OPEN_LABEL[a.kind]}
                     <ArrowRight aria-hidden className="size-4" />
                   </Link>
                 </li>
@@ -434,9 +425,9 @@ export default function AssistantPanel({ active, onOpenTab }: { active: boolean;
           </ol>
           {autoOpen ? (
             <p className="mt-3 flex flex-wrap items-center gap-3 text-sm text-ink-soft" data-testid="assistant-ouverture">
-              Ouverture automatique dans un instant…
+              {t.autoOpen}
               <button type="button" onClick={() => cancelAutoOpen(true)} className="inline-flex min-h-11 items-center rounded-[var(--radius-md)] border border-forest px-3 font-semibold text-forest hover:bg-forest-soft">
-                Rester ici
+                {t.stay}
               </button>
             </p>
           ) : null}

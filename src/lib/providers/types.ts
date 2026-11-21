@@ -5,12 +5,6 @@ export type ProviderMode = "demo" | "sandbox" | "live";
 export type Vertical = "flights" | "hotels" | "cars";
 export type Capability = "search" | "reprice" | "book" | "retrieve" | "cancel" | "modify" | "ancillaries" | "redirect";
 
-export const VERTICAL_LABELS: Record<Vertical, string> = {
-  flights: "Vols",
-  hotels: "Hôtels",
-  cars: "Voitures",
-};
-
 export interface ProviderInfo {
   id: string;
   name: string;
@@ -39,6 +33,8 @@ export class ProviderError extends Error {
     public readonly code: ProviderErrorCode,
     message: string,
     public readonly retryable = false,
+    /** Origine particulière (« scenario » : état simulé en démonstration), pour choisir le message affiché. */
+    public readonly reason: "scenario" | null = null,
   ) {
     super(message);
     this.name = "ProviderError";
@@ -103,13 +99,6 @@ export interface SelectedOption {
 // ---------------------------------------------------------------------------
 
 export type Cabin = "economy" | "premium_economy" | "business" | "first";
-
-export const CABIN_LABELS: Record<Cabin, string> = {
-  economy: "Économique",
-  premium_economy: "Premium économique",
-  business: "Affaires",
-  first: "Première",
-};
 
 export interface Carrier {
   code: string;
@@ -199,12 +188,6 @@ export interface FlightOffer {
 
 export type Board = "room_only" | "breakfast" | "half_board";
 
-export const BOARD_LABELS: Record<Board, string> = {
-  room_only: "Sans repas",
-  breakfast: "Petit-déjeuner inclus",
-  half_board: "Demi-pension",
-};
-
 export interface HotelProperty {
   id: string;
   name: string;
@@ -293,8 +276,6 @@ export interface RentalAgency {
   timeZone: string;
 }
 
-export const ENERGY_LABELS: Record<string, string> = { petrol: "Essence", diesel: "Diesel", hybrid: "Hybride", electric: "Électrique" };
-
 export interface CarOffer {
   id: string;
   providerId: string;
@@ -305,7 +286,10 @@ export interface CarOffer {
   pickup: ZonedTime;
   dropoff: ZonedTime;
   rentalDays: number;
+  /** Libellé de la catégorie dans la langue de l'offre. */
   category: string;
+  /** Identifiant du modèle (valeur de filtre, indépendante de la langue). */
+  modelId: string;
   acriss: string;
   exampleModel: string;
   modelGuaranteed: boolean;
@@ -417,4 +401,6 @@ export interface BookingOps {
 export interface OpContext {
   scenario?: string | null;
   signal?: AbortSignal;
+  /** Langue des textes de l'offre (devis : langue de la réservation) et des messages du fournisseur. */
+  locale?: import("@/i18n/config").Locale;
 }

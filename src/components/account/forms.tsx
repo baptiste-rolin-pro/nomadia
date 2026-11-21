@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState } from "react";
-import { addTravelerAction, requestDeletionAction, savePreferencesAction, updateNameAction, type FormState } from "@/app/compte/actions";
+import { addTravelerAction, requestDeletionAction, savePreferencesAction, updateNameAction, type FormState } from "@/app/[locale]/compte/actions";
+import { useI18n } from "@/i18n/client";
 
 function Status({ state }: { state: FormState }) {
   if (state.error)
@@ -20,15 +21,16 @@ function Status({ state }: { state: FormState }) {
 }
 
 export function NameForm({ name }: { name: string }) {
+  const t = useI18n().m.account.forms;
   const [state, action, pending] = useActionState<FormState, FormData>(updateNameAction, {});
   return (
     <form action={action} className="flex flex-wrap items-end gap-3">
       <label className="flex flex-col gap-1.5 text-sm font-semibold">
-        Nom affiché
+        {t.displayName}
         <input name="name" defaultValue={name} autoComplete="name" className="field-input font-normal" required minLength={2} maxLength={80} />
       </label>
       <button type="submit" disabled={pending} className="min-h-11 rounded-[var(--radius-md)] bg-forest px-4 font-semibold text-white disabled:opacity-60">
-        Enregistrer
+        {t.save}
       </button>
       <Status state={state} />
     </form>
@@ -36,28 +38,29 @@ export function NameForm({ name }: { name: string }) {
 }
 
 export function AddTravelerForm() {
+  const t = useI18n().m.account.forms;
   const [state, action, pending] = useActionState<FormState, FormData>(addTravelerAction, {});
   return (
     <form action={action} className="grid gap-3 rounded-[var(--radius-lg)] border border-line bg-white p-5 sm:grid-cols-3">
       <label className="flex flex-col gap-1.5 text-sm font-semibold">
-        Prénom
+        {t.firstName}
         <input name="firstName" className="field-input font-normal" required />
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-semibold">
-        Nom
+        {t.lastName}
         <input name="lastName" className="field-input font-normal" required />
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-semibold">
-        Date de naissance (facultatif)
+        {t.birthDate}
         <input name="birthDate" type="date" className="field-input font-normal" />
       </label>
       <label className="flex items-start gap-2 text-sm sm:col-span-3">
         <input type="checkbox" name="consent" className="mt-0.5 size-4 accent-[var(--color-forest)]" />
-        <span>J&apos;accepte que ces informations soient conservées dans mon compte pour préremplir mes réservations. Je peux les supprimer à tout moment.</span>
+        <span>{t.consent}</span>
       </label>
       <div className="flex items-center gap-3 sm:col-span-3">
         <button type="submit" disabled={pending} className="min-h-11 rounded-[var(--radius-md)] bg-forest px-4 font-semibold text-white disabled:opacity-60">
-          Ajouter le voyageur
+          {t.addTraveler}
         </button>
         <Status state={state} />
       </div>
@@ -65,29 +68,31 @@ export function AddTravelerForm() {
   );
 }
 
-export function PreferencesForm({ marketing, homeAirport }: { marketing: boolean; homeAirport: string }) {
+export function PreferencesForm({ marketing, homeAirport, emailLanguage }: { marketing: boolean; homeAirport: string; emailLanguage: string }) {
+  const { m, f } = useI18n();
+  const t = m.account.forms;
   const [state, action, pending] = useActionState<FormState, FormData>(savePreferencesAction, {});
   return (
     <form action={action} className="space-y-5">
       <fieldset className="rounded-[var(--radius-lg)] border border-line bg-white p-5">
-        <legend className="px-1 font-semibold">Communications</legend>
-        <p className="text-sm text-ink-soft">Les emails liés à votre compte et à vos réservations (confirmation, sécurité) sont indépendants de ce choix.</p>
+        <legend className="px-1 font-semibold">{t.communications}</legend>
+        <p className="text-sm text-ink-soft">{t.communicationsText}</p>
         <label className="mt-3 flex items-start gap-2 text-sm">
           <input type="checkbox" name="marketing" defaultChecked={marketing} className="mt-0.5 size-4 accent-[var(--color-forest)]" />
-          <span>Recevoir occasionnellement des idées de voyage par email (désinscription possible à tout moment). Aucun envoi n&apos;est réalisé dans cette démonstration.</span>
+          <span>{t.marketing}</span>
         </label>
       </fieldset>
       <fieldset className="rounded-[var(--radius-lg)] border border-line bg-white p-5">
-        <legend className="px-1 font-semibold">Voyage</legend>
+        <legend className="px-1 font-semibold">{t.travel}</legend>
         <label className="flex max-w-xs flex-col gap-1.5 text-sm font-semibold">
-          Aéroport de départ habituel (code IATA)
-          <input name="homeAirport" defaultValue={homeAirport} maxLength={3} className="field-input font-normal uppercase" placeholder="CDG" />
+          {t.homeAirport}
+          <input name="homeAirport" defaultValue={homeAirport} maxLength={3} className="field-input font-normal uppercase" placeholder="CDG" dir="ltr" />
         </label>
-        <p className="mt-3 text-sm text-ink-soft">Langue : français. Devise : euro. D&apos;autres langues et devises pourront être ajoutées avec de vraies traductions.</p>
+        <p className="mt-3 text-sm text-ink-soft">{f.t(t.languageNote, { language: emailLanguage })}</p>
       </fieldset>
       <div className="flex items-center gap-3">
         <button type="submit" disabled={pending} className="min-h-11 rounded-[var(--radius-md)] bg-forest px-5 font-semibold text-white disabled:opacity-60">
-          Enregistrer
+          {t.save}
         </button>
         <Status state={state} />
       </div>
@@ -96,11 +101,12 @@ export function PreferencesForm({ marketing, homeAirport }: { marketing: boolean
 }
 
 export function DeletionRequestForm() {
+  const t = useI18n().m.account.forms;
   const [state, action, pending] = useActionState<FormState, FormData>(requestDeletionAction, {});
   return (
     <form action={action} className="space-y-3">
       <button type="submit" disabled={pending || !!state.ok} className="min-h-11 rounded-[var(--radius-md)] border border-danger px-5 font-semibold text-danger hover:bg-danger-soft disabled:opacity-60">
-        Demander la suppression de mon compte
+        {t.requestDeletion}
       </button>
       <Status state={state} />
     </form>

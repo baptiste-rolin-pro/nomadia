@@ -59,13 +59,16 @@ export interface AssistantRequestBody {
   text: string;
   /** Tour précédent quand l'assistant a posé une question : demande initiale et question posée. */
   previous?: { request: string; question: string } | null;
+  /** Langue de la page : réponses, questions et chemins dans cette langue (français si absente). */
+  locale?: string;
 }
 
 /**
  * Chemins que le navigateur accepte de suivre. Défense en profondeur : le serveur ne construit déjà que ceux-là
- * (`URLSearchParams` encode tout caractère hors de cette liste).
+ * (`URLSearchParams` encode tout caractère hors de cette liste). Préfixe de langue facultatif, limité aux dix
+ * langues du site (le français n'en a pas ; `/fr` reste accepté, il est redirigé vers le chemin sans préfixe).
  */
-const HREF = /^\/(?:vols|hotels|voitures|voyage\/nouveau|destinations\/[a-z0-9-]+)(?:\?[A-Za-z0-9_.~*%&=+-]*)?$/;
+const HREF = /^(?:\/(?:fr|en|zh|hi|es|ar|bn|pt|ru|id))?\/(?:vols|hotels|voitures|voyage\/nouveau|destinations\/[a-z0-9-]+)(?:\?[A-Za-z0-9_.~*%&=+-]*)?$/;
 
 export function isAssistantHref(href: unknown): href is string {
   return typeof href === "string" && href.length <= 600 && HREF.test(href);

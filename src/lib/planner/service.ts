@@ -5,11 +5,14 @@ import { tripItems, trips, type TripItemSnapshot } from "@/lib/db/schema";
 import { prefixedId } from "@/lib/security";
 import { nowMs } from "@/lib/clock";
 import { civilDateOf } from "@/lib/dates";
-import { getCarOffer, getFlightOffer, getHotelRate, verticalOf } from "@/lib/providers/registry";
+import { getCarOffer, getFlightOffer, getHotelProperty, getHotelRate, modeFor, verticalOf } from "@/lib/providers/registry";
 import { carSearchUrl, flightSearchUrl, hotelSearchUrl } from "@/lib/providers/bookable";
 import type { Viewer } from "@/lib/viewer";
-import { itemsInvalidatedByDates, type PlannerItem } from "@/lib/planner/analyze";
+import { isReceptionLimited, itemsInvalidatedByDates, type PlannerItem } from "@/lib/planner/analyze";
 import { audit } from "@/lib/audit";
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/config";
+import { formatMessage } from "@/i18n/format";
+import { getMessages } from "@/i18n/messages";
 
 export type TripRow = typeof trips.$inferSelect;
 export type TripItemRow = typeof tripItems.$inferSelect;
@@ -71,8 +74,11 @@ export async function createTrip(input: NewTripInput, owner: { userId: string | 
   return id;
 }
 
-/** Construit l'instantané d'une prestation à partir de l'offre régénérée côté serveur (jamais depuis le navigateur). */
-export async function snapshotFromOffer(ref: string): Promise<{
+/**
+ * Construit l'instantané d'une prestation à partir de l'offre régénérée côté serveur (jamais depuis le navigateur).
+ * Les textes sont dans `locale` ; à l'affichage, `localizeTripItems` les régénère dans la langue de la page.
+ */
+export async function snapshotFromOffer(ref: string, locale: Locale = DEFAULT_LOCALE): Promise<{
   vertical: "flights" | "hotels" | "cars";
   title: string;
   snapshot: TripItemSnapshot;
@@ -82,19 +88,21 @@ export async function snapshotFromOffer(ref: string): Promise<{
   currency: string;
 }> {
   const vertical = verticalOf(ref);
+  const t = getMessages(locale).planner.items;
+  const tt = (msg: string, params: Record<string, string | number>) => formatMessage(locale, msg, params);
   if (vertical === "flights") {
-    const { offer, info } = await getFlightOffer(ref);
+    const { offer, info } = await getFlightOffer(ref, locale);
     const first = offer.slices[0]!.segments[0]!;
     const lastOut = offer.slices[0]!.segments.at(-1)!;
     return {
       vertical,
-      title: `Vol ${first.origin.city} → ${lastOut.destination.city}`,
+      title: tt(t.flightTitle, { from: first.origin.city, to: lastOut.destination.city }),
       snapshot: {
-        subtitle: `${offer.fare.name} · ${offer.slices.length > 1 ? "aller-retour" : "aller simple"}`,
+        subtitle: `${offer.fare.name} · ${offer.slices.length > 1 ? t.roundTrip : t.oneWay}`,
         segments: offer.slices.map((s) => {
           const a = s.segments[0]!;
           const b = s.segments.at(-1)!;
-          return { label: `${a.origin.city} (${a.origin.code}) → ${b.destination.city} (${b.destination.code}), ${a.flightNumber}`, start: a.departure, end: b.arrival, kind: "flight" as const };
+          return { label: tt(t.flightSegment, { from: a.origin.city, fromCode: a.origin.code, to: b.destination.city, toCode: b.destination.code, number: a.flightNumber }), start: a.departure, end: b.arrival, kind: "flight" as const };
         }),
         searchUrl: flightSearchUrl(offer),
         detailUrl: `/vols/offre/${encodeURIComponent(ref)}`,
@@ -107,7 +115,8 @@ export async function snapshotFromOffer(ref: string): Promise<{
     };
   }
   if (vertical === "hotels") {
-    const { rate, hotel, info } = await getHotelRate(ref);
+    const { rate, hotel, info } = await getHotelRate(ref, locale);
+    const base = getHotelProperty(hotel.id, DEFAULT_LOCALE);
     return {
       vertical,
       title: hotel.name,
@@ -118,6 +127,7 @@ export async function snapshotFromOffer(ref: string): Promise<{
         checkOut: rate.checkOut,
         checkInFrom: hotel.checkInFrom,
         receptionNote: hotel.receptionNote,
+        receptionLimited: isReceptionLimited(base?.receptionNote ?? hotel.receptionNote),
         searchUrl: hotelSearchUrl(rate, hotel),
         detailUrl: `${hotelSearchUrl(rate, hotel).replace("/hotels?", `/hotels/${hotel.id}?`)}`,
         providerMode: info.mode,
@@ -129,7 +139,7 @@ export async function snapshotFromOffer(ref: string): Promise<{
     };
   }
   if (vertical === "cars") {
-    const { offer, info } = await getCarOffer(ref);
+    const { offer, info } = await getCarOffer(ref, locale);
     return {
       vertical,
       title: `${offer.category} — ${offer.supplier.name}`,
@@ -150,11 +160,11 @@ export async function snapshotFromOffer(ref: string): Promise<{
   throw new Error("Référence d'offre inconnue");
 }
 
-export async function addItemToTrip(tripId: string, ref: string, viewer: Viewer): Promise<"added" | "duplicate"> {
+export async function addItemToTrip(tripId: string, ref: string, viewer: Viewer, locale: Locale = DEFAULT_LOCALE): Promise<"added" | "duplicate"> {
   const loaded = await loadTrip(tripId, viewer);
   if (!loaded) throw new Error("Voyage introuvable");
   if (loaded.items.some((i) => i.offerRef === ref)) return "duplicate";
-  const snap = await snapshotFromOffer(ref);
+  const snap = await snapshotFromOffer(ref, locale);
   const database = await db();
   await database.insert(tripItems).values({
     id: prefixedId("itm", 10),
@@ -173,6 +183,35 @@ export async function addItemToTrip(tripId: string, ref: string, viewer: Viewer)
   });
   await database.update(trips).set({ updatedAt: new Date(nowMs()) }).where(eq(trips.id, tripId));
   return "added";
+}
+
+/**
+ * Textes des prestations dans la langue d'affichage : titres, sous-titres et libellés sont régénérés depuis la
+ * référence d'offre de démonstration (déterministe, sans appel réseau). Prix, statuts et dates stockés ne changent pas.
+ * Une offre non régénérable (fournisseur réel, référence expirée) garde ses textes d'origine.
+ */
+export async function localizeTripItems(items: TripItemRow[], locale: Locale): Promise<TripItemRow[]> {
+  return Promise.all(
+    items.map(async (row) => {
+      const vertical = verticalOf(row.offerRef);
+      if (!vertical || modeFor(vertical) !== "demo") return row;
+      try {
+        const snap = await snapshotFromOffer(row.offerRef, locale);
+        return {
+          ...row,
+          title: snap.title,
+          snapshot: {
+            ...row.snapshot,
+            subtitle: snap.snapshot.subtitle,
+            segments: row.snapshot.segments.map((seg, i) => ({ ...seg, label: snap.snapshot.segments[i]?.label ?? seg.label })),
+            ...(snap.snapshot.receptionNote ? { receptionNote: snap.snapshot.receptionNote, receptionLimited: snap.snapshot.receptionLimited } : {}),
+          },
+        };
+      } catch {
+        return row;
+      }
+    }),
+  );
 }
 
 export function toPlannerItem(row: TripItemRow): PlannerItem {

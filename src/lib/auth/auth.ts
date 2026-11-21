@@ -8,6 +8,36 @@ import * as schema from "@/lib/db/schema";
 import { env, secureCookies, siteUrl } from "@/lib/env";
 import { sendEmail } from "@/lib/mail";
 import { siteConfig } from "@/lib/config/site";
+import { LOCALE_COOKIE, isLocale, localeFromPath, type Locale } from "@/i18n/config";
+import { formatMessage } from "@/i18n/format";
+import { getMessages } from "@/i18n/messages";
+
+/**
+ * Langue d'une requête d'authentification (les routes /api/auth ne passent pas par le proxy) : chemin de la page
+ * d'origine (Referer, ex. /en/inscription), sinon cookie de langue choisie ; `null` si aucune information.
+ */
+export function localeFromAuthRequest(request: Request | undefined | null): Locale | null {
+  if (!request) return null;
+  const referer = request.headers.get("referer");
+  if (referer) {
+    try {
+      return localeFromPath(new URL(referer).pathname) ?? "fr";
+    } catch {
+      /* Referer illisible */
+    }
+  }
+  const cookie = (request.headers.get("cookie") ?? "")
+    .split(";")
+    .map((c) => c.trim())
+    .find((c) => c.startsWith(`${LOCALE_COOKIE}=`))
+    ?.slice(LOCALE_COOKIE.length + 1);
+  return isLocale(cookie) ? cookie : null;
+}
+
+function userLocale(user: object): Locale {
+  const locale = (user as { locale?: unknown }).locale;
+  return isLocale(locale) ? locale : "fr";
+}
 
 /**
  * Authentification réelle avec Better Auth (sessions en base, mots de passe hachés,
@@ -74,6 +104,8 @@ function createAuth(database: Awaited<ReturnType<typeof db>>) {
     user: {
       additionalFields: {
         role: { type: "string", required: false, defaultValue: "user", input: false },
+        // Langue des emails du compte (vérification, réinitialisation), fixée à l'inscription d'après la page.
+        locale: { type: "string", required: false, defaultValue: "fr", input: false },
       },
     },
     emailAndPassword: {
@@ -85,12 +117,15 @@ function createAuth(database: Awaited<ReturnType<typeof db>>) {
       autoSignIn: false,
       revokeSessionsOnPasswordReset: true,
       resetPasswordTokenExpiresIn: 60 * 60,
-      sendResetPassword: async ({ user, url }) => {
+      sendResetPassword: async ({ user, url }, request) => {
         if (shared) return; // défense en profondeur : la route est déjà fermée
+        // Langue de la page où la réinitialisation est demandée, sinon celle du compte.
+        const locale = localeFromAuthRequest(request) ?? userLocale(user);
+        const t = getMessages(locale).email.reset;
         void sendEmail({
           to: user.email,
-          subject: "Nomadia — réinitialisation de votre mot de passe",
-          text: `Bonjour,\n\nUne réinitialisation de mot de passe a été demandée pour votre compte Nomadia.\nCe lien est valable une heure :\n${url}\n\nSi vous n'êtes pas à l'origine de cette demande, ignorez ce message.`,
+          subject: t.subject,
+          text: formatMessage(locale, t.body, { url }),
           template: "reset_password",
         });
       },
@@ -100,12 +135,14 @@ function createAuth(database: Awaited<ReturnType<typeof db>>) {
       sendOnSignIn: !shared,
       autoSignInAfterVerification: true,
       expiresIn: 60 * 60 * 24,
-      sendVerificationEmail: async ({ user, url }) => {
+      sendVerificationEmail: async ({ user, url }, request) => {
         if (shared) return;
+        const locale = localeFromAuthRequest(request) ?? userLocale(user);
+        const t = getMessages(locale).email.verify;
         void sendEmail({
           to: user.email,
-          subject: "Nomadia — confirmez votre adresse email",
-          text: `Bonjour ${user.name},\n\nConfirmez votre adresse email pour activer votre compte Nomadia :\n${url}\n\nCe lien est valable 24 heures.`,
+          subject: t.subject,
+          text: formatMessage(locale, t.body, { name: user.name, url }),
           template: "verify_email",
         });
       },
@@ -115,6 +152,12 @@ function createAuth(database: Awaited<ReturnType<typeof db>>) {
       updateAge: 60 * 60 * 24,
     },
     databaseHooks: {
+      user: {
+        create: {
+          // Langue de la page d'inscription (Referer) : emails du compte dans cette langue.
+          before: async (data, ctx) => ({ data: { ...data, locale: localeFromAuthRequest(ctx?.request) ?? "fr" } }),
+        },
+      },
       session: {
         create: {
           // Minimisation : ni adresse IP ni user-agent conservés avec la session (jamais lus par l'application).

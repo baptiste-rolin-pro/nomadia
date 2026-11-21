@@ -12,6 +12,8 @@ import { cleanQuestion, resultFromCalls, type ActionContext } from "@/lib/assist
 import { ASSISTANT_SYSTEM_PROMPT, volatileContext } from "@/lib/assistant/prompt";
 import { ASSISTANT_TOOLS, toolInputSchemas } from "@/lib/assistant/tools";
 import type { AssistantErrorCode, AssistantResult } from "@/lib/assistant/types";
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/config";
+import { getMessages } from "@/i18n/messages";
 
 export { MAX_ACTIONS } from "@/lib/assistant/actions";
 
@@ -51,10 +53,8 @@ export class AssistantFailure extends Error {
   }
 }
 
-export const OUT_OF_SCOPE_MESSAGE =
-  "Je prépare uniquement des recherches de vols, d'hébergements et de voitures, des fiches destination et des voyages sur Nomadia. Décrivez votre voyage : destination, dates et voyageurs.";
-const REFUSAL_MESSAGE = "Je ne peux pas traiter cette demande. Décrivez un voyage à préparer : destination, dates et voyageurs.";
-const GENERIC_QUESTION = "Pouvez-vous préciser votre demande : destination, dates et nombre de voyageurs ?";
+/** Messages fixes (français ; les autres langues : `assistant` dans src/i18n/messages). */
+export const OUT_OF_SCOPE_MESSAGE = getMessages(DEFAULT_LOCALE).assistant.outOfScope;
 
 /** Le texte du visiteur ne peut pas fermer les balises qui l'encadrent. */
 function fence(text: string): string {
@@ -72,8 +72,11 @@ export function userContent(input: AssistantInput): string {
   return `<demande>\n${fence(input.text)}\n</demande>`;
 }
 
-/** Requête complète : outils et consignes stables d'abord (mis en cache), contexte du jour ensuite. */
-export function buildAssistantRequest(input: AssistantInput, today: CivilDate): CreateParams {
+/**
+ * Requête complète : outils et consignes stables d'abord (mis en cache), contexte du jour ensuite (dont la langue
+ * de réponse : hypothèses et question dans la langue de la page du visiteur).
+ */
+export function buildAssistantRequest(input: AssistantInput, today: CivilDate, locale: Locale = DEFAULT_LOCALE): CreateParams {
   return {
     model: ASSISTANT_MODEL,
     max_tokens: ASSISTANT_MAX_TOKENS,
@@ -85,7 +88,7 @@ export function buildAssistantRequest(input: AssistantInput, today: CivilDate): 
     tools: ASSISTANT_TOOLS,
     system: [
       { type: "text", text: ASSISTANT_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } },
-      { type: "text", text: volatileContext(today) },
+      { type: "text", text: volatileContext(today, locale) },
     ],
     messages: [{ role: "user", content: userContent(input) }],
   };
@@ -93,19 +96,20 @@ export function buildAssistantRequest(input: AssistantInput, today: CivilDate): 
 
 /** Traduit la réponse du modèle en résultat sûr pour le navigateur (jamais de texte libre comme lien). */
 export function interpretResponse(message: Message, ctx: ActionContext): AssistantResult {
-  if (message.stop_reason === "refusal") return { type: "out_of_scope", message: REFUSAL_MESSAGE };
+  const t = getMessages(ctx.locale ?? DEFAULT_LOCALE).assistant;
+  if (message.stop_reason === "refusal") return { type: "out_of_scope", message: t.refusal };
   if (message.stop_reason === "max_tokens" || message.stop_reason === "model_context_window_exceeded") {
     throw new AssistantFailure("UNAVAILABLE", `stop_reason ${message.stop_reason}`);
   }
   const calls = message.content.filter((b): b is ToolUse => b.type === "tool_use");
   // Aucun outil : demande hors sujet (le texte libre du modèle n'est pas affiché).
-  if (calls.length === 0) return { type: "out_of_scope", message: OUT_OF_SCOPE_MESSAGE };
+  if (calls.length === 0) return { type: "out_of_scope", message: t.outOfScope };
 
   const clarification = calls.find((c) => c.name === "ask_clarification");
   if (clarification) {
     const parsed = toolInputSchemas.ask_clarification.safeParse(clarification.input);
-    const question = parsed.success ? cleanQuestion(parsed.data.question) : "";
-    return { type: "clarification", question: question || GENERIC_QUESTION };
+    const question = parsed.success ? cleanQuestion(parsed.data.question, ctx.locale) : "";
+    return { type: "clarification", question: question || t.genericQuestion };
   }
   // Même validation et même construction des chemins que l'analyse locale (actions.ts).
   return resultFromCalls(calls, ctx);
@@ -144,6 +148,6 @@ function failure(code: AssistantFailure["code"], reason: string, err: unknown): 
 }
 
 export async function runAssistant(input: AssistantInput, deps: { client: AssistantModelClient; ctx: ActionContext }): Promise<AssistantResult> {
-  const message = await callModel(deps.client, buildAssistantRequest(input, deps.ctx.today));
+  const message = await callModel(deps.client, buildAssistantRequest(input, deps.ctx.today, deps.ctx.locale));
   return interpretResponse(message, deps.ctx);
 }

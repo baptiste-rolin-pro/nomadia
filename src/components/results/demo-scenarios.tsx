@@ -1,10 +1,12 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
+import { useI18n } from "@/i18n/client";
 
 /** Outils de démonstration : déclenchent les états « aucune offre », « fournisseur indisponible »… */
 export function DemoScenarioLinks({ scenarios }: { scenarios: Record<string, string> }) {
   const sp = useSearchParams();
+  const t = useI18n().m.results.common;
   const current = sp.get("scenario");
   const hrefFor = (s: string | null) => {
     const q = new URLSearchParams(sp.toString());
@@ -15,12 +17,12 @@ export function DemoScenarioLinks({ scenarios }: { scenarios: Record<string, str
   };
   return (
     <details className="mt-10 rounded-[var(--radius-md)] border border-dashed border-terracotta/50 bg-terracotta-soft/40 p-4 text-sm">
-      <summary className="cursor-pointer font-semibold">Outils de démonstration : simuler un état du fournisseur</summary>
-      <p className="mt-2 text-ink-soft">Disponible uniquement en mode DEMO. Ces liens ne changent jamais le mode du fournisseur.</p>
+      <summary className="cursor-pointer font-semibold">{t.demoTools}</summary>
+      <p className="mt-2 text-ink-soft">{t.demoToolsText}</p>
       <ul className="mt-2 flex flex-wrap gap-3">
         <li>
           <a href={hrefFor(null)} aria-current={!current ? "true" : undefined} className="underline underline-offset-4">
-            Normal
+            {t.normal}
           </a>
         </li>
         {Object.entries(scenarios).map(([k, label]) => (

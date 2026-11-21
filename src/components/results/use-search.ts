@@ -2,13 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useLocale } from "@/i18n/client";
+import type { SearchIssue } from "@/lib/search/query";
 
 export interface SearchErrorBody {
   status: "error";
   code: "INVALID" | "UNAVAILABLE" | "NOT_CONFIGURED" | "TIMEOUT" | "INTERNAL";
   message: string;
   retryable: boolean;
-  issues?: { field: string; message: string }[];
+  issues?: SearchIssue[];
 }
 
 export interface SearchOk<TItem, TFacets> {
@@ -39,6 +41,7 @@ export interface SearchState<TItem, TFacets> {
 export function useSearch<TItem, TFacets>(endpoint: string, enabled: boolean): SearchState<TItem, TFacets> & { retry: () => void; query: string } {
   const sp = useSearchParams();
   const query = sp.toString();
+  const locale = useLocale();
   const [state, setState] = useState<SearchState<TItem, TFacets>>({ loading: enabled, data: null, error: null, network: false });
   const [attempt, setAttempt] = useState(0);
   const seq = useRef(0);
@@ -50,7 +53,8 @@ export function useSearch<TItem, TFacets>(endpoint: string, enabled: boolean): S
       const mine = ++seq.current;
       setState((s) => ({ ...s, loading: true }));
       try {
-        const res = await fetch(`${endpoint}?${query}`, { signal: ctrl.signal, headers: { Accept: "application/json" } });
+        // `hl` : langue de la page (textes des offres et messages d'erreur rédigés par le serveur dans cette langue).
+        const res = await fetch(`${endpoint}?${query}${query ? "&" : ""}hl=${locale}`, { signal: ctrl.signal, headers: { Accept: "application/json" } });
         const json = (await res.json()) as SearchOk<TItem, TFacets> | SearchErrorBody;
         if (mine !== seq.current) return;
         if (json.status === "ok") setState({ loading: false, data: json, error: null, network: false });
@@ -64,7 +68,7 @@ export function useSearch<TItem, TFacets>(endpoint: string, enabled: boolean): S
       clearTimeout(handle);
       ctrl.abort();
     };
-  }, [endpoint, query, enabled, attempt]);
+  }, [endpoint, query, enabled, attempt, locale]);
 
   return { ...state, retry: () => setAttempt((a) => a + 1), query };
 }

@@ -1,10 +1,14 @@
 "use client";
 
+import { useI18n } from "@/i18n/client";
+
 /**
  * Plan schématique chargé à la demande : positions relatives approximatives, sans fond cartographique
  * (aucun service de tuiles n'est configuré). La liste des résultats reste l'alternative complète.
  */
 export function HotelsMap({ hotels }: { hotels: { id: string; name: string; lat: number; lng: number; price: string; neighborhood: string }[] }) {
+  const { m, f } = useI18n();
+  const t = m.results.hotels;
   if (!hotels.length) return null;
   const lats = hotels.map((h) => h.lat);
   const lngs = hotels.map((h) => h.lng);
@@ -15,7 +19,7 @@ export function HotelsMap({ hotels }: { hotels: { id: string; name: string; lat:
   return (
     <figure className="rounded-[var(--radius-lg)] border border-line bg-white p-4">
       <div className="relative aspect-[16/9] w-full overflow-hidden rounded-[var(--radius-md)] bg-forest-soft">
-        <svg viewBox="0 0 100 56.25" className="absolute inset-0 size-full" role="img" aria-label={`Plan schématique de ${hotels.length} hébergements`}>
+        <svg viewBox="0 0 100 56.25" className="absolute inset-0 size-full" role="img" aria-label={f.t(t.mapLabel, { n: hotels.length })}>
           {hotels.map((h) => (
             <g key={h.id} transform={`translate(${x(h.lng)} ${y(h.lat) * 0.5625})`}>
               <circle r="1.6" fill="#174b45" stroke="#fff" strokeWidth="0.5" />
@@ -26,7 +30,7 @@ export function HotelsMap({ hotels }: { hotels: { id: string; name: string; lat:
           ))}
         </svg>
       </div>
-      <figcaption className="mt-2 text-xs text-ink-soft">Plan schématique non contractuel : positions approximatives des établissements fictifs. Les quartiers sont réels. La liste ci-dessous contient toutes les informations.</figcaption>
+      <figcaption className="mt-2 text-xs text-ink-soft">{t.mapCaption}</figcaption>
     </figure>
   );
 }

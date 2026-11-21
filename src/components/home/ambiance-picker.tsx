@@ -1,9 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
+import { Link } from "@/i18n/link";
 import { useId, useRef, useState, type KeyboardEvent } from "react";
 import { ArrowRight } from "lucide-react";
+import { useI18n } from "@/i18n/client";
 
 export interface AmbianceDestination {
   slug: string;
@@ -21,6 +22,8 @@ export interface AmbianceDestination {
  * neutralisée par prefers-reduced-motion. Motion n'est pas chargé sur l'accueil (budget JavaScript).
  */
 export function AmbiancePicker({ ambiances, destinations }: { ambiances: { id: string; label: string; description: string }[]; destinations: AmbianceDestination[] }) {
+  const { m, f, locale } = useI18n();
+  const t = m.home.ambiance;
   const [active, setActive] = useState(ambiances[0]!.id);
   const groupId = useId();
   const refs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -29,8 +32,9 @@ export function AmbiancePicker({ ambiances, destinations }: { ambiances: { id: s
 
   const onKeyDown = (e: KeyboardEvent, i: number) => {
     let next = i;
-    if (e.key === "ArrowRight" || e.key === "ArrowDown") next = (i + 1) % ambiances.length;
-    else if (e.key === "ArrowLeft" || e.key === "ArrowUp") next = (i - 1 + ambiances.length) % ambiances.length;
+    const rtl = locale === "ar";
+    if (e.key === (rtl ? "ArrowLeft" : "ArrowRight") || e.key === "ArrowDown") next = (i + 1) % ambiances.length;
+    else if (e.key === (rtl ? "ArrowRight" : "ArrowLeft") || e.key === "ArrowUp") next = (i - 1 + ambiances.length) % ambiances.length;
     else return;
     e.preventDefault();
     const a = ambiances[next]!;
@@ -43,7 +47,7 @@ export function AmbiancePicker({ ambiances, destinations }: { ambiances: { id: s
           <div>
             <div role="radiogroup" aria-labelledby={`${groupId}-label`} className="flex flex-wrap gap-2 lg:flex-col lg:items-start">
               <span id={`${groupId}-label`} className="sr-only">
-                Ambiance de voyage
+                {t.groupLabel}
               </span>
               {ambiances.map((a, i) => {
                 const checked = a.id === active;
@@ -59,24 +63,24 @@ export function AmbiancePicker({ ambiances, destinations }: { ambiances: { id: s
                     tabIndex={checked ? 0 : -1}
                     onClick={() => setActive(a.id)}
                     onKeyDown={(e) => onKeyDown(e, i)}
-                    className={`rounded-full border px-4 py-2 text-left font-serif text-lg transition-colors duration-150 lg:border-0 lg:px-0 lg:py-1 lg:text-3xl ${
+                    className={`rounded-full border px-4 py-2 text-start font-serif text-lg transition-colors duration-150 lg:border-0 lg:px-0 lg:py-1 lg:text-3xl ${
                       checked ? "border-forest bg-forest text-white lg:bg-transparent lg:text-forest" : "border-line text-ink-soft hover:text-ink lg:text-ink-soft/80"
                     }`}
                   >
-                    {checked ? <span className="sr-only">Sélectionné : </span> : null}
+                    {checked ? <span className="sr-only">{t.selected}</span> : null}
                     {a.label}
                   </button>
                 );
               })}
             </div>
             <p className="mt-6 max-w-xs text-ink-soft" aria-live="polite">
-              {current.description} {selection.length} destination{selection.length > 1 ? "s" : ""}.
+              {current.description} {f.t(t.count, { n: selection.length })}
             </p>
           </div>
           <ul
               key={active}
               className="grid animate-fade-up gap-5 sm:grid-cols-2"
-              aria-label={`Destinations — ${current.label}`}
+              aria-label={f.t(t.listLabel, { label: current.label })}
             >
               {selection.map((d) => (
                 <li key={d.slug}>
@@ -86,7 +90,7 @@ export function AmbiancePicker({ ambiances, destinations }: { ambiances: { id: s
                     </div>
                     <div className="mt-3 flex items-baseline justify-between gap-3">
                       <p className="font-serif text-xl">{d.name}</p>
-                      <ArrowRight aria-hidden className="size-4 text-terracotta transition-transform duration-150 group-hover:translate-x-1" />
+                      <ArrowRight aria-hidden className="size-4 text-terracotta transition-transform duration-150 group-hover:translate-x-1 rtl:group-hover:-translate-x-1" />
                     </div>
                     <p className="text-sm text-ink-soft">
                       {d.country} · {d.stayType} · {d.duration}

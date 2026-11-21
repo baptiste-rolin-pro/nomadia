@@ -10,6 +10,10 @@ import { createRng, hashString } from "@/lib/random";
 import { getPlace } from "@/lib/content/places";
 import { decodeRef, encodeRef } from "@/lib/providers/offer-ref";
 import { ProviderError, type AncillaryDef, type CarOffer, type PriceBreakdown, type RentalAgency, type RentalSupplier, type ZonedTime } from "@/lib/providers/types";
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/config";
+import { formatMessage, formatMoneyIn, formatTime } from "@/i18n/format";
+import { getMessages } from "@/i18n/messages";
+import { carModelText, localizeAgency } from "@/lib/providers/localize";
 
 export const DEMO_CAR_PROVIDER_ID = "demo-cars";
 export const CAR_OFFER_TTL_MINUTES = 30;
@@ -105,14 +109,16 @@ export interface CarRefPayload {
   t: number;
 }
 
-function extrasFor(model: CarModel, prepaid: boolean): AncillaryDef[] {
+function extrasFor(model: CarModel, prepaid: boolean, locale: Locale): AncillaryDef[] {
+  const t = getMessages(locale).domain.cars;
+  const euros = (minor: number) => formatMoneyIn(locale, money(minor), { hideZeroDecimals: true });
   return [
-    { id: "child-seat", label: "Siège enfant", description: "Sur demande auprès de l'agence ; disponibilité non garantie.", unitPrice: money(900), per: "day", payable: "on_site", maxQuantity: 2, guaranteed: false },
-    { id: "extra-driver", label: "Conducteur additionnel", description: "Payable à l'agence. Le conducteur additionnel présente son permis au comptoir.", unitPrice: money(800), per: "day", payable: "on_site", maxQuantity: 2, guaranteed: true },
+    { id: "child-seat", label: t.childSeat, description: t.childSeatDesc, unitPrice: money(900), per: "day", payable: "on_site", maxQuantity: 2, guaranteed: false },
+    { id: "extra-driver", label: t.extraDriver, description: t.extraDriverDesc, unitPrice: money(800), per: "day", payable: "on_site", maxQuantity: 2, guaranteed: true },
     {
       id: "excess-reduction",
-      label: "Réduction de franchise",
-      description: `Ramène la franchise de ${(model.excess / 100).toLocaleString("fr-FR")} € à 0 € pour les dommages couverts (conditions du loueur, démonstration).`,
+      label: t.excessReduction,
+      description: formatMessage(locale, t.excessReductionDesc, { excess: euros(model.excess), zero: euros(0) }),
       unitPrice: money(1800),
       per: "day",
       payable: prepaid ? "now" : "on_site",
@@ -122,12 +128,19 @@ function extrasFor(model: CarModel, prepaid: boolean): AncillaryDef[] {
   ];
 }
 
-export function buildCarOffer(p: CarRefPayload): CarOffer {
-  const pickupAgency = DEMO_AGENCIES.find((a) => a.id === p.pu);
-  const returnAgency = DEMO_AGENCIES.find((a) => a.id === p.do);
-  const model = MODELS.find((m) => m.id === p.m);
-  if (!pickupAgency || !returnAgency || !model) throw new ProviderError("OFFER_NOT_FOUND", "Offre de location introuvable.");
-  if (pickupAgency.supplierId !== returnAgency.supplierId) throw new ProviderError("OFFER_NOT_FOUND", "Retour impossible dans une agence d'un autre loueur.");
+export function buildCarOffer(p: CarRefPayload, locale: Locale = DEFAULT_LOCALE): CarOffer {
+  const t = getMessages(locale).domain.cars;
+  const tt = (msg: string, params?: Record<string, string | number>) => formatMessage(locale, msg, params);
+  const euros = (minor: number) => formatMoneyIn(locale, money(minor), { hideZeroDecimals: true });
+  const time = (hhmm: string) => (locale === DEFAULT_LOCALE ? hhmm.replace(":", " h ") : formatTime(locale, hhmm === "24:00" ? "23:59" : hhmm));
+  const basePickup = DEMO_AGENCIES.find((a) => a.id === p.pu);
+  const baseReturn = DEMO_AGENCIES.find((a) => a.id === p.do);
+  const baseModel = MODELS.find((m) => m.id === p.m);
+  if (!basePickup || !baseReturn || !baseModel) throw new ProviderError("OFFER_NOT_FOUND", t.notFound);
+  if (basePickup.supplierId !== baseReturn.supplierId) throw new ProviderError("OFFER_NOT_FOUND", t.otherSupplier);
+  const pickupAgency = localizeAgency(basePickup, locale);
+  const returnAgency = localizeAgency(baseReturn, locale);
+  const model = { ...baseModel, ...carModelText(baseModel.id, locale) };
   const supplier = DEMO_SUPPLIERS[pickupAgency.supplierId]!;
   const pickup = { local: p.pl, timeZone: pickupAgency.timeZone };
   const dropoff = { local: p.rl, timeZone: returnAgency.timeZone };
@@ -135,21 +148,21 @@ export function buildCarOffer(p: CarRefPayload): CarOffer {
   const rng = createRng(hashString(`${p.pu}-${p.m}-${civilDateOf(p.pl)}`));
   const dayRate = money(Math.round((model.baseDay * (95 + rng.int(0, 20))) / 100 / 100) * 100);
   const payable = p.pre ? "now" : "on_site";
-  const lines: PriceBreakdown["lines"] = [{ label: `Location ${days} jour${days > 1 ? "s" : ""} (${model.category})`, amount: multiply(dayRate, days), kind: "base", payable }];
+  const lines: PriceBreakdown["lines"] = [{ label: tt(t.rental, { days, category: model.category }), amount: multiply(dayRate, days), kind: "base", payable }];
   const blockingReasons: string[] = [];
   let youngDriverFeePerDay: Money | null = null;
-  if (p.age < model.minAge) blockingReasons.push(`Âge minimum du conducteur pour cette catégorie : ${model.minAge} ans (conditions du loueur, démonstration).`);
-  if (p.age > 79) blockingReasons.push("Conducteur de plus de 79 ans : non accepté par ce loueur (démonstration).");
+  if (p.age < model.minAge) blockingReasons.push(tt(t.minAge, { age: model.minAge }));
+  if (p.age > 79) blockingReasons.push(t.tooOld);
   if (p.age < 25) {
     youngDriverFeePerDay = money(1500);
-    lines.push({ label: `Frais jeune conducteur (moins de 25 ans), ${days} jour${days > 1 ? "s" : ""}`, amount: multiply(youngDriverFeePerDay, Math.min(days, 15)), kind: "fee", payable: "on_site" });
+    lines.push({ label: tt(t.youngDriver, { days }), amount: multiply(youngDriverFeePerDay, Math.min(days, 15)), kind: "fee", payable: "on_site" });
   }
   let oneWayFee: Money | null = null;
   if (pickupAgency.id !== returnAgency.id) {
     oneWayFee = money(pickupAgency.placeId === returnAgency.placeId ? 2500 : 4900);
-    lines.push({ label: "Frais d'aller simple (restitution dans une autre agence)", amount: oneWayFee, kind: "fee", payable: "on_site" });
+    lines.push({ label: t.oneWayFee, amount: oneWayFee, kind: "fee", payable: "on_site" });
   }
-  lines.push({ label: "Taxes locales et frais d'emplacement (inclus, montants fictifs)", amount: zero(), kind: "tax", payable });
+  lines.push({ label: t.localTaxes, amount: zero(), kind: "tax", payable });
   const total = sum(lines.map((l) => l.amount));
   const payNow = sum(lines.filter((l) => l.payable === "now").map((l) => l.amount));
   const payOnSite = sum(lines.filter((l) => l.payable === "on_site").map((l) => l.amount));
@@ -158,11 +171,11 @@ export function buildCarOffer(p: CarRefPayload): CarOffer {
   let suggestedPickup: ZonedTime | null = null;
   let suggestedDropoff: ZonedTime | null = null;
   if (!isAgencyOpen(pickupAgency, pickupTime)) {
-    blockingReasons.push(`Agence fermée à ${pickupTime.replace(":", " h ")} (horaires : ${pickupAgency.opens.replace(":", " h ")} – ${pickupAgency.closes.replace(":", " h ")}, heure locale).`);
+    blockingReasons.push(tt(t.agencyClosed, { time: time(pickupTime), opens: time(pickupAgency.opens), closes: time(pickupAgency.closes) }));
     suggestedPickup = { local: nextOpening(pickupAgency, p.pl), timeZone: pickupAgency.timeZone };
   }
   if (!isAgencyOpen(returnAgency, returnTime)) {
-    blockingReasons.push(`Agence de retour fermée à ${returnTime.replace(":", " h ")} (horaires : ${returnAgency.opens.replace(":", " h ")} – ${returnAgency.closes.replace(":", " h ")}).`);
+    blockingReasons.push(tt(t.returnClosed, { time: time(returnTime), opens: time(returnAgency.opens), closes: time(returnAgency.closes) }));
     const close = returnAgency.closes === "24:00" ? "23:30" : returnAgency.closes;
     suggestedDropoff = { local: returnTime < returnAgency.opens ? `${civilDateOf(p.rl)}T${returnAgency.opens}` : `${civilDateOf(p.rl)}T${close}`, timeZone: returnAgency.timeZone };
   }
@@ -179,6 +192,7 @@ export function buildCarOffer(p: CarRefPayload): CarOffer {
     dropoff,
     rentalDays: days,
     category: model.category,
+    modelId: model.id,
     acriss: model.acriss,
     exampleModel: model.example,
     modelGuaranteed: false,
@@ -190,20 +204,15 @@ export function buildCarOffer(p: CarRefPayload): CarOffer {
     energy: model.energy,
     airConditioning: true,
     mileage: limitedMileage ? { unlimited: false, kmPerDay: 200, extraKmFee: money(35) } : { unlimited: true, kmPerDay: null, extraKmFee: null },
-    fuelPolicy: model.energy === "electric" ? "Restitution avec une charge au moins égale à celle du départ (démonstration)." : "Plein / plein : le véhicule est rendu avec le réservoir plein.",
+    fuelPolicy: model.energy === "electric" ? t.fuelElectric : t.fuelFull,
     deposit: money(model.deposit),
     excess: money(model.excess),
-    coverages: [
-      "Responsabilité civile (obligatoire)",
-      `Protection dommages collision (CDW) avec franchise de ${(model.excess / 100).toLocaleString("fr-FR")} €`,
-      `Protection vol (TP) avec franchise de ${(model.excess / 100).toLocaleString("fr-FR")} €`,
-      ...(iceland ? ["Exclusions courantes à vérifier : gravier, sable/cendres, passages à gué (conditions du loueur)"] : []),
-    ],
+    coverages: [t.liability, tt(t.cdw, { excess: euros(model.excess) }), tt(t.theft, { excess: euros(model.excess) }), ...(iceland ? [t.icelandExclusions] : [])],
     driverAge: p.age,
     youngDriverFeePerDay,
     oneWayFee,
-    licenceRequirement: `Permis de conduire valide détenu depuis au moins ${model.licenceYears} an${model.licenceYears > 1 ? "s" : ""} ; permis international selon le pays de délivrance (à vérifier).`,
-    cardRequirement: "Carte de crédit au nom du conducteur principal pour le dépôt de garantie ; cartes de débit et prépayées refusées (conditions de démonstration).",
+    licenceRequirement: tt(t.licence, { years: model.licenceYears }),
+    cardRequirement: t.card,
     paymentCollector: p.pre ? "platform" : "agency",
     price: {
       lines,
@@ -212,9 +221,9 @@ export function buildCarOffer(p: CarRefPayload): CarOffer {
       payOnSite,
       deposit: money(model.deposit),
       taxes: "included",
-      notes: ["Le dépôt de garantie est bloqué sur la carte au comptoir puis libéré après restitution : il n'est pas encaissé."],
+      notes: [t.depositNote],
     },
-    extras: extrasFor(model, p.pre),
+    extras: extrasFor(model, p.pre, locale),
     bookable: blockingReasons.length === 0,
     blockingReasons,
     suggestedPickup,
@@ -237,7 +246,7 @@ export interface CarGenInput {
   t: number;
 }
 
-export function generateCarOffers(input: CarGenInput): CarOffer[] {
+export function generateCarOffers(input: CarGenInput, locale: Locale = DEFAULT_LOCALE): CarOffer[] {
   const pickupAgencies = agenciesForPlace(input.pickupPlace);
   const dropoffAgencies = agenciesForPlace(input.dropoffPlace);
   const offers: CarOffer[] = [];
@@ -247,7 +256,7 @@ export function generateCarOffers(input: CarGenInput): CarOffer[] {
     for (const m of modelsForAgency(pu)) {
       // Deux modes de paiement selon le loueur : prépayé (plateforme) ou à l'agence.
       const prepaid = pu.supplierId === "rl" || (pu.supplierId === "dl" && m.id !== "van7");
-      offers.push(buildCarOffer({ pu: pu.id, do: ret.id, m: m.id, pl: input.pickupLocal, rl: input.dropoffLocal, age: input.driverAge, res: input.residence, pre: prepaid, t: input.t }));
+      offers.push(buildCarOffer({ pu: pu.id, do: ret.id, m: m.id, pl: input.pickupLocal, rl: input.dropoffLocal, age: input.driverAge, res: input.residence, pre: prepaid, t: input.t }, locale));
     }
   }
   return offers;

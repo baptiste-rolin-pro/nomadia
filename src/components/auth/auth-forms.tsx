@@ -1,12 +1,15 @@
 "use client";
 
-import Link from "next/link";
+import { Link } from "@/i18n/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Loader2 } from "lucide-react";
 import { authClient } from "@/lib/auth/client";
+import { localizePath } from "@/i18n/config";
+import { useI18n } from "@/i18n/client";
+import { inline } from "@/components/content/rich-text";
 
-function safePath(v: string | null | undefined, fallback = "/compte"): string {
+function safePath(v: string | null | undefined, fallback: string): string {
   return v && v.startsWith("/") && !v.startsWith("//") && !v.startsWith("/\\") ? v : fallback;
 }
 
@@ -26,7 +29,7 @@ function TextField({ id, label, type = "text", autoComplete, error, hint, value,
       <label htmlFor={id} className="text-sm font-semibold">
         {label}
       </label>
-      <input id={id} name={id} type={type} autoComplete={autoComplete} value={value} onChange={(e) => onChange(e.target.value)} className="field-input" aria-invalid={error ? true : undefined} aria-describedby={describedBy} required />
+      <input id={id} name={id} type={type} autoComplete={autoComplete} value={value} onChange={(e) => onChange(e.target.value)} className="field-input" aria-invalid={error ? true : undefined} aria-describedby={describedBy} required dir={type === "email" || type === "password" ? "ltr" : undefined} />
       {hint ? (
         <p id={`${id}-hint`} className="text-xs text-ink-soft">
           {hint}
@@ -44,6 +47,8 @@ function TextField({ id, label, type = "text", autoComplete, error, hint, value,
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function SignUpForm({ devMailbox }: { devMailbox: boolean }) {
+  const { locale, m } = useI18n();
+  const t = m.auth.signUp;
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -56,10 +61,10 @@ export function SignUpForm({ devMailbox }: { devMailbox: boolean }) {
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const errs: Record<string, string> = {};
-    if (name.trim().length < 2) errs.name = "Indiquez votre prénom ou votre nom.";
-    if (!EMAIL_RE.test(email)) errs.email = "Adresse email invalide.";
-    if (password.length < 10) errs.password = "10 caractères minimum.";
-    if (confirm !== password) errs.confirm = "Les deux mots de passe ne correspondent pas.";
+    if (name.trim().length < 2) errs.name = t.nameRequired;
+    if (!EMAIL_RE.test(email)) errs.email = t.emailInvalid;
+    if (password.length < 10) errs.password = t.passwordMin;
+    if (confirm !== password) errs.confirm = t.mismatch;
     setErrors(errs);
     if (Object.keys(errs).length) {
       const form = e.currentTarget;
@@ -68,10 +73,11 @@ export function SignUpForm({ devMailbox }: { devMailbox: boolean }) {
     }
     setPending(true);
     setFormError("");
-    const { error } = await authClient.signUp.email({ name: name.trim(), email: email.trim(), password, callbackURL: "/auth/verifie" });
+    // La langue de la page est retrouvée côté serveur (Referer) et enregistrée avec le compte : emails dans cette langue.
+    const { error } = await authClient.signUp.email({ name: name.trim(), email: email.trim(), password, callbackURL: localizePath(locale, "/auth/verifie") });
     setPending(false);
     if (error) {
-      setFormError(error.status === 429 ? "Trop de tentatives : réessayez dans une minute." : "L'inscription n'a pas pu aboutir. Vérifiez les informations saisies.");
+      setFormError(error.status === 429 ? m.auth.signIn.tooMany : t.failed);
       return;
     }
     setDone(true);
@@ -80,17 +86,9 @@ export function SignUpForm({ devMailbox }: { devMailbox: boolean }) {
   if (done) {
     return (
       <div role="status" className="space-y-3">
-        <p className="font-serif text-2xl">Vérifiez votre adresse email</p>
-        <p>Si cette adresse peut être utilisée, un lien de confirmation vient d&apos;être généré. Il est valable 24 heures. Votre compte sera actif après confirmation.</p>
-        {devMailbox ? (
-          <p className="rounded-[var(--radius-md)] bg-ivory-deep p-3 text-sm">
-            Environnement local : les emails ne sont pas envoyés mais capturés dans la{" "}
-            <Link href="/dev/boite-mail" className="font-semibold underline">
-              boîte de réception de test
-            </Link>
-            .
-          </p>
-        ) : null}
+        <p className="font-serif text-2xl">{t.checkTitle}</p>
+        <p>{t.checkText}</p>
+        {devMailbox ? <p className="rounded-[var(--radius-md)] bg-ivory-deep p-3 text-sm [&_a]:font-semibold [&_a]:underline">{inline(t.devMailbox)}</p> : null}
       </div>
     );
   }
@@ -102,51 +100,60 @@ export function SignUpForm({ devMailbox }: { devMailbox: boolean }) {
           {formError}
         </p>
       ) : null}
-      <TextField id="name" label="Prénom ou nom" autoComplete="name" value={name} onChange={setName} error={errors.name} />
-      <TextField id="email" label="Adresse email" type="email" autoComplete="email" value={email} onChange={setEmail} error={errors.email} />
-      <TextField id="password" label="Mot de passe" type="password" autoComplete="new-password" value={password} onChange={setPassword} error={errors.password} hint="10 caractères minimum. Une phrase de passe est plus simple à retenir." />
-      <TextField id="confirm" label="Confirmer le mot de passe" type="password" autoComplete="new-password" value={confirm} onChange={setConfirm} error={errors.confirm} />
-      <p className="text-xs text-ink-soft">
-        En créant un compte, vous acceptez les <Link href="/conditions" className="underline">conditions d&apos;utilisation</Link>. Vos données sont traitées selon la <Link href="/confidentialite" className="underline">politique de confidentialité</Link>. Aucune communication marketing sans votre accord séparé.
-      </p>
-      <Submit pending={pending}>Créer mon compte</Submit>
+      <TextField id="name" label={t.name} autoComplete="name" value={name} onChange={setName} error={errors.name} />
+      <TextField id="email" label={t.email} type="email" autoComplete="email" value={email} onChange={setEmail} error={errors.email} />
+      <TextField id="password" label={t.password} type="password" autoComplete="new-password" value={password} onChange={setPassword} error={errors.password} hint={t.passwordHint} />
+      <TextField id="confirm" label={t.confirm} type="password" autoComplete="new-password" value={confirm} onChange={setConfirm} error={errors.confirm} />
+      <p className="text-xs text-ink-soft [&_a]:underline">{inline(t.terms)}</p>
+      <Submit pending={pending}>{t.submit}</Submit>
     </form>
   );
 }
 
 export interface DemoAccountCredential {
-  label: string;
-  description: string;
+  kind: "user" | "admin";
   email: string;
   password: string;
 }
 
 /** Comptes de démonstration partagés (identifiants de test publics) : affichés et utilisables en un clic. */
 function DemoAccounts({ accounts, onUse }: { accounts: DemoAccountCredential[]; onUse: (a: DemoAccountCredential) => void }) {
+  const { m, f } = useI18n();
+  const t = m.auth.signIn;
   return (
     <section aria-labelledby="demo-accounts-title" className="mb-6 rounded-[var(--radius-lg)] border border-line bg-white p-4">
       <h2 id="demo-accounts-title" className="font-semibold">
-        Comptes de démonstration
+        {t.demoAccounts}
       </h2>
       <ul className="mt-3 space-y-3 text-sm">
-        {accounts.map((a) => (
-          <li key={a.email} className="flex flex-wrap items-center justify-between gap-3" data-testid="demo-account">
-            <div className="min-w-0">
-              <p className="font-semibold">
-                {a.label} <span className="font-normal text-ink-soft">— {a.description}</span>
-              </p>
-              <p className="break-all">
-                Identifiant : <code className="rounded bg-ivory-deep px-1">{a.email}</code>
-              </p>
-              <p className="break-all">
-                Mot de passe (test) : <code className="rounded bg-ivory-deep px-1">{a.password}</code>
-              </p>
-            </div>
-            <button type="button" onClick={() => onUse(a)} className="min-h-10 rounded-[var(--radius-md)] border border-forest px-3 font-semibold text-forest hover:bg-forest-soft">
-              Utiliser le compte {a.label.toLowerCase()}
-            </button>
-          </li>
-        ))}
+        {accounts.map((a) => {
+          const title = a.kind === "admin" ? t.adminTitle : t.travelerTitle;
+          const description = a.kind === "admin" ? t.adminDescription : t.travelerDescription;
+          return (
+            <li key={a.email} className="flex flex-wrap items-center justify-between gap-3" data-testid="demo-account">
+              <div className="min-w-0">
+                <p className="font-semibold">
+                  {title} <span className="font-normal text-ink-soft">— {description}</span>
+                </p>
+                <p className="break-all">
+                  {t.login}{" "}
+                  <code className="rounded bg-ivory-deep px-1" dir="ltr">
+                    {a.email}
+                  </code>
+                </p>
+                <p className="break-all">
+                  {t.testPassword}{" "}
+                  <code className="rounded bg-ivory-deep px-1" dir="ltr">
+                    {a.password}
+                  </code>
+                </p>
+              </div>
+              <button type="button" onClick={() => onUse(a)} data-account={a.kind} className="min-h-10 rounded-[var(--radius-md)] border border-forest px-3 font-semibold text-forest hover:bg-forest-soft">
+                {f.t(t.useAccount, { label: a.kind === "admin" ? t.adminLabel : t.travelerLabel })}
+              </button>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );
@@ -154,11 +161,14 @@ function DemoAccounts({ accounts, onUse }: { accounts: DemoAccountCredential[]; 
 
 export function SignInForm({ returnTo, devMailbox, demoAccounts = null }: { returnTo: string | null; devMailbox: boolean; demoAccounts?: DemoAccountCredential[] | null }) {
   const router = useRouter();
+  const { locale, m } = useI18n();
+  const t = m.auth.signIn;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [pending, setPending] = useState(false);
   const [formError, setFormError] = useState("");
   const [unverified, setUnverified] = useState(false);
+  const target = safePath(returnTo, localizePath(locale, "/compte"));
 
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -166,84 +176,86 @@ export function SignInForm({ returnTo, devMailbox, demoAccounts = null }: { retu
     setFormError("");
     setUnverified(false);
     // callbackURL : redirection après connexion, et destination du lien de vérification si l'adresse n'est pas confirmée.
-    const { error } = await authClient.signIn.email({ email: email.trim(), password, callbackURL: safePath(returnTo) });
+    const { error } = await authClient.signIn.email({ email: email.trim(), password, callbackURL: target });
     setPending(false);
     if (error) {
       if (error.status === 403) {
         setUnverified(true);
         return;
       }
-      setFormError(error.status === 429 ? "Trop de tentatives : réessayez dans une minute." : "Adresse email ou mot de passe incorrect.");
+      setFormError(error.status === 429 ? t.tooMany : t.wrong);
       return;
     }
-    router.push(safePath(returnTo));
+    router.push(target);
     router.refresh();
   };
 
   return (
     <>
-    {demoAccounts?.length ? (
-      <DemoAccounts
-        accounts={demoAccounts}
-        onUse={(a) => {
-          setEmail(a.email);
-          setPassword(a.password);
-          setFormError("");
-        }}
-      />
-    ) : null}
-    <form onSubmit={onSubmit} className="space-y-4">
-      {formError ? (
-        <p role="alert" className="rounded-[var(--radius-md)] bg-danger-soft p-3 text-sm font-medium text-danger">
-          {formError}
-        </p>
+      {demoAccounts?.length ? (
+        <DemoAccounts
+          accounts={demoAccounts}
+          onUse={(a) => {
+            setEmail(a.email);
+            setPassword(a.password);
+            setFormError("");
+          }}
+        />
       ) : null}
-      {unverified ? (
-        <p role="alert" className="rounded-[var(--radius-md)] bg-warning-soft p-3 text-sm">
-          Votre adresse n&apos;est pas encore confirmée. Un nouveau lien de confirmation vient d&apos;être généré.
-          {devMailbox ? (
-            <>
-              {" "}
-              <Link href="/dev/boite-mail" className="font-semibold underline">
-                Ouvrir la boîte de test
-              </Link>
-            </>
-          ) : null}
-        </p>
-      ) : null}
-      <TextField id="email" label="Adresse email" type="email" autoComplete="email" value={email} onChange={setEmail} />
-      <TextField id="password" label="Mot de passe" type="password" autoComplete="current-password" value={password} onChange={setPassword} />
-      {demoAccounts ? null : (
-        <div className="flex justify-end text-sm">
-          <Link href="/mot-de-passe-oublie" className="font-semibold text-forest underline underline-offset-4">
-            Mot de passe oublié ?
-          </Link>
-        </div>
-      )}
-      <Submit pending={pending}>Se connecter</Submit>
-    </form>
+      <form onSubmit={onSubmit} className="space-y-4">
+        {formError ? (
+          <p role="alert" className="rounded-[var(--radius-md)] bg-danger-soft p-3 text-sm font-medium text-danger">
+            {formError}
+          </p>
+        ) : null}
+        {unverified ? (
+          <p role="alert" className="rounded-[var(--radius-md)] bg-warning-soft p-3 text-sm">
+            {t.unverified}
+            {devMailbox ? (
+              <>
+                {" "}
+                <Link href="/dev/boite-mail" className="font-semibold underline">
+                  {t.openTestMailbox}
+                </Link>
+              </>
+            ) : null}
+          </p>
+        ) : null}
+        <TextField id="email" label={t.email} type="email" autoComplete="email" value={email} onChange={setEmail} />
+        <TextField id="password" label={t.password} type="password" autoComplete="current-password" value={password} onChange={setPassword} />
+        {demoAccounts ? null : (
+          <div className="flex justify-end text-sm">
+            <Link href="/mot-de-passe-oublie" className="font-semibold text-forest underline underline-offset-4">
+              {t.forgot}
+            </Link>
+          </div>
+        )}
+        <Submit pending={pending}>{t.submit}</Submit>
+      </form>
     </>
   );
 }
 
 export function ForgotPasswordForm({ devMailbox }: { devMailbox: boolean }) {
+  const { locale, m } = useI18n();
+  const t = m.auth.forgot;
   const [email, setEmail] = useState("");
   const [pending, setPending] = useState(false);
   const [done, setDone] = useState(false);
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setPending(true);
-    await authClient.requestPasswordReset({ email: email.trim(), redirectTo: "/reinitialiser-mot-de-passe" });
+    await authClient.requestPasswordReset({ email: email.trim(), redirectTo: localizePath(locale, "/reinitialiser-mot-de-passe") });
     setPending(false);
     setDone(true);
   };
   if (done) {
     return (
       <div role="status" className="space-y-3">
-        <p>Si un compte existe pour cette adresse, un lien de réinitialisation valable une heure vient d&apos;être généré.</p>
+        <p>{t.done}</p>
         {devMailbox ? (
           <Link href="/dev/boite-mail" className="font-semibold underline">
-            Ouvrir la boîte de réception de test
+            {t.openMailbox}
           </Link>
         ) : null}
       </div>
@@ -251,14 +263,16 @@ export function ForgotPasswordForm({ devMailbox }: { devMailbox: boolean }) {
   }
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <TextField id="email" label="Adresse email du compte" type="email" autoComplete="email" value={email} onChange={setEmail} />
-      <Submit pending={pending}>Recevoir un lien de réinitialisation</Submit>
+      <TextField id="email" label={t.email} type="email" autoComplete="email" value={email} onChange={setEmail} />
+      <Submit pending={pending}>{t.submit}</Submit>
     </form>
   );
 }
 
 export function ResetPasswordForm({ token, error: linkError }: { token: string | null; error: string | null }) {
   const router = useRouter();
+  const { locale, m } = useI18n();
+  const t = m.auth.reset;
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -267,25 +281,28 @@ export function ResetPasswordForm({ token, error: linkError }: { token: string |
   if (!token || linkError) {
     return (
       <p role="alert" className="rounded-[var(--radius-md)] bg-danger-soft p-3 text-sm">
-        Ce lien de réinitialisation est invalide ou a expiré. <Link href="/mot-de-passe-oublie" className="font-semibold underline">Demander un nouveau lien</Link>
+        {t.invalid}{" "}
+        <Link href="/mot-de-passe-oublie" className="font-semibold underline">
+          {t.requestNew}
+        </Link>
       </p>
     );
   }
   const onSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const errs: Record<string, string> = {};
-    if (password.length < 10) errs.password = "10 caractères minimum.";
-    if (confirm !== password) errs.confirm = "Les deux mots de passe ne correspondent pas.";
+    if (password.length < 10) errs.password = m.auth.signUp.passwordMin;
+    if (confirm !== password) errs.confirm = m.auth.signUp.mismatch;
     setErrors(errs);
     if (Object.keys(errs).length) return;
     setPending(true);
     const { error } = await authClient.resetPassword({ newPassword: password, token });
     setPending(false);
     if (error) {
-      setFormError("Le lien a expiré ou a déjà été utilisé. Demandez-en un nouveau.");
+      setFormError(t.expired);
       return;
     }
-    router.push("/connexion?reinitialise=1");
+    router.push(localizePath(locale, "/connexion?reinitialise=1"));
   };
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-4">
@@ -294,15 +311,16 @@ export function ResetPasswordForm({ token, error: linkError }: { token: string |
           {formError}
         </p>
       ) : null}
-      <TextField id="password" label="Nouveau mot de passe" type="password" autoComplete="new-password" value={password} onChange={setPassword} error={errors.password} hint="10 caractères minimum. Toutes vos sessions seront déconnectées." />
-      <TextField id="confirm" label="Confirmer" type="password" autoComplete="new-password" value={confirm} onChange={setConfirm} error={errors.confirm} />
-      <Submit pending={pending}>Enregistrer le nouveau mot de passe</Submit>
+      <TextField id="password" label={t.password} type="password" autoComplete="new-password" value={password} onChange={setPassword} error={errors.password} hint={t.passwordHint} />
+      <TextField id="confirm" label={t.confirm} type="password" autoComplete="new-password" value={confirm} onChange={setConfirm} error={errors.confirm} />
+      <Submit pending={pending}>{t.submit}</Submit>
     </form>
   );
 }
 
 export function SignOutButton({ className = "" }: { className?: string }) {
   const router = useRouter();
+  const { locale, m } = useI18n();
   const [pending, setPending] = useState(false);
   return (
     <button
@@ -312,11 +330,11 @@ export function SignOutButton({ className = "" }: { className?: string }) {
       onClick={async () => {
         setPending(true);
         await authClient.signOut();
-        router.push("/");
+        router.push(localizePath(locale, "/"));
         router.refresh();
       }}
     >
-      {pending ? "Déconnexion…" : "Se déconnecter"}
+      {pending ? m.auth.signOut.pending : m.auth.signOut.label}
     </button>
   );
 }

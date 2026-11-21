@@ -33,10 +33,3 @@ export const siteConfig = {
   },
 } as const;
 
-export const mainNav = [
-  { href: "/destinations", label: "Destinations" },
-  { href: "/voyage/nouveau", label: "Organiser mon voyage" },
-  { href: "/vols", label: "Vols" },
-  { href: "/hotels", label: "Hôtels" },
-  { href: "/voitures", label: "Voitures" },
-] as const;

@@ -6,7 +6,8 @@
 import { airportsFor, getPlace, places, type Place } from "@/lib/content/places";
 import { DESTINATIONS, getDestination } from "@/lib/content/destinations";
 import { CABINS } from "@/lib/search/params";
-import { RESIDENCES } from "@/lib/search/residences";
+import { RESIDENCE_CODES as RESIDENCES } from "@/lib/search/residences";
+import { getMessages } from "@/i18n/messages";
 import { DEMO_FLIGHT_DESTINATIONS, FRENCH_ORIGINS } from "@/lib/providers/demo/flights";
 import { hotelsForPlace } from "@/lib/providers/demo/hotels";
 import { agenciesForPlace } from "@/lib/providers/demo/cars";
@@ -22,21 +23,10 @@ export const PLACE_IDS: NonEmpty = nonEmpty(places.map((p) => p.id));
 /** Les hôtels se cherchent par ville (comme dans le formulaire). */
 export const CITY_IDS: NonEmpty = nonEmpty(places.filter((p) => p.kind === "city").map((p) => p.id));
 export const DESTINATION_SLUGS: NonEmpty = nonEmpty(DESTINATIONS.map((d) => d.slug));
-export const RESIDENCE_CODES: NonEmpty = nonEmpty(RESIDENCES.map(([code]) => code));
+export const RESIDENCE_CODES: NonEmpty = nonEmpty([...RESIDENCES]);
 export const CABIN_IDS: NonEmpty = nonEmpty([...CABINS]);
 /** Heures proposées pour la location (pas de 30 min, comme une saisie usuelle). */
 export const HALF_HOURS: NonEmpty = nonEmpty(Array.from({ length: 48 }, (_, i) => `${String(Math.floor(i / 2)).padStart(2, "0")}:${i % 2 ? "30" : "00"}`));
-
-/** Nom court d'un lieu pour les titres (« Paris », « Rome-Fiumicino (FCO) »). */
-export function placeShortName(id: string): string {
-  const p = getPlace(id);
-  if (!p) return id;
-  return p.kind === "city" ? p.city : `${p.city} (${p.code})`;
-}
-
-export function placeLabel(id: string): string {
-  return getPlace(id)?.label ?? id;
-}
 
 function codes(place: Place): string[] {
   return airportsFor(place).map((a) => a.code);
@@ -87,7 +77,7 @@ export function catalogText(): string {
     "Une recherche ailleurs reste possible mais n'affichera aucune offre.",
     "",
     "## Pays de résidence acceptés pour la location",
-    RESIDENCES.map(([code, name]) => `${code} (${name})`).join(", "),
+    RESIDENCES.map((code) => `${code} (${(getMessages("fr").search.residences as Record<string, string>)[code] ?? code})`).join(", "),
   ].join("\n");
 }
 

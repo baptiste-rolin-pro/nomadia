@@ -9,6 +9,7 @@ import { getDestination } from "@/lib/content/destinations";
 import { normalize, type Token } from "@/lib/assistant/parser/text";
 import { typoDistance } from "@/lib/assistant/parser/fuzzy";
 import { STOP_WORDS } from "@/lib/assistant/parser/vocabulary";
+import { COUNTRY_CODES } from "@/lib/assistant/parser/lang/places";
 
 export interface Target {
   /** Identifiant du référentiel (city:… ou airport:…). */
@@ -27,8 +28,10 @@ export interface Entry {
   kind: "place" | "country" | "unsupported";
   /** Lieux désignés : un seul, ou plusieurs pour un pays (Portugal : Lisbonne, Madère). */
   targets: Target[];
-  /** Nom canonique (« Portugal », « Berlin », « Lisbonne »). */
+  /** Nom canonique français (« Portugal », « Berlin », « Lisbonne ») ; affiché via say.ts dans la langue de réponse. */
   label: string;
+  /** Code ISO d'un pays (nom traduit par Intl.DisplayNames). */
+  code?: string;
 }
 
 export interface PlaceMention {
@@ -112,7 +115,7 @@ function buildLexicon() {
     const key = w.join(" ");
     if (!w.length || claimed.has(key)) return;
     claimed.add(key);
-    entries.push({ words: w, kind, targets, label });
+    entries.push({ words: w, kind, targets, label, ...(COUNTRY_CODES[label] ? { code: COUNTRY_CODES[label] } : {}) });
   };
   const byId = new Map(places.map((p) => [p.id, targetOf(p)]));
   const cities = places.filter((p) => p.kind === "city");
@@ -238,7 +241,17 @@ function rawSpan(tokens: Token[], first: number, last: number): string {
     .join(" ");
 }
 
-/** Liste des destinations éditoriales (pour les questions). */
-export function destinationNames(): string[] {
-  return places.filter((p) => p.kind === "city" && p.destinationSlug).map((p) => targetOf(p).name);
+/** Villes des destinations éditoriales, dans l'ordre du référentiel (pour les questions). */
+export function destinationIds(): string[] {
+  return places.filter((p) => p.kind === "city" && p.destinationSlug).map((p) => p.id);
+}
+
+/**
+ * Mot inconnu d'une demande dans une autre langue qui ressemble à un lieu (nom exact ou faute de frappe) :
+ * conservé tel quel pour le cœur français ; les autres mots inconnus sont écartés (src/lib/assistant/parser/lang).
+ */
+export function looksLikePlace(word: string): boolean {
+  if (LEXICON.byFirst.has(word)) return true;
+  if (word.length < 4 || STOP_WORDS.has(word) || !/^[a-z]+$/.test(word)) return false;
+  return LEXICON.single.some((e) => typoDistance(word, e.words[0]!) !== null);
 }

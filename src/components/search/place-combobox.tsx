@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { MapPin, Plane } from "lucide-react";
+import { useI18n } from "@/i18n/client";
 
 export interface PlaceValue {
   id: string;
@@ -36,6 +37,8 @@ export function PlaceCombobox({
   placeholder?: string;
 }) {
   const listId = useId();
+  const { locale, m, f } = useI18n();
+  const t = m.search.place;
   const [text, setText] = useState(value?.label ?? "");
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<Suggestion[]>([]);
@@ -61,7 +64,7 @@ export function PlaceCombobox({
       const mine = ++seq.current;
       setLoading(true);
       try {
-        const res = await fetch(`/api/places?q=${encodeURIComponent(q)}&types=${kinds.join(",")}`, { signal: ctrl.signal });
+        const res = await fetch(`/api/places?q=${encodeURIComponent(q)}&types=${kinds.join(",")}&hl=${locale}`, { signal: ctrl.signal });
         const json = (await res.json()) as { results: Suggestion[] };
         if (mine === seq.current) {
           setItems(json.results);
@@ -74,7 +77,7 @@ export function PlaceCombobox({
       }
     }, 180);
     return () => clearTimeout(handle);
-  }, [text, open, kinds, value?.label]);
+  }, [text, open, kinds, value?.label, locale]);
 
   const select = (s: Suggestion) => {
     onChange({ id: s.id, label: s.label });
@@ -106,7 +109,7 @@ export function PlaceCombobox({
         aria-invalid={error ? true : undefined}
         aria-describedby={errorId}
         className="field-input"
-        placeholder={placeholder ?? "Ville ou aéroport"}
+        placeholder={placeholder ?? t.placeholder}
         value={text}
         onChange={(e) => {
           setText(e.target.value);
@@ -139,9 +142,9 @@ export function PlaceCombobox({
       <ul
         id={listId}
         role="listbox"
-        aria-label={`Suggestions — ${label}`}
+        aria-label={f.t(t.suggestions, { label })}
         hidden={!expanded}
-        className="absolute left-0 right-0 top-full z-[var(--z-overlay)] mt-1 max-h-80 overflow-auto rounded-[var(--radius-md)] border border-line bg-white py-1 shadow-[var(--shadow-panel)]"
+        className="absolute inset-x-0 top-full z-[var(--z-overlay)] mt-1 max-h-80 overflow-auto rounded-[var(--radius-md)] border border-line bg-white py-1 shadow-[var(--shadow-panel)]"
       >
         {visible.map((s, i) => (
           <li
@@ -158,10 +161,10 @@ export function PlaceCombobox({
             <span>{s.label}</span>
           </li>
         ))}
-        {visible.length === 0 && !loading ? <li className="px-3 py-2.5 text-sm text-ink-soft">Aucun lieu correspondant dans notre référentiel.</li> : null}
+        {visible.length === 0 && !loading ? <li className="px-3 py-2.5 text-sm text-ink-soft">{t.none}</li> : null}
       </ul>
       <span className="sr-only" aria-live="polite">
-        {expanded ? `${visible.length} suggestion${visible.length > 1 ? "s" : ""}` : ""}
+        {expanded ? f.t(t.count, { n: visible.length }) : ""}
       </span>
     </div>
   );
