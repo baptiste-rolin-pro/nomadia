@@ -416,7 +416,6 @@ const part: Pick<Messages, "domain" | "results" | "offers"> = {
       emptyText: "ডেমো কাউন্টারগুলো লিসবন, রোম ও রেইকিয়াভিক/কেফ্লাভিকের বিমানবন্দর ও শহরকেন্দ্রে।",
       noMatch: "কোনো গাড়ি ফিল্টারের সঙ্গে মেলে না",
       modelNote: "— শ্রেণির নিশ্চয়তা, মডেলের নয়",
-      orSimilar: "{model} বা সমতুল্য",
       cardLabel: "{category}, {supplier}, {price}",
       perDay: "≈ {price} / দিন",
       airCon: "শীতাতপ নিয়ন্ত্রণ",

@@ -414,7 +414,6 @@ const part: Pick<Messages, "domain" | "results" | "offers"> = {
       emptyText: "Loket demo berada di bandara dan pusat kota Lisbon, Roma, dan Reykjavik/Keflavík.",
       noMatch: "Tidak ada mobil yang cocok dengan filter",
       modelNote: "— kategori dijamin, model tidak dijamin",
-      orSimilar: "{model} atau sejenisnya",
       cardLabel: "{category}, {supplier}, {price}",
       perDay: "≈ {price} / hari",
       airCon: "AC",

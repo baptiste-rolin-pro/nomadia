@@ -414,7 +414,6 @@ const part: Pick<Messages, "domain" | "results" | "offers"> = {
       emptyText: "Las oficinas de demostración están en los aeropuertos y centros de Lisboa, Roma y Reikiavik/Keflavík.",
       noMatch: "Ningún coche coincide con los filtros",
       modelNote: "— categoría garantizada, modelo no garantizado",
-      orSimilar: "{model} o similar",
       cardLabel: "{category}, {supplier}, {price}",
       perDay: "≈ {price} / día",
       airCon: "Aire acondicionado",

@@ -416,7 +416,6 @@ const part: Pick<Messages, "domain" | "results" | "offers"> = {
       emptyText: "डेमो काउंटर लिस्बन, रोम और रेक्याविक/केफ़्लाविक के हवाई अड्डों और शहर केंद्रों में हैं।",
       noMatch: "कोई कार फ़िल्टर से मेल नहीं खाती",
       modelNote: "— श्रेणी की गारंटी, मॉडल की नहीं",
-      orSimilar: "{model} या समान",
       cardLabel: "{category}, {supplier}, {price}",
       perDay: "≈ {price} / दिन",
       airCon: "एयर कंडीशनिंग",

@@ -414,7 +414,6 @@ const part: Pick<Messages, "domain" | "results" | "offers"> = {
       emptyText: "As lojas de demonstração ficam nos aeroportos e centros de Lisboa, Roma e Reykjavík/Keflavík.",
       noMatch: "Nenhum carro corresponde aos filtros",
       modelNote: "— categoria garantida, modelo não garantido",
-      orSimilar: "{model} ou similar",
       cardLabel: "{category}, {supplier}, {price}",
       perDay: "≈ {price} / dia",
       airCon: "Ar-condicionado",
