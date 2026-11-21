@@ -2,7 +2,37 @@
 
 Toutes les vérifications ci-dessous ont été **réellement exécutées** le 2026-11-09 sur Windows 11, Node.js 26.13, npm 11.20, Chromium (Playwright 1.65). Rien n'est déclaré réussi sans exécution.
 
-Dernière passe : **assistant local, Claude en repli** (2026-11-12, branche `feat/assistant-local-parser`, section dédiée ci-dessous). Passes précédentes : assistant IA et retrait du bouton « Démo » (2026-11-11) ; hero vidéo (2026-11-11). Le tableau « Résultats » date de la passe « préparation Vercel » (2026-11-10) ; les trois dernières lignes datent de la passe initiale et n'ont pas été relancées.
+Dernière passe : **multilingue** (2026-11-21, branche `feat/i18n`, section dédiée ci-dessous). Passes précédentes : assistant local, Claude en repli (2026-11-12) ; assistant IA et retrait du bouton « Démo » (2026-11-11) ; hero vidéo (2026-11-11). Le tableau « Résultats » date de la passe « préparation Vercel » (2026-11-10) ; les trois dernières lignes datent de la passe initiale et n'ont pas été relancées.
+
+## Multilingue (2026-11-21)
+
+Exécuté sur Windows 11, Node.js 26.13, Chromium (Playwright 1.65), après vérification qu'aucun serveur ne tenait les ports 3000 / 3005 / 3100 / 3101 ni `.data/pglite` (avant et après ; seuls des processus Node sans rapport — Codex, Adobe — tournaient). Serveur de mesure `next start` :3000 avec une base PGlite jetable, arrêté ensuite. **Aucun appel à l'API Anthropic réelle.**
+
+| Vérification | Commande | Résultat |
+| --- | --- | --- |
+| Types | `npx tsc --noEmit` | OK, code de sortie 0 |
+| Lint | `npx eslint .` | OK, 0 erreur, 0 avertissement (corrigé en cours de route : `setState` dans un effet du sélecteur de langue, remplacé par `useSyncExternalStore` puis par une divulgation native ; type inutilisé dans un test) |
+| Tests unitaires | `npx vitest run` | **442/442** (15 fichiers ; +177 par rapport à 265). `tests/unit/i18n.test.ts` (62) : pour chaque langue, mêmes clés et longueurs de listes que le français, aucune valeur vide, mêmes paramètres `{…}` et mêmes liens Markdown, aucun long texte resté en français (messages et contenu éditorial), chaque pluriel se met en forme ; formateur (pluriels russes et arabes, `=N`, branche absente, chiffres arabes et bengalis, génitif russe des mois, mois chinois) ; `localizePath` / `stripLocale` / `pagePath`, sens d'écriture, `Accept-Language` ; motif du proxy (références d'offres avec point acceptées, fichiers statiques et API exclus). `tests/unit/assistant-i18n.test.ts` (114) : **10 formulations par langue × 9 langues** (vol aller-retour, aller simple, hébergement, voiture avec âge, voyage en famille avec âges d'enfants, fiche destination, question des dates, non compris, week-end, classe affaires) vérifiées au chemin exact préfixé (et `isAssistantHref`) ou à la question exacte dans la langue ; titres et détails traduits ; chaque exemple de l'aide compris dans sa langue ; détection de langue (écriture, vocabulaire, page qui départage) ; texte dans une autre langue que la page (réponse dans la langue de la page) ; chiffres arabes orientaux et persans, devanagari, bengalis, numéraux chinois ; refus d'injection et de réservation dans les 10 langues ; langue de réponse dans le contexte du repli. `assistant.test.ts` : +1 test de route (arabe et anglais, erreur dans la langue du `Referer`). Les 158 tests français de l'assistant passent inchangés |
+| Build | `npx next build` | OK, 686 pages générées (10 langues), aucun avertissement |
+| Parcours | `npx playwright test` | **74/74** en 2,9 min (+8). `i18n.spec.ts` (:3100) : `/en` en anglais (`lang`, `dir`, titre, liens préfixés), 10 `hreflang` + `x-default` + canonique ; anciennes adresses françaises inchangées, `/fr/…` redirigé ; sélecteur : même page et mêmes paramètres vers l'anglais puis retour au français par le pied de page, cookie posé, aucune redirection par le cookie ; arabe à 375 px : `dir="rtl"`, accueil, onglet Assistant, hôtels, voyage, destination, connexion sans débordement horizontal ; tunnel de réservation en arabe (vol, fiche, voyageurs, options) sans débordement, chiffres arabes orientaux. `assistant-i18n.spec.ts` (:3101, ni clé ni simulation) : anglais et arabe compris, réponse dans la langue, `/en/hotels` et `/ar/hotels` ouverts avec les paramètres exacts ; API avec `locale`. Première exécution : 67/74 — fiches d'offre en 404 (références « dfl.… » exclues par le motif du proxy), lien `/en/fr` dans le sélecteur au rendu serveur, adresse de contact manquante dans le nouveau test ; corrigés puis 74/74 |
+
+**Poids** (`next start`, même méthode : HTML puis chaque `<script src>` avec `Accept-Encoding: gzip`, octets transférés ; référence mesurée sur `main` à `9f266fc`) :
+
+| Page | Référence | Après | Écart |
+| --- | --- | --- | --- |
+| Accueil `/` (JS initial, 12 fichiers) | 200 763 o (196,1 Kio) | **205 636 o (200,8 Kio)** | +4 873 o (+2,4 %) |
+| Accueil `/en`, `/ar`, `/zh` | — | 205 636 o (identique) | — |
+| `/vols` | 209 044 o | 212 172 o | +3 128 o |
+| `/hotels` | 207 621 o | 210 903 o | +3 282 o |
+| `/destinations/lisbonne` | 192 228 o | 197 519 o | +5 291 o |
+| `/connexion` | 207 051 o | 212 284 o | +5 233 o |
+| HTML de l'accueil (gzip) | 26 400 o | 35 076 o (`/ar` 37 365 o) | messages de la langue active dans la charge utile |
+
+L'objectif « environ 200 Ko » est dépassé de 0,8 Kio sur l'accueil. Réductions appliquées : suggestion de langue chargée après l'hydratation, formateur client séparé (`format-core.ts`, sans listes ni noms de pays), négociation de langue dans un module à part, sélecteur en `<details>` natif (201,3 → 200,8 Kio). Aucune chaîne de traduction dans `.next/static` (vérifié par recherche de textes chinois, arabes et anglais) : seuls les messages de la langue affichée arrivent dans la page.
+
+**Inspection visuelle** (navigateur intégré, `next start`) : arabe à 375 px — fenêtre de démonstration, bannière cookies, hero (titre, trajet animé retourné avec textes lisibles, bouton pause à gauche), onglets du moteur de droite à gauche, assistant (« فندق في روما من ١٢ إلى ١٥ يونيو لشخصين » → `/ar/hotels?dest=city%3AROM&arr=2027-06-12&dep=2027-06-15&ch=2`), résultats et fiche hôtel (prix et dates en chiffres arabes orientaux), aucun débordement ; arabe à 1440 px : `scrollWidth` = largeur utile sur l'accueil et les résultats de vols, aucun élément hors cadre (le panneau du navigateur intégré ne capture que 800 px de large : vérification par mesure, capture partielle). Corrigé à la suite : séparateur d'énumération par langue (`common.listSep` : « ، » en arabe, « 、 » en chinois) au lieu de « , » fixe.
+
+**Non vérifié** : relecture des traductions par des locuteurs natifs ; lecteur d'écran en arabe / hindi ; Firefox et Safari (polices système par écriture, `<details>`) ; repli Anthropic réel avec la langue de réponse ; Vercel.
 
 ## Assistant local, Claude en repli (2026-11-12)
 
