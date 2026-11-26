@@ -5,6 +5,8 @@
  * - Les règles de bagages, de modification, de remboursement, de caution ou de franchise dépendent
  *   de l'offre et de l'agence : elles ne sont jamais déduites du nom de la marque.
  * - Les fiches à faible valeur éditoriale restent non indexées (`indexable: false`).
+ * - Les offres simulées de démonstration (src/lib/providers/demo/) citent certaines de ces marques, à titre
+ *   d'illustration seulement : horaires, prix et disponibilités y sont fictifs, sans aucun lien avec elles.
  */
 export interface AirlineEntry {
   slug: string;
@@ -44,6 +46,8 @@ export const AIRLINES: AirlineEntry[] = [
   { slug: "singapore-airlines", name: "Singapore Airlines", iata: "SQ", icao: "SIA", country: "Singapour", website: "https://www.singaporeair.com/", summary: "Compagnie nationale de Singapour, basée à l'aéroport de Changi.", indexable: false },
   { slug: "airlink", name: "Airlink", iata: "4Z", icao: "LNK", country: "Afrique du Sud", website: "https://www.flyairlink.com/", summary: "Compagnie sud-africaine qui dessert l'Afrique australe depuis Johannesburg.", indexable: false },
   { slug: "flysafair", name: "FlySafair", iata: "FA", icao: "SFR", country: "Afrique du Sud", website: "https://www.flysafair.co.za/", summary: "Compagnie sud-africaine à bas coûts, exploitée par Safair.", indexable: false },
+  // Ajoutée pour les offres simulées de démonstration (correspondances via Madrid) : mêmes règles de rédaction.
+  { slug: "iberia", name: "Iberia", iata: "IB", icao: "IBE", country: "Espagne", website: "https://www.iberia.com/", summary: "Compagnie nationale espagnole, dont la principale plateforme de correspondance est Madrid-Barajas.", indexable: false },
 ];
 
 export interface RenterEntry {

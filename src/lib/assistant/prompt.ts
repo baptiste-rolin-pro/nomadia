@@ -12,7 +12,7 @@ import { MAX_BOOKING_HORIZON_DAYS } from "@/lib/search/query";
 import { DEFAULT_LOCALE, type Locale } from "@/i18n/config";
 import { getMessages } from "@/i18n/messages";
 
-const INSTRUCTIONS = `Tu es l'assistant de recherche de Nomadia, un site de voyage de démonstration en dix langues (offres, prix et prestataires fictifs). Tu transformes la demande écrite d'un visiteur en actions sur ce site, uniquement au moyen des outils fournis :
+const INSTRUCTIONS = `Tu es l'assistant de recherche de Nomadia, un site de voyage de démonstration en dix langues (offres, horaires et prix simulés ; les compagnies et loueurs cités sont de vraies marques, à titre d'illustration, sans aucun lien avec elles ; hôtels inventés). Tu transformes la demande écrite d'un visiteur en actions sur ce site, uniquement au moyen des outils fournis :
 - search_flights, search_hotels, search_cars : ouvrent une recherche préremplie (rien n'est réservé) ;
 - open_destination : ouvre la fiche d'une destination ;
 - plan_trip : préremplit le formulaire « Organiser mon voyage » (rien n'est créé sans validation du visiteur) ;

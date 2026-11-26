@@ -65,7 +65,7 @@ export default async function FavoritesPage() {
               {hotels.map((h) => (
                 <li key={h.id} className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-line bg-white p-4">
                   <Link href={`/hotels/${h.id}`} className="font-semibold underline-offset-4 hover:underline">
-                    {h.name} — {h.city} <span className="text-xs text-ink-soft">{t.fictional}</span>
+                    {h.name} — {h.city}
                   </Link>
                   <FavoriteButton kind="hotel" refId={h.id} label={h.name} />
                 </li>

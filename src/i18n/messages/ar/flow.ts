@@ -230,6 +230,7 @@ const part: Pick<Messages, "booking" | "planner" | "assistant"> = {
       print: "طباعة الملخّص",
       watermark1: "تجريبي",
       watermark2: "بلا قيمة",
+      marker: "عرض تجريبي – مستند بلا قيمة، لا يوجد أي حجز حقيقي",
       eyebrow: "عرض تجريبي — مستند بلا قيمة",
       title: "ملخّص الحجز",
       disclaimer: "هذا المستند ليس فاتورة ولا تذكرة ولا إثبات سفر. لم تُحجز أي خدمة.",

@@ -49,7 +49,6 @@ export function SliceSummary({ slice, label }: { slice: FlightSlice; label: stri
         </div>
         <p className="mt-1 text-xs text-ink-soft">
           {f.date(civilDateOf(first.departure.local), "weekday")} · {carriers.map((c) => c.name).join(" + ")}
-          {carriers.some((c) => c.fictional) ? t.fictionalCarrier : ""}
           {operatedBy.length ? f.t(t.operatedBy, { carriers: [...new Set(operatedBy.map((s) => s.operatingCarrier.name))].join(m.common.listSep) }) : ""}
         </p>
         {slice.layovers.some((l) => l.selfTransfer) ? <p className="mt-1 text-xs font-semibold text-danger">{t.selfTransfer}</p> : null}

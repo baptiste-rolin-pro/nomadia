@@ -38,7 +38,7 @@ const OPEN_SERVER_SPECS = /(signup-open|assistant-local|assistant-i18n)\.spec\.t
  */
 const demoNoticeSeen = (origin: string) => ({
   cookies: [],
-  origins: [{ origin, localStorage: [{ name: "nomadia:demo-notice", value: "vu-v1" }] }],
+  origins: [{ origin, localStorage: [{ name: "nomadia:demo-notice", value: "vu-v2" }] }],
 });
 
 export default defineConfig({

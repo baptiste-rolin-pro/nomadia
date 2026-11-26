@@ -230,6 +230,7 @@ const part: Pick<Messages, "booking" | "planner" | "assistant"> = {
       print: "Print the summary",
       watermark1: "Demo",
       watermark2: "no value",
+      marker: "DEMONSTRATION – document with no value, no real booking",
       eyebrow: "Demo — document with no value",
       title: "Booking summary",
       disclaimer: "This document is not an invoice, a ticket or proof of travel. No service has been booked.",

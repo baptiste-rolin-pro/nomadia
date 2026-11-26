@@ -133,12 +133,12 @@ describe("annuaires : entrées ajoutées", () => {
     expect(new Set(RENTERS.map((r) => r.slug)).size).toBe(RENTERS.length);
   });
 
-  it("aucune marque réelle ne devient un fournisseur de démonstration", () => {
-    const real = new Set([...AIRLINES.map((a) => a.name), ...RENTERS.map((r) => r.name), ...airlineRefs.map((b) => b.name), ...renterRefs.map((b) => b.name)].map((n) => n.toLowerCase()));
-    for (const s of Object.values(DEMO_SUPPLIERS)) expect(real.has(s.name.toLowerCase()), s.name).toBe(false);
-    for (const c of Object.values(DEMO_CARRIERS)) {
-      expect(real.has(c.name.toLowerCase()), c.name).toBe(false);
-      expect(AIRLINES.some((a) => a.iata === c.code), c.code).toBe(false);
-    }
+  it("les offres simulées ne citent que des marques de l'annuaire (même nom, même code IATA ; voir real-brands.test.ts)", () => {
+    for (const s of Object.values(DEMO_SUPPLIERS)) expect(RENTERS.find((r) => r.slug === s.id)?.name, s.name).toBe(s.name);
+    for (const c of Object.values(DEMO_CARRIERS)) expect(AIRLINES.find((a) => a.iata === c.code)?.name, c.code).toBe(c.name);
+    // Les marques citées par les informations pratiques et absentes de l'annuaire ne sont jamais utilisées.
+    const unlisted = new Set([...airlineRefs, ...renterRefs].filter((b) => !b.slug).map((b) => b.name.toLowerCase()));
+    for (const s of Object.values(DEMO_SUPPLIERS)) expect(unlisted.has(s.name.toLowerCase()), s.name).toBe(false);
+    for (const c of Object.values(DEMO_CARRIERS)) expect(unlisted.has(c.name.toLowerCase()), c.name).toBe(false);
   });
 });

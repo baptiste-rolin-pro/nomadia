@@ -66,7 +66,7 @@ export interface ContentPack {
   places: { cities: Record<string, string>; airports: Record<string, string> };
   /** Établissements fictifs de démonstration (src/lib/providers/demo/hotels-data.ts), par identifiant. */
   hotels: Record<string, HotelText>;
-  /** Agences de location fictives (src/lib/providers/demo/cars.ts), par identifiant. */
+  /** Agences simulées des loueurs cités par la démonstration (src/lib/providers/demo/cars.ts), par identifiant. */
   agencies: Record<string, { name: string; address: string; accessNote: string }>;
 }
 

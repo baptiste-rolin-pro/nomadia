@@ -230,6 +230,7 @@ const part: Pick<Messages, "booking" | "planner" | "assistant"> = {
       print: "Cetak ringkasan",
       watermark1: "Demo",
       watermark2: "tidak berlaku",
+      marker: "DEMONSTRASI – dokumen tidak berlaku, tidak ada pemesanan nyata",
       eyebrow: "Demo — dokumen tidak berlaku",
       title: "Ringkasan pemesanan",
       disclaimer: "Dokumen ini bukan faktur, tiket, ataupun bukti perjalanan. Tidak ada layanan yang dipesan.",

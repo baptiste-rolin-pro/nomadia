@@ -10,7 +10,7 @@ import { nowMs } from "@/lib/clock";
 import { airportByCode } from "@/lib/content/places";
 import { airportName, placeCity } from "@/lib/content/place-labels";
 import { tripsForCurrentViewer } from "@/lib/planner/viewer-trips";
-import { Badge, Breadcrumbs, Notice } from "@/components/ui/misc";
+import { Breadcrumbs, Notice, SimulatedOffersNote } from "@/components/ui/misc";
 import { PriceBreakdownView } from "@/components/booking/price-breakdown";
 import { StartBookingButton } from "@/components/booking/start-booking";
 import { AddToTripButton, AddToTripSelect } from "@/components/results/add-to-trip";
@@ -60,8 +60,8 @@ export default async function FlightOfferPage({ params, searchParams }: { params
           <h1 className="font-serif text-title">
             {placeCity(`airport:${offer.slices[0]!.segments[0]!.origin.code}`, locale)} → {placeCity(`airport:${offer.slices[0]!.segments.at(-1)!.destination.code}`, locale)}
           </h1>
-          {info.mode === "demo" ? <Badge tone="terracotta">{t.demo}</Badge> : null}
         </div>
+        {info.mode === "demo" ? <SimulatedOffersNote className="mt-2" text={m.offers.simulatedNotice} /> : null}
 
         {expired ? (
           <Notice tone="warning" className="mt-6" title={t.expiredTitle}>
@@ -111,7 +111,6 @@ export default async function FlightOfferPage({ params, searchParams }: { params
                           <p className="font-semibold">{seg.flightNumber}</p>
                           <p className="text-ink-soft">{f.t(t.marketedBy, { name: seg.marketingCarrier.name })}</p>
                           <p className="text-ink-soft">{f.t(t.operatedBy, { name: seg.operatingCarrier.name })}</p>
-                          {seg.marketingCarrier.fictional ? <p className="text-xs font-semibold text-terracotta">{t.fictional}</p> : null}
                           <p className="text-ink-soft">{f.duration(seg.durationMinutes)}</p>
                         </div>
                       </div>

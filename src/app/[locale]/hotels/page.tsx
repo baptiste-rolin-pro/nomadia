@@ -8,7 +8,7 @@ import { decodeRooms } from "@/lib/search/params";
 import { modeFor } from "@/lib/providers/registry";
 import { HotelSearchForm } from "@/components/search/forms";
 import { HotelResults } from "@/components/results/hotel-results";
-import { Breadcrumbs, Notice } from "@/components/ui/misc";
+import { Breadcrumbs, Notice, SimulatedOffersNote } from "@/components/ui/misc";
 import { DemoScenarioLinks } from "@/components/results/demo-scenarios";
 import { getMessages } from "@/i18n/messages";
 import { ClientMessages, getI18n } from "@/i18n/request";
@@ -48,6 +48,8 @@ export default async function HotelsPage({ searchParams }: { searchParams: Promi
           />
         </div>
         <div className="mt-10">
+          {/* Une seule mention, au-dessus des résultats : offres simulées, marques citées sans aucun lien. */}
+          {hasSearch && modeFor("hotels") === "demo" ? <SimulatedOffersNote className="mb-5" text={m.offers.simulatedNotice} /> : null}
           {hasSearch ? (
             <Suspense fallback={null}>
               <HotelResults />

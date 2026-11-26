@@ -6,7 +6,8 @@ import { useSyncExternalStore } from "react";
  * stricte, stockage bloqué), la fermeture reste mémorisée en mémoire jusqu'au prochain chargement complet.
  */
 export const DEMO_NOTICE_STORAGE_KEY = "nomadia:demo-notice";
-export const DEMO_NOTICE_STORAGE_VALUE = "vu-v1";
+/** v2 : contenu changé (vraies marques citées, offres simulées) ; une fermeture de la v1 la réaffiche une fois. */
+export const DEMO_NOTICE_STORAGE_VALUE = "vu-v2";
 
 export type StorageLike = Pick<Storage, "getItem" | "setItem">;
 

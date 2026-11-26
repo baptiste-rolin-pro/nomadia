@@ -85,7 +85,7 @@ describe("contenu éditorial : parité avec le français", () => {
   it.each(others)("%s : textes traduits (pas de longue phrase française restée telle quelle)", (locale) => {
     const pack = leaves(contentPack(locale));
     const words = (s: string) => s.match(/\p{L}{3,}/gu)?.length ?? 0;
-    // Noms propres légitimement identiques : sources officielles et enseignes fictives (« Route Libre — Keflavík terminal »).
+    // Noms propres légitimement identiques : sources officielles et noms d'agences (« Hertz — Roma Termini »).
     const properName = /seasonSources|^agencies\.[^.]+\.name$/;
     const same = [...frPack].filter(([key, source]) => words(source) >= 4 && !properName.test(key) && pack.get(key) === source).map(([key]) => key);
     expect(same).toEqual([]);

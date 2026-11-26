@@ -230,6 +230,7 @@ const part: Pick<Messages, "booking" | "planner" | "assistant"> = {
       print: "打印摘要",
       watermark1: "演示",
       watermark2: "无效",
+      marker: "演示 – 本文件无效，无任何真实预订",
       eyebrow: "演示 — 无效文件",
       title: "预订摘要",
       disclaimer: "本文件不是发票、机票或旅行凭证。没有预订任何服务。",

@@ -9,7 +9,7 @@ import { today } from "@/lib/clock";
 import { addDays, civilDateOf } from "@/lib/dates";
 import { cityName } from "@/lib/content/localized";
 import { tripsForCurrentViewer } from "@/lib/planner/viewer-trips";
-import { Badge, Breadcrumbs, Notice } from "@/components/ui/misc";
+import { Badge, Breadcrumbs, Notice, SimulatedOffersNote } from "@/components/ui/misc";
 import { StartBookingButton } from "@/components/booking/start-booking";
 import { AddToTripButton, AddToTripSelect } from "@/components/results/add-to-trip";
 import { FavoriteButton } from "@/components/account/favorite-button";
@@ -61,9 +61,9 @@ export default async function HotelPage({ params, searchParams }: { params: Prom
           <div>
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="font-serif text-title">{hotel.name}</h1>
-              <Badge tone="terracotta">{t.fictional}</Badge>
             </div>
             <p className="mt-2 text-ink-soft">{hotel.category ? f.t(t.stars, { n: hotel.category, note: hotel.categoryNote }) : hotel.categoryNote}</p>
+            <SimulatedOffersNote className="mt-2" text={m.offers.simulatedNotice} />
           </div>
           <FavoriteButton kind="hotel" refId={hotel.id} label={hotel.name} />
         </header>
@@ -81,7 +81,7 @@ export default async function HotelPage({ params, searchParams }: { params: Prom
             <ul className="space-y-2 text-sm">
               <li className="flex gap-2">
                 <MapPin aria-hidden className="mt-0.5 size-4 shrink-0 text-forest" />
-                {f.t(t.address, { address: hotel.address, neighborhood: hotel.neighborhood })}
+                {hotel.address}
               </li>
               <li className="flex gap-2">
                 <Clock aria-hidden className="mt-0.5 size-4 shrink-0 text-forest" />

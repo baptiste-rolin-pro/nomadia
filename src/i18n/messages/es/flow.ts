@@ -230,6 +230,7 @@ const part: Pick<Messages, "booking" | "planner" | "assistant"> = {
       print: "Imprimir el resumen",
       watermark1: "Demo",
       watermark2: "sin valor",
+      marker: "DEMOSTRACIÓN – documento sin valor, ninguna reserva real",
       eyebrow: "Demo — documento sin valor",
       title: "Resumen de la reserva",
       disclaimer: "Este documento no es ni una factura, ni un billete, ni un justificante de viaje. No se ha reservado ningún servicio.",

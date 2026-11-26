@@ -228,6 +228,7 @@ const booking = {
     print: "Imprimer le récapitulatif",
     watermark1: "Démonstration",
     watermark2: "sans valeur",
+    marker: "DÉMONSTRATION – document sans valeur, aucune réservation réelle",
     eyebrow: "Démonstration — document sans valeur",
     title: "Récapitulatif de réservation",
     disclaimer: "Ce document n'est ni une facture, ni un billet, ni un justificatif de voyage. Aucune prestation n'a été réservée.",

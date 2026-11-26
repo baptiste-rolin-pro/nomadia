@@ -22,7 +22,7 @@ export const FAQ_FR: { q: string; a: string }[] = [
   },
   {
     q: "Cette version permet-elle de réserver réellement ?",
-    a: "Non. Il s'agit d'une démonstration : offres, prix et prestataires sont fictifs et aucun paiement n'est encaissé. Les documents générés portent la mention « démonstration ».",
+    a: "Non. Il s'agit d'une démonstration : offres, prix et réservations sont simulés et aucun paiement n'est encaissé. Les noms des compagnies aériennes et des loueurs sont réels, cités à titre d'illustration sans aucun partenariat ; les hôtels sont inventés. Les documents générés portent la mention « démonstration ».",
   },
   {
     q: "Comment sont choisies les photos ?",
