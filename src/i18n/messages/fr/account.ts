@@ -44,7 +44,6 @@ const account = {
     hotels: "Hébergements favoris",
     noHotels: "Aucun hébergement favori",
     noHotelsText: "Ajoutez un hébergement depuis sa fiche.",
-    fictional: "(établissement fictif)",
   },
   profile: {
     title: "Profil",

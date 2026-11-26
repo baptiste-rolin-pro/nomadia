@@ -15,7 +15,7 @@ test("première visite : fenêtre accessible, puis bannière cookies, choix mém
   const dialog = page.getByRole("dialog", { name: NAME });
   await expect(dialog).toBeVisible();
   await expect(page.getByRole("note")).toHaveCount(0);
-  for (const text of ["Aucune réservation ni aucun paiement réel", "Prix et prestataires fictifs", "Comptes de démonstration partagés", "Aucune donnée personnelle réelle"]) {
+  for (const text of ["Aucune réservation ni aucun paiement réel", "Vraies marques, offres simulées", "Comptes de démonstration partagés", "Aucune donnée personnelle réelle"]) {
     await expect(dialog).toContainText(text);
   }
   // Jamais en même temps que la bannière cookies.

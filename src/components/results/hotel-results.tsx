@@ -192,7 +192,6 @@ function HotelCard({ result, href }: { result: HotelSearchResult; href: string }
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="font-serif text-2xl">{hotel.name}</h2>
-            <Badge tone="terracotta">{t.fictional}</Badge>
           </div>
           <p className="mt-1 inline-flex items-center gap-1 text-sm text-ink-soft">
             <MapPin aria-hidden className="size-3.5 shrink-0" />

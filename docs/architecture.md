@@ -90,7 +90,7 @@ serveur) : aucun fichier de traduction n'est importé par un module client (`src
 **Contenu éditorial.** Le français reste dans `src/lib/content` ; chaque langue fournit un « pack »
 (`src/i18n/content/<langue>.ts`, type `ContentPack`) : destinations (textes, idées, saisons, sources), guides, légendes
 des photos, annuaires, FAQ, noms des villes (clé = nom français) et des aéroports (clé = code IATA), établissements
-et agences fictifs. Les noms de pays viennent d'`Intl.DisplayNames`. Mêmes clés que le français (test).
+inventés et agences simulées des loueurs cités. Les noms de pays viennent d'`Intl.DisplayNames`. Mêmes clés que le français (test).
 
 **Mise en forme.** Nombres, montants, dates civiles (sans conversion de fuseau), heures locales, durées, listes et
 noms de pays par `Intl` dans la langue (`ar-u-nu-arab` : chiffres arabes orientaux ; `bn-BD` : chiffres bengalis).

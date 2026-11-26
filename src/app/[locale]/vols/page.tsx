@@ -8,7 +8,7 @@ import { parseFlightSearch } from "@/lib/search/params";
 import { modeFor } from "@/lib/providers/registry";
 import { FlightSearchForm } from "@/components/search/forms";
 import { FlightResults } from "@/components/results/flight-results";
-import { Breadcrumbs, Notice } from "@/components/ui/misc";
+import { Breadcrumbs, Notice, SimulatedOffersNote } from "@/components/ui/misc";
 import { DemoScenarioLinks } from "@/components/results/demo-scenarios";
 import { getMessages } from "@/i18n/messages";
 import { ClientMessages, getI18n } from "@/i18n/request";
@@ -63,6 +63,8 @@ export default async function FlightsPage({ searchParams }: { searchParams: Prom
           />
         </div>
         <div className="mt-10">
+          {/* Une seule mention, au-dessus des résultats : offres simulées, marques citées sans aucun lien. */}
+          {hasSearch && modeFor("flights") === "demo" ? <SimulatedOffersNote className="mb-5" text={m.offers.simulatedNotice} /> : null}
           {hasSearch ? (
             <Suspense fallback={null}>
               <FlightResults tripId={tripId} />

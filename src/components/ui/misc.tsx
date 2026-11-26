@@ -25,6 +25,28 @@ export function DemoBadge({ className = "", label }: { className?: string; label
   );
 }
 
+/**
+ * Mention unique des offres simulées (mode DEMO), discrète mais visible : au-dessus de la liste de résultats et
+ * en tête des fiches d'offre. Elle remplace les étiquettes « fictif » par offre (docs/data-sources.md).
+ */
+export function SimulatedOffersNote({ text, className = "" }: { text: string; className?: string }) {
+  return (
+    <p data-testid="simulated-offers-note" className={`flex items-start gap-2 text-xs leading-relaxed text-ink-soft ${className}`}>
+      <Info aria-hidden className="mt-px size-3.5 shrink-0 text-forest" />
+      <span>{text}</span>
+    </p>
+  );
+}
+
+/** Bandeau des documents de démonstration (récapitulatif, version imprimable, confirmation) : jamais un titre valable. */
+export function DemoDocumentMarker({ text, className = "" }: { text: string; className?: string }) {
+  return (
+    <p data-testid="demo-document-marker" className={`rounded-[var(--radius-md)] border-2 border-terracotta bg-terracotta-soft px-3 py-2 text-center text-sm font-bold tracking-wide text-terracotta ${className}`}>
+      {text}
+    </p>
+  );
+}
+
 const noticeIcon = { info: Info, success: CheckCircle2, warning: AlertTriangle, danger: XCircle };
 const noticeTone = {
   info: "border-forest/25 bg-forest-soft text-ink",

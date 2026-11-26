@@ -6,6 +6,7 @@ import { computeTotals } from "@/lib/booking/pricing";
 import type { PaymentStatus, ProviderStatus } from "@/lib/booking/status";
 import type { TravelerInput } from "@/lib/providers/types";
 import { PrintButton } from "@/components/planner/print-button";
+import { DemoDocumentMarker } from "@/components/ui/misc";
 import { getMessages } from "@/i18n/messages";
 import { getI18n } from "@/i18n/request";
 import { LOCALE_INFO, toLocale } from "@/i18n/config";
@@ -41,6 +42,8 @@ export default async function BookingDocumentPage({ params }: { params: Promise<
           <br />
           {t.watermark2}
         </p>
+        {/* Bandeau en tête : les noms de compagnies et de loueurs sont réels, le document ne doit jamais ressembler à un titre valable. */}
+        <DemoDocumentMarker className="relative mb-5" text={t.marker} />
         <p className="font-semibold uppercase tracking-[0.14em] text-terracotta">{t.eyebrow}</p>
         <h1 className="mt-2 font-serif text-3xl">{t.title}</h1>
         <p className="mt-1 text-sm">{t.disclaimer}</p>

@@ -5,6 +5,8 @@ import { loadTrip, localizeTripItems, toPlannerItem } from "@/lib/planner/servic
 import { analyzeTrip } from "@/lib/planner/analyze";
 import { addDays } from "@/lib/dates";
 import { PrintButton } from "@/components/planner/print-button";
+import { DemoDocumentMarker } from "@/components/ui/misc";
+import { anyDemoMode } from "@/lib/providers/registry";
 import { getMessages } from "@/i18n/messages";
 import { getI18n } from "@/i18n/request";
 import { toLocale } from "@/i18n/config";
@@ -26,11 +28,22 @@ export default async function PrintTripPage({ params }: { params: Promise<{ id: 
   const { trip } = loaded;
   const items = await localizeTripItems(loaded.items, locale);
   const analysis = analyzeTrip({ startDate: trip.startDate, endDate: trip.endDate, transferMarginMinutes: trip.transferMarginMinutes, budgetTarget: trip.budgetTarget, currency: trip.currency }, items.map(toPlannerItem), locale);
+  // Démonstration : bandeau et filigrane, comme le récapitulatif de réservation (noms de compagnies réels).
+  const demo = anyDemoMode();
+  const doc = m.booking.document;
   return (
-    <div className="container-page max-w-3xl pt-8 print:pt-0">
+    <div className="container-page relative max-w-3xl overflow-hidden pt-8 print:pt-0">
+      {demo ? (
+        <p aria-hidden className="pointer-events-none absolute inset-0 flex select-none items-center justify-center text-center font-serif text-6xl font-bold uppercase text-terracotta/10 [transform:rotate(-24deg)]">
+          {doc.watermark1}
+          <br />
+          {doc.watermark2}
+        </p>
+      ) : null}
       <div className="no-print mb-6">
         <PrintButton label={t.print} />
       </div>
+      {demo ? <DemoDocumentMarker className="relative mb-6" text={doc.marker} /> : null}
       <h1 className="font-serif text-4xl">{trip.title}</h1>
       <p className="mt-2">{f.t(t.period, { from: f.date(trip.startDate), to: f.date(trip.endDate) })}</p>
       <h2 className="mt-8 font-serif text-2xl">{t.items}</h2>

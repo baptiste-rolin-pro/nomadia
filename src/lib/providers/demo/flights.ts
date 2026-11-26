@@ -1,12 +1,15 @@
 /**
  * Générateur de vols de DÉMONSTRATION.
- * Compagnies, numéros de vol, horaires et prix sont fictifs et déterministes : les mêmes critères
- * produisent toujours les mêmes offres. Les durées sont dérivées de la distance orthodromique.
+ * Les compagnies sont réelles (noms et codes IATA de l'annuaire src/lib/content/directory.ts), citées à titre
+ * d'illustration et sans aucun lien avec elles. Les vols eux-mêmes sont simulés : numéros de vol générés (plage
+ * 9000-9999), horaires, prix et disponibilités fictifs et déterministes : les mêmes critères produisent toujours
+ * les mêmes offres. Aucun horaire réel n'est reproduit. Les durées sont dérivées de la distance orthodromique.
  */
 import { addMinutesInZone, dayShift, durationMinutes, epochDay, weekday, type CivilDate } from "@/lib/dates";
 import { add, money, multiply, ratio, sum, zero, type Money } from "@/lib/money";
 import { createRng, hashString } from "@/lib/random";
 import { airportByCode, type Place } from "@/lib/content/places";
+import { AIRLINES } from "@/lib/content/directory";
 import { decodeRef, encodeRef } from "@/lib/providers/offer-ref";
 import {
   ProviderError,
@@ -27,11 +30,19 @@ import { getMessages } from "@/i18n/messages";
 export const DEMO_FLIGHT_PROVIDER_ID = "demo-flights";
 export const OFFER_TTL_MINUTES = 30;
 
-export const DEMO_CARRIERS: Record<string, Carrier> = {
-  ZA: { code: "ZA", name: "Aéro Démo", fictional: true },
-  ZB: { code: "ZB", name: "Atlantique Démo", fictional: true },
-  ZC: { code: "ZC", name: "Régional Démo", fictional: true },
-};
+/** Compagnie réelle de l'annuaire, par code IATA (nom officiel, aucun logo). */
+function airline(iata: string): Carrier {
+  const entry = AIRLINES.find((a) => a.iata === iata);
+  if (!entry) throw new Error(`Compagnie absente de l'annuaire : ${iata}`);
+  return { code: entry.iata, name: entry.name, fictional: false };
+}
+
+/** Compagnies réelles utilisées par les offres simulées (toutes présentes dans l'annuaire, même code IATA). */
+export const DEMO_CARRIERS: Record<string, Carrier> = Object.fromEntries(
+  ["AF", "KL", "TO", "U2", "FR", "W6", "TP", "AZ", "FI", "IB", "LH", "SK"].map((code) => [code, airline(code)]),
+);
+
+const carrier = (code: string): Carrier => DEMO_CARRIERS[code]!;
 
 /** Aéroports de destination couverts par les offres de démonstration. */
 export const DEMO_FLIGHT_DESTINATIONS = ["LIS", "FCO", "KEF"];
@@ -43,6 +54,48 @@ const HUBS: Record<string, string[]> = {
   FCO: ["MUC", "AMS"],
   KEF: ["AMS", "CPH"],
 };
+
+const PARIS_AIRPORTS = ["CDG", "ORY"];
+
+/**
+ * Compagnies des vols directs d'une liaison (dans les deux sens). Paris : compagnies relevées sur la liaison
+ * (src/lib/content/practical.ts : PAR→LIS, ORY→FCO, PAR→KEF) ; ailleurs, compagnie nationale du pays de
+ * destination puis compagnies européennes de l'annuaire. Un seul tirage aléatoire quelle que soit la longueur
+ * de la liste : les horaires et les prix ne dépendent pas des compagnies.
+ */
+export function directCarrierCodes(a: string, b: string): string[] {
+  const foreign = DEMO_FLIGHT_DESTINATIONS.includes(a) ? a : b;
+  const french = foreign === a ? b : a;
+  const paris = PARIS_AIRPORTS.includes(french);
+  if (foreign === "LIS") return paris ? ["AF", "FR", "TP"] : ["TP", "U2", "TO"];
+  if (foreign === "FCO") return french === "ORY" ? ["TO", "W6", "U2"] : french === "CDG" ? ["AF", "AZ", "U2"] : ["AZ", "U2", "TO"];
+  if (foreign === "KEF") return paris ? ["FI", "TO", "U2"] : ["FI", "U2", "TO"];
+  return ["AF", "U2"];
+}
+
+/** Compagnie de chaque plateforme de correspondance (vols avec escale sur un même billet). */
+export const HUB_CARRIER: Record<string, string> = { MAD: "IB", MUC: "LH", AMS: "KL", CPH: "SK" };
+
+/**
+ * Partage de code plausible uniquement (même groupe ou même alliance) : le vol est opéré par la compagnie de la
+ * clé et commercialisé sous le code de la valeur. Pas de partenaire : pas de partage de code (vol opéré par la
+ * compagnie qui le commercialise).
+ */
+export const CODESHARE_MARKETER: Record<string, string> = { AF: "KL", KL: "AF", SK: "KL" };
+
+/** Billets séparés (correspondance non protégée) : deux compagnies distinctes, sans accord entre elles. */
+const SEPARATE_CARRIERS: Record<string, [string, string]> = { MAD: ["U2", "TP"], MUC: ["LH", "AZ"] };
+
+/** Numéro de vol généré, hors des numéros habituels des vols réguliers : plage 9000-9999. */
+function demoFlightNumber(n: number): number {
+  return 9000 + (n % 1000);
+}
+
+/** Segment commercialisé par `operating` ou, en partage de code plausible, par son partenaire. */
+function codeshare(operating: Carrier, shared: boolean): Carrier {
+  const marketer = shared ? CODESHARE_MARKETER[operating.code] : undefined;
+  return marketer ? carrier(marketer) : operating;
+}
 
 const SLOTS = ["06:40", "08:15", "10:05", "12:50", "15:25", "18:10", "20:45"];
 
@@ -76,7 +129,7 @@ function segment(from: Place, to: Place, depLocal: string, carrier: Carrier, ope
   return {
     marketingCarrier: carrier,
     operatingCarrier: operating,
-    flightNumber: `${carrier.code} ${number}`,
+    flightNumber: `${carrier.code} ${demoFlightNumber(number)}`,
     origin: airportRef(from, from.code === "CDG" ? "2" : undefined),
     destination: airportRef(to, to.code === "LIS" ? "1" : undefined),
     departure: { local: depLocal, timeZone: from.timeZone },
@@ -112,7 +165,11 @@ interface ItineraryOption {
   baseFactor: number; // pourcentage appliqué au tarif de base
 }
 
-/** Options d'itinéraire déterministes pour un aller simple entre deux aéroports à une date. */
+/**
+ * Options d'itinéraire déterministes pour un aller simple entre deux aéroports à une date.
+ * Les tirages aléatoires (nombre, ordre) sont ceux des versions précédentes : horaires, durées et prix sont
+ * identiques, seules les compagnies et les numéros de vol affichés changent.
+ */
 export function itineraryOptions(originCode: string, destCode: string, date: CivilDate): ItineraryOption[] {
   const o = mustAirport(originCode);
   const d = mustAirport(destCode);
@@ -127,11 +184,12 @@ export function itineraryOptions(originCode: string, destCode: string, date: Civ
     // Vol tardif vers Keflavík : arrivée vers minuit (scénario « arrivée tardive »).
     if (isToKef && !slots.includes("21:30")) slots.push("21:30");
     const usable = isToKef || isFromKef ? slots.filter((s) => ["08:15", "12:50", "15:25", "21:30"].includes(s)) : slots;
+    const directCodes = directCarrierCodes(originCode, destCode);
     for (const slot of usable.slice(0, 5)) {
-      const carrier = rng.pick([DEMO_CARRIERS.ZA!, DEMO_CARRIERS.ZB!]);
-      // Partage de code : certains vols sont commercialisés par une compagnie et opérés par une autre.
-      const operating = rng.chance(25) ? DEMO_CARRIERS.ZC! : carrier;
-      const seg = segment(o, d, `${date}T${slot}`, carrier, operating, 1000 + rng.int(10, 899));
+      const operating = carrier(rng.pick(directCodes));
+      // Partage de code : certains vols sont commercialisés par une compagnie partenaire (même groupe ou alliance).
+      const marketing = codeshare(operating, rng.chance(25));
+      const seg = segment(o, d, `${date}T${slot}`, marketing, operating, 1000 + rng.int(10, 899));
       const hour = Number(slot.slice(0, 2));
       options.push({ slice: buildSlice([seg]), baseFactor: hour < 9 || hour >= 20 ? 92 : 100 + rng.int(0, 18) });
     }
@@ -141,29 +199,34 @@ export function itineraryOptions(originCode: string, destCode: string, date: Civ
     if (hubCode === originCode || hubCode === destCode) continue;
     const hub = mustAirport(hubCode);
     const slot = rng.pick(SLOTS.slice(0, 5));
-    const carrier = DEMO_CARRIERS.ZB!;
-    const first = segment(o, hub, `${date}T${slot}`, carrier, carrier, 2000 + rng.int(10, 899));
+    const hubCarrier = carrier(HUB_CARRIER[hubCode] ?? "AF");
+    const first = segment(o, hub, `${date}T${slot}`, hubCarrier, hubCarrier, 2000 + rng.int(10, 899));
     const connection = 55 + rng.int(0, 10) * 10;
     const depHub = addMinutesInZone(first.arrival.local, hub.timeZone, connection);
-    const second = segment(hub, d, depHub, carrier, rng.chance(40) ? DEMO_CARRIERS.ZC! : carrier, 3000 + rng.int(10, 899));
+    // Même ordre de tirage qu'auparavant : partage de code, puis numéro de vol.
+    const secondMarketing = codeshare(hubCarrier, rng.chance(40));
+    const second = segment(hub, d, depHub, secondMarketing, hubCarrier, 3000 + rng.int(10, 899));
     options.push({ slice: buildSlice([first, second]), baseFactor: 82 + rng.int(0, 10) });
   }
 
   // Une option tardive avec escale, arrivée après minuit (vers Keflavík).
   if (isToKef) {
     const hub = mustAirport("AMS");
-    const first = segment(o, hub, `${date}T18:10`, DEMO_CARRIERS.ZB!, DEMO_CARRIERS.ZB!, 2471);
+    const kl = carrier(HUB_CARRIER.AMS!);
+    const first = segment(o, hub, `${date}T18:10`, kl, kl, 2471);
     const depHub = addMinutesInZone(first.arrival.local, hub.timeZone, 75);
-    const second = segment(hub, d, depHub, DEMO_CARRIERS.ZB!, DEMO_CARRIERS.ZB!, 3471);
+    const second = segment(hub, d, depHub, kl, kl, 3472);
     options.push({ slice: buildSlice([first, second]), baseFactor: 78 });
   }
 
   // Billets séparés : moins cher, correspondance NON protégée, présentée explicitement.
   if (FRENCH_ORIGINS.includes(originCode) && (destCode === "LIS" || destCode === "FCO")) {
-    const hub = mustAirport(destCode === "LIS" ? "MAD" : "MUC");
-    const first = segment(o, hub, `${date}T07:05`, DEMO_CARRIERS.ZC!, DEMO_CARRIERS.ZC!, 7000 + rng.int(10, 899));
+    const hubCode = destCode === "LIS" ? "MAD" : "MUC";
+    const hub = mustAirport(hubCode);
+    const [firstCode, secondCode] = SEPARATE_CARRIERS[hubCode]!;
+    const first = segment(o, hub, `${date}T07:05`, carrier(firstCode), carrier(firstCode), 7000 + rng.int(10, 899));
     const depHub = addMinutesInZone(first.arrival.local, hub.timeZone, 150);
-    const second = segment(hub, d, depHub, DEMO_CARRIERS.ZA!, DEMO_CARRIERS.ZA!, 1500 + rng.int(10, 499));
+    const second = segment(hub, d, depHub, carrier(secondCode), carrier(secondCode), 1500 + rng.int(10, 499));
     options.push({ slice: buildSlice([first, second], 0), baseFactor: 70 });
   }
   return options;

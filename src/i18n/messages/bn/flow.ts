@@ -230,6 +230,7 @@ const part: Pick<Messages, "booking" | "planner" | "assistant"> = {
       print: "সারসংক্ষেপ প্রিন্ট করুন",
       watermark1: "ডেমো",
       watermark2: "মূল্যহীন",
+      marker: "ডেমো – মূল্যহীন নথি, কোনো প্রকৃত বুকিং নেই",
       eyebrow: "ডেমো — মূল্যহীন নথি",
       title: "বুকিং সারসংক্ষেপ",
       disclaimer: "এই নথি কোনো চালান, টিকিট বা ভ্রমণের প্রমাণ নয়। কোনো সেবা বুক করা হয়নি।",

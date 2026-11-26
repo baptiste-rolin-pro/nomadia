@@ -70,6 +70,8 @@ async function onConfirmed(booking: BookingRow, result: ProviderBookingResult) {
       to: booking.contactEmail,
       subject: formatMessage(locale, t.subject, { reference: result.providerReference ?? "" }).trim(),
       text: [
+        // Démonstration : mention en tête (noms de compagnies et de loueurs réels, réservation simulée).
+        ...(booking.mode === "demo" ? [getMessages(locale).booking.document.marker] : []),
         t.demo,
         "",
         bookable ? bookable.title : "",

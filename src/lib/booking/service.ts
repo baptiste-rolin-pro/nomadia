@@ -221,7 +221,11 @@ export async function saveTravelers(
     await sendEmail({
       to: input.contactEmail.trim(),
       subject: t.subject,
-      text: formatMessage(mailLocale, t.body, { days: GUEST_LINK_TTL_DAYS, url: `${siteUrl()}${localizePath(mailLocale, `/reservation/${bookingId}/acces`)}?cle=${guestToken}` }),
+      text: [
+        // Démonstration : même mention que les documents émis.
+        ...(view.booking.mode === "demo" ? [getMessages(mailLocale).booking.document.marker, ""] : []),
+        formatMessage(mailLocale, t.body, { days: GUEST_LINK_TTL_DAYS, url: `${siteUrl()}${localizePath(mailLocale, `/reservation/${bookingId}/acces`)}?cle=${guestToken}` }),
+      ].join("\n"),
       template: "guest_access",
       dedupeKey: `guest-link:${bookingId}:${sha256(input.contactEmail.trim().toLowerCase())}`,
     });

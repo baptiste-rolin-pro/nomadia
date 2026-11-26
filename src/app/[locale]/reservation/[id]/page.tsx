@@ -17,7 +17,7 @@ import { savedTravelers } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { rentalDays } from "@/lib/providers/demo/cars";
 import type { TravelerInput } from "@/lib/providers/types";
-import { Badge, Notice } from "@/components/ui/misc";
+import { Badge, DemoDocumentMarker, Notice } from "@/components/ui/misc";
 import { PriceBreakdownView } from "@/components/booking/price-breakdown";
 import { CancelPanel, OptionsStep, PaymentStep, ReviewStep, StatusPoller, TravelersStep } from "@/components/booking/steps";
 import { acceptPriceAction, backToStepAction, claimGuestBookingAction, confirmAuthenticationAction, refreshQuoteAction, refreshStatusAction } from "@/app/[locale]/reservation/actions";
@@ -247,6 +247,8 @@ export default async function ReservationPage({ params }: { params: Promise<{ id
               <h2 id="step-title" className="font-serif text-heading">
                 {tb.tracking.title}
               </h2>
+              {/* Confirmation de démonstration : jamais présentée comme un billet ou un bon valable. */}
+              {demo ? <DemoDocumentMarker text={tb.document.marker} /> : null}
               <Notice tone={headline.tone === "ok" ? "success" : headline.tone === "error" ? "danger" : headline.tone === "warn" ? "warning" : "info"} role="status" title={tb.headline[headline.key]} />
               <dl className="divide-y divide-line rounded-[var(--radius-lg)] border border-line bg-white px-5">
                 <StatusRow label={tb.tracking.quote} value={quote.status === "accepted" ? tb.tracking.quoteAccepted : quote.status === "expired" ? tb.tracking.quoteExpired : quote.status === "superseded" ? tb.tracking.quoteSuperseded : tb.tracking.quoteActive} tone={quote.status === "accepted" ? "ok" : "neutral"} />

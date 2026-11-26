@@ -1,5 +1,6 @@
 /** Pages de recherche (vols, hôtels, voitures) et fiches d'offre. */
 const offers = {
+  simulatedNotice: "Offres simulées : horaires, prix et disponibilités sont fictifs. Aucun lien avec les compagnies, loueurs et marques cités.",
   flightsPage: {
     metaTitle: "Vols",
     metaDescription: "Recherchez des vols datés : aéroports exacts, horaires locaux, escales, bagages et prix total pour tous les voyageurs.",
@@ -29,7 +30,6 @@ const offers = {
     metaTitle: "Détail du vol",
     crumb: "Détail de l'offre",
     back: "Retour aux résultats (critères conservés)",
-    demo: "Offre fictive de démonstration",
     expiredTitle: "Cette offre a expiré",
     expiredText: "Les tarifs aériens évoluent : relancez la recherche pour obtenir des offres à jour.",
     relaunch: "Relancer la recherche",
@@ -45,7 +45,6 @@ const offers = {
     localTime: "Heure locale ({zone}), {date}",
     marketedBy: "Commercialisé par {name}",
     operatedBy: "Opéré par {name}",
-    fictional: "Compagnie fictive",
     layover: "Escale à {airport} ({code}) : {duration}",
     overnight: " — nuit sur place",
     selfTransfer: "Correspondance non protégée : billets séparés. Vous devrez récupérer vos bagages, repasser l'enregistrement et la sécurité. Un retard du premier vol n'est pas couvert.",
@@ -63,17 +62,15 @@ const offers = {
   hotel: {
     metaFallback: "Hébergement",
     back: "Retour aux résultats",
-    fictional: "Établissement fictif",
     stars: "{n} étoiles — {note}",
-    noPhoto: "Aucune photo : cet établissement est fictif. Nomadia n'utilise pas d'image d'illustration pour représenter un hébergement vendu.",
+    noPhoto: "Aucune photo : Nomadia n'utilise pas d'image d'illustration pour représenter un hébergement vendu.",
     about: "L'établissement",
-    address: "{address} — quartier {neighborhood} (quartier réel, adresse fictive)",
     checkIn: "Arrivée à partir de {from}",
     checkInUntil: " jusqu'à {until}",
     checkOut: " · départ avant {until} (heure locale, {zone})",
     reception: "Accueil",
     amenities: "Équipements",
-    noReviews: "Aucune note ni avis : aucune source vérifiable n'existe pour un établissement fictif.",
+    noReviews: "Aucune note ni avis : aucune source vérifiable n'existe pour ces offres.",
     rates: "Chambres et tarifs",
     period: "Du {from} au {to} · {rooms}.",
     modify: "Modifier la recherche",
@@ -104,7 +101,6 @@ const offers = {
   car: {
     metaTitle: "Détail de la location",
     back: "Retour aux résultats (critères conservés)",
-    fictional: "Offre fictive — {supplier}",
     model: "{model} — **le modèle exact n'est pas garanti**, seule la catégorie {acriss} l'est.",
     expiredTitle: "Offre expirée",
     expiredText: "Relancez la recherche pour obtenir un prix à jour.",

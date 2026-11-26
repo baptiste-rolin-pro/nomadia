@@ -10,7 +10,7 @@ const email = {
   },
   bookingConfirmed: {
     subject: "Nomadia — réservation confirmée (DÉMONSTRATION) {reference}",
-    demo: "DÉMONSTRATION — aucune réservation ni aucun paiement réel.",
+    demo: "Aucun paiement réel n'a été encaissé.",
     reference: "Référence fournisseur (fictive) : {reference}",
     total: "Total : {total}",
     details: "Détail et documents : {url}",

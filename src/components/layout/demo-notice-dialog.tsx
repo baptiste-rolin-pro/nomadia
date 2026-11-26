@@ -62,7 +62,7 @@ export default function DemoNoticeDialog({ sharedAccounts, onDismiss }: { shared
 
   const points = [
     { icon: CreditCard, title: t.noRealTitle, text: t.noRealText },
-    { icon: Tag, title: t.fictionalTitle, text: t.fictionalText },
+    { icon: Tag, title: t.brandsTitle, text: t.brandsText },
     sharedAccounts
       ? { icon: Users, title: t.sharedTitle, text: t.sharedText }
       : { icon: Users, title: t.testTitle, text: t.testText },
