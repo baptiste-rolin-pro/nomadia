@@ -143,6 +143,14 @@ const legal = {
     videoSource: "source ({platform})",
     videoLicense: "Licence Pexels (usage commercial gratuit, attribution facultative)",
     videoChanges: "Modifications : extrait de 8 s mis en boucle (fondu de raccord d'une seconde), réencodé en 1080p et 720p sans son ; affiche tirée de la première image.",
+    logosTitle: "Logos des compagnies et des loueurs",
+    logosIntro: "Seuls les logos que Wikimedia Commons classe dans le domaine public (logos textuels ou formes simples) sont affichés. Le fichier est repris tel quel, à un nettoyage technique près (métadonnées retirées, dessin inchangé).",
+    logosLicense: "Domaine public ({basis})",
+    logosTrademarked: "restriction : marque commerciale",
+    logosSource: "fichier Wikimedia Commons",
+    logosFallback: "Faute de fichier du domaine public vérifié, ces marques sont représentées par un monogramme Nomadia : {names}.",
+    logosChecked: "Licences vérifiées le {date} avec l'API de Wikimedia Commons.",
+    logosNotice: "Les marques et logos appartiennent à leurs titulaires ; leur présence n'implique aucun partenariat.",
   },
 };
 

@@ -4,6 +4,7 @@ import { ExternalLink } from "lucide-react";
 import { RENTERS, getRenter } from "@/lib/content/directory";
 import { renterText } from "@/lib/content/localized";
 import { Breadcrumbs, Notice } from "@/components/ui/misc";
+import { BrandMark } from "@/components/ui/brand-mark";
 import { getMessages } from "@/i18n/messages";
 import { getI18n } from "@/i18n/request";
 import { toLocale } from "@/i18n/config";
@@ -37,7 +38,10 @@ export default async function RenterPage({ params }: { params: Promise<{ slug: s
   return (
     <div className="container-page max-w-3xl pt-8">
       <Breadcrumbs label={m.common.nav.breadcrumbs} items={[{ href: "/", label: m.common.nav.home }, { href: "/loueurs", label: t.crumb }, { label: r.name }]} />
-      <h1 className="mt-6 font-serif text-title">{r.name}</h1>
+      <div className="mt-6 flex items-center gap-4">
+        <BrandMark name={r.name} slug={r.slug} size="lg" decorative />
+        <h1 className="font-serif text-title">{r.name}</h1>
+      </div>
       <p className="mt-4 text-lead">{rt.summary}</p>
       <p className="mt-4 text-sm text-ink-soft">{rt.countriesNote}</p>
       <p className="mt-6">

@@ -1,7 +1,10 @@
 /**
  * Annuaires des compagnies aériennes et des loueurs.
  * - La présence d'une marque ne signifie AUCUN partenariat contractuel avec Nomadia.
- * - Aucun logo n'est affiché faute de droit d'usage documenté : un monogramme textuel le remplace.
+ * - Logos : seuls ceux que Wikimedia Commons classe dans le domaine public (logo textuel ou forme simple, licence
+ *   vérifiée fichier par fichier avec l'API Commons) sont affichés, depuis public/logos/brands, avec crédit sur /credits
+ *   (manifeste : src/lib/content/brand-logos.ts). Sans fichier retenu, un monogramme Nomadia (code IATA ou initiales)
+ *   le remplace. Les logos restent des marques de leurs titulaires : leur présence n'implique aucun partenariat.
  * - Les règles de bagages, de modification, de remboursement, de caution ou de franchise dépendent
  *   de l'offre et de l'agence : elles ne sont jamais déduites du nom de la marque.
  * - Les fiches à faible valeur éditoriale restent non indexées (`indexable: false`).

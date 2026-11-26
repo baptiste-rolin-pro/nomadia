@@ -3,6 +3,8 @@ import { AIRLINES } from "@/lib/content/directory";
 import { airlineText } from "@/lib/content/localized";
 import { DEMO_CARRIERS } from "@/lib/providers/demo/flights";
 import { Breadcrumbs, Notice, SectionHeading } from "@/components/ui/misc";
+import { BrandMark } from "@/components/ui/brand-mark";
+import { airlineMarkSlug } from "@/lib/content/brand-marks";
 import { DirectoryFilter } from "@/components/content/directory-filter";
 import { getMessages } from "@/i18n/messages";
 import { ClientMessages, getI18n } from "@/i18n/request";
@@ -43,7 +45,8 @@ export default async function AirlinesPage() {
         <p className="mt-1 text-sm text-ink-soft">{t.demoIntro}</p>
         <ul className="mt-3 flex flex-wrap gap-3 text-sm">
           {Object.values(DEMO_CARRIERS).map((c) => (
-            <li key={c.code} className="rounded-full bg-terracotta-soft px-3 py-1 font-semibold text-terracotta">
+            <li key={c.code} className="inline-flex items-center gap-2 rounded-full bg-terracotta-soft py-1 ps-1 pe-3 font-semibold text-terracotta">
+              <BrandMark name={c.name} slug={airlineMarkSlug(c.code)} code={c.code} decorative />
               {f.t(t.demoItem, { name: c.name, code: c.code })}
             </li>
           ))}

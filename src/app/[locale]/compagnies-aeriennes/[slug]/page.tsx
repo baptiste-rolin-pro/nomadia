@@ -5,6 +5,7 @@ import { AIRLINES, getAirline } from "@/lib/content/directory";
 import { airlineText } from "@/lib/content/localized";
 import { SOURCES_CHECKED_ON } from "@/lib/content/destinations";
 import { Breadcrumbs, Notice } from "@/components/ui/misc";
+import { BrandMark } from "@/components/ui/brand-mark";
 import { getMessages } from "@/i18n/messages";
 import { getI18n } from "@/i18n/request";
 import { toLocale } from "@/i18n/config";
@@ -40,9 +41,7 @@ export default async function AirlinePage({ params }: { params: Promise<{ slug: 
     <div className="container-page max-w-3xl pt-8">
       <Breadcrumbs label={m.common.nav.breadcrumbs} items={[{ href: "/", label: m.common.nav.home }, { href: "/compagnies-aeriennes", label: t.title }, { label: a.name }]} />
       <div className="mt-6 flex items-center gap-4">
-        <span aria-hidden className="flex size-16 items-center justify-center rounded-full bg-forest text-xl font-semibold text-white">
-          {a.iata}
-        </span>
+        <BrandMark name={a.name} slug={a.slug} code={a.iata} size="lg" decorative />
         <h1 className="font-serif text-title">{a.name}</h1>
       </div>
       <p className="mt-6 text-lead">{at.summary}</p>

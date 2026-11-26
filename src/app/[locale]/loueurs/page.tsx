@@ -4,6 +4,7 @@ import { renterText } from "@/lib/content/localized";
 import { DEMO_AGENCIES, DEMO_SUPPLIERS } from "@/lib/providers/demo/cars";
 import { localizeAgency } from "@/lib/providers/localize";
 import { Breadcrumbs, Notice, SectionHeading } from "@/components/ui/misc";
+import { BrandMark } from "@/components/ui/brand-mark";
 import { DirectoryFilter } from "@/components/content/directory-filter";
 import { getMessages } from "@/i18n/messages";
 import { ClientMessages, getI18n } from "@/i18n/request";
@@ -40,8 +41,11 @@ export default async function RentersPage() {
         <p className="mt-1 text-sm text-ink-soft">{t.demoIntro}</p>
         <ul className="mt-3 space-y-2 text-sm">
           {Object.values(DEMO_SUPPLIERS).map((s) => (
-            <li key={s.id}>
-              <strong>{s.name}</strong> — {DEMO_AGENCIES.filter((a) => a.supplierId === s.id).map((a) => { const name = localizeAgency(a, locale).name; return name.split(" — ")[1] ?? name; }).join(m.common.listSep)}
+            <li key={s.id} className="flex items-center gap-2">
+              <BrandMark name={s.name} slug={s.id} decorative />
+              <span>
+                <strong>{s.name}</strong> — {DEMO_AGENCIES.filter((a) => a.supplierId === s.id).map((a) => { const name = localizeAgency(a, locale).name; return name.split(" — ")[1] ?? name; }).join(m.common.listSep)}
+              </span>
             </li>
           ))}
         </ul>

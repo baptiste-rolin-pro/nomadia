@@ -7,7 +7,8 @@ import { ProviderError } from "@/lib/providers/types";
 import { civilDateOf } from "@/lib/dates";
 import { nowMs } from "@/lib/clock";
 import { tripsForCurrentViewer } from "@/lib/planner/viewer-trips";
-import { Badge, Breadcrumbs, Notice, SimulatedOffersNote } from "@/components/ui/misc";
+import { Breadcrumbs, Notice, SimulatedOffersNote } from "@/components/ui/misc";
+import { BrandMark } from "@/components/ui/brand-mark";
 import { PriceBreakdownView } from "@/components/booking/price-breakdown";
 import { StartBookingButton } from "@/components/booking/start-booking";
 import { AddToTripButton, AddToTripSelect } from "@/components/results/add-to-trip";
@@ -52,7 +53,10 @@ export default async function CarOfferPage({ params, searchParams }: { params: P
         </Link>
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <h1 className="font-serif text-title">{offer.category}</h1>
-          <Badge tone="terracotta">{offer.supplier.name}</Badge>
+          <span className="inline-flex items-center gap-2 font-semibold" data-testid="offer-renter">
+            <BrandMark name={offer.supplier.name} slug={offer.supplier.id} decorative />
+            {offer.supplier.name}
+          </span>
         </div>
         {res.info.mode === "demo" ? <SimulatedOffersNote className="mt-2" text={m.offers.simulatedNotice} /> : null}
         <p className="mt-2">{inline(f.t(t.model, { model: offer.exampleModel, acriss: offer.acriss }))}</p>

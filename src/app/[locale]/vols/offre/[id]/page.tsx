@@ -11,6 +11,8 @@ import { airportByCode } from "@/lib/content/places";
 import { airportName, placeCity } from "@/lib/content/place-labels";
 import { tripsForCurrentViewer } from "@/lib/planner/viewer-trips";
 import { Breadcrumbs, Notice, SimulatedOffersNote } from "@/components/ui/misc";
+import { BrandMark } from "@/components/ui/brand-mark";
+import { airlineMarkSlug } from "@/lib/content/brand-marks";
 import { PriceBreakdownView } from "@/components/booking/price-breakdown";
 import { StartBookingButton } from "@/components/booking/start-booking";
 import { AddToTripButton, AddToTripSelect } from "@/components/results/add-to-trip";
@@ -108,6 +110,7 @@ export default async function FlightOfferPage({ params, searchParams }: { params
                           </p>
                         </div>
                         <div className="text-sm sm:text-end">
+                          <BrandMark name={seg.marketingCarrier.name} slug={airlineMarkSlug(seg.marketingCarrier.code)} code={seg.marketingCarrier.code} decorative className="mb-1.5" />
                           <p className="font-semibold">{seg.flightNumber}</p>
                           <p className="text-ink-soft">{f.t(t.marketedBy, { name: seg.marketingCarrier.name })}</p>
                           <p className="text-ink-soft">{f.t(t.operatedBy, { name: seg.operatingCarrier.name })}</p>

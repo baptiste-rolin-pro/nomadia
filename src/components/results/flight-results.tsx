@@ -10,6 +10,8 @@ import { ActiveFilters, CheckboxFilter, FilterGroup, FiltersPanel, LoadMore, Res
 import { SliceSummary } from "@/components/results/flight-slice";
 import { AddToTripButton } from "@/components/results/add-to-trip";
 import { Badge, EmptyState } from "@/components/ui/misc";
+import { BrandMark } from "@/components/ui/brand-mark";
+import { airlineMarkSlug } from "@/lib/content/brand-marks";
 import { track } from "@/lib/analytics-client";
 import { useI18n } from "@/i18n/client";
 
@@ -148,7 +150,7 @@ function FlightCard({ offer, query, tripId }: { offer: FlightOffer; query: strin
   const price = f.money(offer.price.total);
   const adult = offer.perPassenger.find((p) => p.type === "adult");
   // Compagnies commercialisantes du billet (aller puis retour), sans doublon.
-  const airlines = [...new Set(offer.slices.flatMap((s) => s.segments.map((g) => g.marketingCarrier.name)))];
+  const carriers = [...new Map(offer.slices.flatMap((s) => s.segments.map((g) => [g.marketingCarrier.code, g.marketingCarrier] as const))).values()];
   return (
     <Ticket
       label={f.t(t.cardLabel, { from: offer.slices[0]!.segments[0]!.origin.code, to: offer.slices[0]!.segments.at(-1)!.destination.code, price })}
@@ -177,9 +179,16 @@ function FlightCard({ offer, query, tripId }: { offer: FlightOffer; query: strin
       }
     >
       <div className="space-y-4">
-        <p className="font-semibold leading-snug" data-testid="ticket-airlines">
-          {airlines.join(" · ")}
-        </p>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <span className="flex flex-wrap items-center gap-1.5" data-testid="ticket-brand-marks">
+            {carriers.map((c) => (
+              <BrandMark key={c.code} name={c.name} slug={airlineMarkSlug(c.code)} code={c.code} decorative />
+            ))}
+          </span>
+          <p className="font-semibold leading-snug" data-testid="ticket-airlines">
+            {carriers.map((c) => c.name).join(" · ")}
+          </p>
+        </div>
         {offer.slices.map((s, i) => (
           <SliceSummary key={i} slice={s} label={i === 0 ? t.outbound : t.inbound} />
         ))}
