@@ -30,7 +30,7 @@ import { getMessages } from "@/i18n/messages";
 export const DEMO_FLIGHT_PROVIDER_ID = "demo-flights";
 export const OFFER_TTL_MINUTES = 30;
 
-/** Compagnie réelle de l'annuaire, par code IATA (nom officiel, aucun logo). */
+/** Compagnie réelle de l'annuaire, par code IATA (nom officiel ; logo éventuel du domaine public : src/lib/content/brand-logos.ts). */
 function airline(iata: string): Carrier {
   const entry = AIRLINES.find((a) => a.iata === iata);
   if (!entry) throw new Error(`Compagnie absente de l'annuaire : ${iata}`);

@@ -11,6 +11,7 @@ import { useSearch, setQueryParams, toggleListParam } from "@/components/results
 import { ActiveFilters, CheckboxFilter, FilterGroup, FiltersPanel, LoadMore, ResultsStatus, SearchError, SkeletonList, SortSelect, Ticket } from "@/components/results/common";
 import { AddToTripButton } from "@/components/results/add-to-trip";
 import { Badge, EmptyState } from "@/components/ui/misc";
+import { BrandMark } from "@/components/ui/brand-mark";
 import { track } from "@/lib/analytics-client";
 
 interface Facets {
@@ -193,7 +194,10 @@ function CarCard({ offer, query, tripId }: { offer: CarOffer; query: string; tri
         <div className="flex flex-wrap items-center gap-2">
           <CarFront aria-hidden className="size-5 text-forest" />
           <h2 className="font-serif text-2xl">{offer.category}</h2>
-          <Badge tone="terracotta">{offer.supplier.name}</Badge>
+          <span className="inline-flex items-center gap-1.5 text-sm font-semibold" data-testid="ticket-renter">
+            <BrandMark name={offer.supplier.name} slug={offer.supplier.id} decorative />
+            {offer.supplier.name}
+          </span>
           <Badge>
             {atAirport ? <Plane aria-hidden className="size-3.5" /> : <Building2 aria-hidden className="size-3.5" />}
             {atAirport ? t.location.airport : t.location.city}

@@ -13,7 +13,7 @@ src/
     config/site.ts        marque, coordonnées, champs légaux « à compléter »
     env.ts                configuration serveur validée (Zod), garde-fous production
     money.ts, dates.ts    montants en unités mineures ; dates civiles et fuseaux IANA
-    content/              destinations, guides, annuaires, lieux, photos (contenu éditorial versionné)
+    content/              destinations, guides, annuaires, lieux, photos, logos du domaine public (contenu éditorial versionné)
     providers/            types communs, registre, adaptateurs DEMO / Duffel, offre normalisée « Bookable »
     search/               paramètres (Zod, chargés à la demande côté client), requêtes, filtres et tris
     assistant/            assistant de l'accueil : analyse locale (parser/), repli vers le modèle (outils stricts, prompt), validation et chemins communs, limitation de débit, client simulé

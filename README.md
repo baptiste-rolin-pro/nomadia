@@ -2,7 +2,7 @@
 
 Plateforme de voyage immersive : découvrir une destination, construire un voyage daté et cohérent, comparer vols, hébergements et voitures, puis réserver chaque prestation en comprenant ce que l'on achète.
 
-> **Version de démonstration.** Toutes les offres, tous les horaires, tous les prix et toutes les réservations sont simulés. Les compagnies aériennes et les loueurs sont cités sous leur vrai nom (annuaire du site), à titre d'illustration et sans aucun lien avec eux ; les hôtels sont inventés. Aucune réservation n'est transmise à un fournisseur réel et aucun paiement n'est encaissé. Ce dépôt n'est pas un système prêt à vendre ni à émettre des billets.
+> **Version de démonstration.** Toutes les offres, tous les horaires, tous les prix et toutes les réservations sont simulés. Les compagnies aériennes et les loueurs sont cités sous leur vrai nom (annuaire du site), à titre d'illustration et sans aucun lien avec eux, avec leur logo seulement quand Wikimedia Commons le classe dans le domaine public (sinon un monogramme) ; les hôtels sont inventés. Aucune réservation n'est transmise à un fournisseur réel et aucun paiement n'est encaissé. Ce dépôt n'est pas un système prêt à vendre ni à émettre des billets.
 
 ## Démarrage rapide
 
@@ -117,7 +117,7 @@ Le site est disponible en **10 langues** : français (par défaut), anglais, chi
 ## Ce qui fonctionne en démonstration
 
 - Accueil immersif (hero photographique, moteur à onglets Mon voyage / Vols / Hôtels / Voitures / Assistant, mosaïque de destinations, ambiances, aperçu du carnet, guides, FAQ, transparence des réservations).
-- 12 destinations avec pages détaillées (saisons sourcées, formalités renvoyées à France Diplomatie, galerie créditée, recherches préremplies), 3 guides, annuaires des compagnies et des loueurs.
+- 12 destinations avec pages détaillées (saisons sourcées, formalités renvoyées à France Diplomatie, galerie créditée, recherches préremplies), 3 guides, annuaires des compagnies et des loueurs (logo du domaine public ou monogramme, crédits et licences sur `/credits`).
 - Assistant de l'accueil (onglet « Assistant ») : une demande écrite dans l'une des 10 langues (« Vol Paris–Rome le 12 juin, retour le 16, avec une voiture sur place ») devient une ou plusieurs actions du site — recherche de vols, d'hébergements ou de voitures préremplie, fiche destination, formulaire « Organiser mon voyage » prérempli. Ce qui a été compris (lieux, dates, voyageurs, hypothèses signalées) s'affiche avant l'ouverture ; plusieurs services donnent un plan en étapes ; une information manquante donne une seule question précise. **Analyse locale déterministe** (`src/lib/assistant/parser`, cœur français et packs de langue dans `parser/lang/` : lieux du référentiel avec tolérance aux fautes, dates relatives au fuseau Europe/Paris, voyageurs, cabine, conducteur), gratuite et sans clé ; **repli optionnel** vers Claude (`claude-opus-5-5`, API Anthropic) pour les seules demandes non comprises, si `ANTHROPIC_API_KEY` est définie. Entrées validées et liens construits côté serveur par le même code dans les deux cas, limitation de débit propre à chaque chemin. Détail : docs/architecture.md, docs/providers.md.
 - Recherche de vols, hôtels et voitures : autocomplétion de lieux, validation client **et** serveur, filtres partageables dans l'URL, tri expliqué, « afficher plus », états chargement / vide / erreur / fournisseur indisponible, fiches détaillées. Offres de démonstration sur Lisbonne, Rome et Reykjavik.
 - Planificateur : voyage daté, ajout depuis les résultats, statuts envisagé / à réserver / en cours / confirmé, timeline jour par jour, budget détaillé, alertes (nuits sans hébergement, chevauchements, voiture avant l'atterrissage, arrivée nocturne, agence fermée…), version imprimable, export `.ics`, brouillon anonyme rattachable au compte.
@@ -155,7 +155,7 @@ Chaque service a un mode explicite défini côté serveur (`FLIGHTS_PROVIDER_MOD
 - [docs/architecture.md](docs/architecture.md) — modèle de données, flux, décisions, internationalisation.
 - [docs/providers.md](docs/providers.md) — fournisseurs, documentation consultée, capacités, activation.
 - [docs/design-motion.md](docs/design-motion.md) — direction artistique, composants, partition d'animation.
-- [docs/assets.md](docs/assets.md) — photographies, crédits, droits ; Blender.
+- [docs/assets.md](docs/assets.md) — photographies, logos (domaine public, Wikimedia Commons), crédits, droits ; Blender.
 - [docs/validation.md](docs/validation.md) — vérifications réellement exécutées, mesures, limites.
 - [docs/progress.md](docs/progress.md) — état du travail pour reprise.
 

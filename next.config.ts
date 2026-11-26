@@ -5,6 +5,8 @@ import type { NextConfig } from "next";
  * - PGlite (PostgreSQL WASM) est chargé côté serveur sans être empaqueté.
  * - Les images sont locales (licences vérifiées, voir docs/assets.md).
  * - Les pages privées envoient des en-têtes no-store (voir proxy.ts et headers()).
+ * - Logos de marques (SVG du domaine public, nettoyés) : affichés par <img> ; ouverts directement, ils sont servis
+ *   dans un bac à sable sans script ni ressource externe (défense en profondeur, voir docs/assets.md).
  */
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -33,6 +35,7 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
+      { source: "/logos/:path*", headers: [{ key: "Content-Security-Policy", value: "default-src 'none'; style-src 'unsafe-inline'; sandbox" }] },
       { source: "/compte/:path*", headers: privateNoStore },
       { source: "/compte", headers: privateNoStore },
       { source: "/voyage/:path*", headers: privateNoStore },

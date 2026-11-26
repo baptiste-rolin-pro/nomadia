@@ -33,7 +33,7 @@ export interface DemoAgency extends RentalAgency {
   profile: DemoAgencyProfile;
 }
 
-/** Loueur réel de l'annuaire, par slug (nom officiel, aucun logo). */
+/** Loueur réel de l'annuaire, par slug (nom officiel ; logo éventuel du domaine public : src/lib/content/brand-logos.ts). */
 function renter(slug: string): RentalSupplier {
   const entry = RENTERS.find((r) => r.slug === slug);
   if (!entry) throw new Error(`Loueur absent de l'annuaire : ${slug}`);

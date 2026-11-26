@@ -4,8 +4,9 @@ import { Link } from "@/i18n/link";
 import { useMemo, useState } from "react";
 import { normalize } from "@/lib/content/places";
 import { useI18n } from "@/i18n/client";
+import { BrandMark } from "@/components/ui/brand-mark";
 
-/** Annuaire filtrable côté client (nom, pays, codes) ; la liste complète reste dans le HTML initial. */
+/** Annuaire filtrable côté client (nom, pays, codes) ; la liste complète reste dans le HTML initial. Logo du domaine public ou monogramme : `BrandMark`. */
 export function DirectoryFilter({ items, basePath, label }: { items: { slug: string; name: string; meta: string; codes: string[] }[]; basePath: string; label: string }) {
   const { m, f } = useI18n();
   const [q, setQ] = useState("");
@@ -26,10 +27,10 @@ export function DirectoryFilter({ items, basePath, label }: { items: { slug: str
         {list.map((i) => (
           <li key={i.slug}>
             <Link href={`${basePath}/${i.slug}`} className="flex items-center gap-3 rounded-[var(--radius-lg)] border border-line bg-white p-4 hover:border-forest">
-              <span aria-hidden className="flex size-11 shrink-0 items-center justify-center rounded-full bg-forest-soft font-semibold text-forest">
-                {i.codes[0] ?? i.name.slice(0, 2).toUpperCase()}
+              <span className="flex w-24 shrink-0 justify-center">
+                <BrandMark name={i.name} slug={i.slug} code={i.codes[0]} size="md" decorative />
               </span>
-              <span>
+              <span className="min-w-0">
                 <span className="block font-semibold">{i.name}</span>
                 <span className="block text-sm text-ink-soft">{i.meta}</span>
               </span>
