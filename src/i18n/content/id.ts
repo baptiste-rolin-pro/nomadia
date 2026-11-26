@@ -636,13 +636,13 @@ const pack: ContentPack = {
   },
   agencies: {
     "lis-apt-dl": { name: "Budget — Bandara Lisbon", address: "Aula kedatangan, terminal 1", accessNote: "Konter di terminal, kendaraan di parkir P2." },
-    "lis-apt-rl": { name: "Centauro — Bandara Lisbon (antar-jemput)", address: "Kantor di luar bandara", accessNote: "Shuttle gratis dari terminal 1, sekitar 10 menit." },
+    "lis-apt-rl": { name: "Centauro — Bandara Lisbon", address: "Kantor di luar bandara", accessNote: "Shuttle gratis dari terminal 1, sekitar 10 menit." },
     "lis-city-dl": { name: "Budget — Lisbon Santa Apolónia", address: "Dekat stasiun Santa Apolónia", accessNote: "Kantor di dalam kota." },
     "fco-apt-dl": { name: "Hertz — Roma Fiumicino", address: "Area sewa mobil", accessNote: "Konter dapat dicapai berjalan kaki dari terminal." },
-    "fco-apt-ew": { name: "Dollar — Fiumicino (antar-jemput)", address: "Kantor di luar bandara", accessNote: "Shuttle kira-kira setiap 20 menit." },
+    "fco-apt-ew": { name: "Dollar — Fiumicino", address: "Kantor di luar bandara", accessNote: "Shuttle kira-kira setiap 20 menit." },
     "rom-city-dl": { name: "Hertz — Roma Termini", address: "Dekat stasiun Termini", accessNote: "Kantor di dalam kota; periksa aturan berkendara di zona ZTL ke pemerintah kota." },
-    "kef-apt-dl": { name: "Sixt — Keflavík (antar-jemput)", address: "Dekat bandara", accessNote: "Shuttle dari terminal, sekitar 5 menit." },
-    "kef-apt-rl": { name: "Europcar — terminal Keflavík", address: "Aula kedatangan", accessNote: "Konter di terminal." },
+    "kef-apt-dl": { name: "Sixt — Keflavík", address: "Dekat bandara", accessNote: "Shuttle dari terminal, sekitar 5 menit." },
+    "kef-apt-rl": { name: "Europcar — Keflavík", address: "Aula kedatangan", accessNote: "Konter di terminal." },
     "rek-city-ew": { name: "Avis — pusat Reykjavik", address: "Pusat Reykjavik", accessNote: "Kantor di dalam kota." },
   },
 };

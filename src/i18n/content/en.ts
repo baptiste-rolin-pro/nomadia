@@ -636,13 +636,13 @@ const pack: ContentPack = {
   },
   agencies: {
     "lis-apt-dl": { name: "Budget — Lisbon Airport", address: "Arrivals hall, terminal 1", accessNote: "Desk in the terminal, vehicles in car park P2." },
-    "lis-apt-rl": { name: "Centauro — Lisbon Airport (shuttle)", address: "Off-airport branch", accessNote: "Free shuttle from terminal 1, about 10 minutes." },
+    "lis-apt-rl": { name: "Centauro — Lisbon Airport", address: "Off-airport branch", accessNote: "Free shuttle from terminal 1, about 10 minutes." },
     "lis-city-dl": { name: "Budget — Lisbon Santa Apolónia", address: "Near Santa Apolónia station", accessNote: "City-centre branch." },
     "fco-apt-dl": { name: "Hertz — Rome Fiumicino", address: "Car rental area", accessNote: "Desks within walking distance of the terminals." },
-    "fco-apt-ew": { name: "Dollar — Fiumicino (shuttle)", address: "Off-airport branch", accessNote: "Shuttle roughly every 20 minutes." },
+    "fco-apt-ew": { name: "Dollar — Fiumicino", address: "Off-airport branch", accessNote: "Shuttle roughly every 20 minutes." },
     "rom-city-dl": { name: "Hertz — Roma Termini", address: "Near Termini station", accessNote: "City-centre branch; check driving in the ZTL limited traffic zone with the city authorities." },
-    "kef-apt-dl": { name: "Sixt — Keflavík (shuttle)", address: "Near the airport", accessNote: "Shuttle from the terminal, about 5 minutes." },
-    "kef-apt-rl": { name: "Europcar — Keflavík terminal", address: "Arrivals hall", accessNote: "Desk in the terminal." },
+    "kef-apt-dl": { name: "Sixt — Keflavík", address: "Near the airport", accessNote: "Shuttle from the terminal, about 5 minutes." },
+    "kef-apt-rl": { name: "Europcar — Keflavík", address: "Arrivals hall", accessNote: "Desk in the terminal." },
     "rek-city-ew": { name: "Avis — Reykjavik centre", address: "Central Reykjavik", accessNote: "City-centre branch." },
   },
 };

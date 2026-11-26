@@ -21,6 +21,8 @@ const MARKER = {
 // Compagnies possibles sur Paris → Lisbonne (vols directs relevés, correspondances via Madrid, partage de code AF/KL).
 const PARIS_LISBON_AIRLINES = /Air France|Ryanair|TAP Air Portugal|KLM|Iberia|easyJet/;
 const LISBON_RENTERS = /Budget|Centauro/;
+const SHUTTLE = { fr: "navette", en: "shuttle" };
+const LISBON_AIRPORT = { fr: "Lisbonne Aéroport", en: "Lisbon Airport" };
 // Étiquettes par offre retirées (les mentions globales « démonstration », « montants fictifs » restent ailleurs).
 const TAGS = /[Cc]ompagnie fictive|[Éé]tablissement fictif|[Oo]ffre fictive|\(fictive\)|[Ff]ictitious (airline|property|offer)|\(fictitious\)|Démo(?!nstration)|\bDemo\b(?! tools)/;
 
@@ -58,7 +60,14 @@ for (const c of CASES) {
       await expect(results).not.toContainText(TAGS);
       await expect(page.locator("aside").filter({ has: page.locator("input[type=checkbox]") }).first()).not.toContainText(TAGS);
       if (path === "vols") await expect(ticket.getByTestId("ticket-airlines")).toHaveText(PARIS_LISBON_AIRLINES);
-      if (path === "voitures") await expect(ticket).toContainText(LISBON_RENTERS);
+      if (path === "voitures") {
+        await expect(ticket).toContainText(LISBON_RENTERS);
+        // Type d'accès une seule fois : « Centauro — Lisbonne Aéroport (navette), … », jamais « (navette) (navette) ».
+        const shuttle = SHUTTLE[c.lang];
+        const centauro = results.locator("article").filter({ hasText: "Centauro" }).first();
+        await expect(centauro).toContainText(`Centauro — ${LISBON_AIRPORT[c.lang]} (${shuttle}),`);
+        expect((await results.innerText()).toLowerCase()).not.toContain(`(${shuttle}) (${shuttle})`);
+      }
     }
   });
 }

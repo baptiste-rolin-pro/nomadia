@@ -8,6 +8,7 @@ import { getMessages } from "@/i18n/messages";
 import type { Bookable, CarOffer, FlightOffer, HotelProperty, HotelRateOffer, ProviderInfo } from "@/lib/providers/types";
 import { decodeFlightRef } from "@/lib/providers/demo/flights";
 import { decodeCarRef } from "@/lib/providers/demo/cars";
+import { agencyWithAccess } from "@/lib/providers/agency-label";
 import { encodeRooms } from "@/lib/search/params";
 
 function cityOf(code: string, locale: Locale): string {
@@ -217,9 +218,11 @@ export function carToBookable(car: CarOffer, info: ProviderInfo, locale: Locale 
     subtitle: f.t(t.subtitle, { model: car.exampleModel, days: car.rentalDays }),
     start: car.pickup,
     end: car.dropoff,
+    // Le type d'accès de l'agence de retrait figure dans la ligne « Accès » ; celui d'une autre agence de retour,
+    // dans la ligne de restitution. Le nom de l'agence ne le contient jamais (une seule mention).
     summaryLines: [
       f.t(t.pickup, { agency: car.pickupAgency.name, date: f.date(civilDateOf(car.pickup.local)), time: f.time(car.pickup.local) }),
-      f.t(t.dropoff, { agency: car.returnAgency.name, date: f.date(civilDateOf(car.dropoff.local)), time: f.time(car.dropoff.local) }),
+      f.t(t.dropoff, { agency: car.returnAgency.id === car.pickupAgency.id ? car.returnAgency.name : agencyWithAccess(car.returnAgency, locale), date: f.date(civilDateOf(car.dropoff.local)), time: f.time(car.dropoff.local) }),
       f.t(t.access, { note: car.pickupAgency.accessNote }),
       f.t(t.hours, { opens: hours(car.pickupAgency.opens), closes: hours(car.pickupAgency.closes) }),
     ],

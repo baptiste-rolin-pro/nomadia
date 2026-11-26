@@ -636,13 +636,13 @@ const pack: ContentPack = {
   },
   agencies: {
     "lis-apt-dl": { name: "Budget — Aeroporto de Lisboa", address: "Saguão de desembarque, terminal 1", accessNote: "Balcão no terminal, veículos no estacionamento P2." },
-    "lis-apt-rl": { name: "Centauro — Lisboa Aeroporto (traslado)", address: "Loja fora do aeroporto", accessNote: "Traslado gratuito a partir do terminal 1, cerca de 10 minutos." },
+    "lis-apt-rl": { name: "Centauro — Lisboa Aeroporto", address: "Loja fora do aeroporto", accessNote: "Traslado gratuito a partir do terminal 1, cerca de 10 minutos." },
     "lis-city-dl": { name: "Budget — Lisboa Santa Apolónia", address: "Perto da estação de Santa Apolónia", accessNote: "Loja na cidade." },
     "fco-apt-dl": { name: "Hertz — Roma Fiumicino", address: "Área de locação de carros", accessNote: "Balcões acessíveis a pé a partir dos terminais." },
-    "fco-apt-ew": { name: "Dollar — Fiumicino (traslado)", address: "Loja fora do aeroporto", accessNote: "Traslado a cada 20 minutos aproximadamente." },
+    "fco-apt-ew": { name: "Dollar — Fiumicino", address: "Loja fora do aeroporto", accessNote: "Traslado a cada 20 minutos aproximadamente." },
     "rom-city-dl": { name: "Hertz — Roma Termini", address: "Perto da estação Termini", accessNote: "Loja na cidade; verifique com a prefeitura a circulação na ZTL." },
-    "kef-apt-dl": { name: "Sixt — Keflavík (traslado)", address: "Perto do aeroporto", accessNote: "Traslado a partir do terminal, cerca de 5 minutos." },
-    "kef-apt-rl": { name: "Europcar — terminal de Keflavík", address: "Saguão de desembarque", accessNote: "Balcão no terminal." },
+    "kef-apt-dl": { name: "Sixt — Keflavík", address: "Perto do aeroporto", accessNote: "Traslado a partir do terminal, cerca de 5 minutos." },
+    "kef-apt-rl": { name: "Europcar — Keflavík", address: "Saguão de desembarque", accessNote: "Balcão no terminal." },
     "rek-city-ew": { name: "Avis — Reykjavík centro", address: "Centro de Reykjavík", accessNote: "Loja na cidade." },
   },
 };

@@ -636,13 +636,13 @@ const pack: ContentPack = {
   },
   agencies: {
     "lis-apt-dl": { name: "Budget — مطار لشبونة", address: "صالة الوصول، المبنى 1", accessNote: "المكتب داخل المبنى، والسيارات في موقف P2." },
-    "lis-apt-rl": { name: "Centauro — مطار لشبونة (حافلة نقل)", address: "فرع خارج المطار", accessNote: "حافلة نقل مجانية من المبنى 1، نحو 10 دقائق." },
+    "lis-apt-rl": { name: "Centauro — مطار لشبونة", address: "فرع خارج المطار", accessNote: "حافلة نقل مجانية من المبنى 1، نحو 10 دقائق." },
     "lis-city-dl": { name: "Budget — لشبونة سانتا أبولونيا", address: "قرب محطة سانتا أبولونيا", accessNote: "فرع داخل المدينة." },
     "fco-apt-dl": { name: "Hertz — روما فيوميتشينو", address: "منطقة تأجير السيارات", accessNote: "المكاتب في متناول المشي من المباني." },
-    "fco-apt-ew": { name: "Dollar — فيوميتشينو (حافلة نقل)", address: "فرع خارج المطار", accessNote: "حافلة نقل كل 20 دقيقة تقريبًا." },
+    "fco-apt-ew": { name: "Dollar — فيوميتشينو", address: "فرع خارج المطار", accessNote: "حافلة نقل كل 20 دقيقة تقريبًا." },
     "rom-city-dl": { name: "Hertz — روما تيرميني", address: "قرب محطة تيرميني", accessNote: "فرع داخل المدينة؛ تحقق لدى البلدية من قواعد القيادة في منطقة ZTL." },
-    "kef-apt-dl": { name: "Sixt — كيفلافيك (حافلة نقل)", address: "قرب المطار", accessNote: "حافلة نقل من المبنى، نحو 5 دقائق." },
-    "kef-apt-rl": { name: "Europcar — مبنى كيفلافيك", address: "صالة الوصول", accessNote: "المكتب داخل المبنى." },
+    "kef-apt-dl": { name: "Sixt — كيفلافيك", address: "قرب المطار", accessNote: "حافلة نقل من المبنى، نحو 5 دقائق." },
+    "kef-apt-rl": { name: "Europcar — كيفلافيك", address: "صالة الوصول", accessNote: "المكتب داخل المبنى." },
     "rek-city-ew": { name: "Avis — وسط ريكيافيك", address: "وسط ريكيافيك", accessNote: "فرع داخل المدينة." },
   },
 };

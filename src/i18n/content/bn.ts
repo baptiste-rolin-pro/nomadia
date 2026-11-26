@@ -636,13 +636,13 @@ const pack: ContentPack = {
   },
   agencies: {
     "lis-apt-dl": { name: "Budget — লিসবন বিমানবন্দর", address: "আগমন হল, টার্মিনাল ১", accessNote: "টার্মিনালে কাউন্টার, গাড়ি P2 পার্কিংয়ে।" },
-    "lis-apt-rl": { name: "Centauro — লিসবন বিমানবন্দর (শাটল)", address: "বিমানবন্দরের বাইরে শাখা", accessNote: "টার্মিনাল ১ থেকে বিনামূল্যে শাটল, প্রায় ১০ মিনিট।" },
+    "lis-apt-rl": { name: "Centauro — লিসবন বিমানবন্দর", address: "বিমানবন্দরের বাইরে শাখা", accessNote: "টার্মিনাল ১ থেকে বিনামূল্যে শাটল, প্রায় ১০ মিনিট।" },
     "lis-city-dl": { name: "Budget — লিসবন সান্তা আপোলোনিয়া", address: "সান্তা আপোলোনিয়া স্টেশনের কাছে", accessNote: "শহরের শাখা।" },
     "fco-apt-dl": { name: "Hertz — রোম ফিউমিচিনো", address: "গাড়ি ভাড়ার এলাকা", accessNote: "টার্মিনাল থেকে হেঁটে পৌঁছানো যায় এমন কাউন্টার।" },
-    "fco-apt-ew": { name: "Dollar — ফিউমিচিনো (শাটল)", address: "বিমানবন্দরের বাইরে শাখা", accessNote: "প্রায় প্রতি ২০ মিনিটে শাটল।" },
+    "fco-apt-ew": { name: "Dollar — ফিউমিচিনো", address: "বিমানবন্দরের বাইরে শাখা", accessNote: "প্রায় প্রতি ২০ মিনিটে শাটল।" },
     "rom-city-dl": { name: "Hertz — রোমা তেরমিনি", address: "তেরমিনি স্টেশনের কাছে", accessNote: "শহরের শাখা; ZTL এলাকায় গাড়ি চালানোর নিয়ম পৌরসভার কাছে যাচাই করুন।" },
-    "kef-apt-dl": { name: "Sixt — কেফলাভিক (শাটল)", address: "বিমানবন্দরের কাছে", accessNote: "টার্মিনাল থেকে শাটল, প্রায় ৫ মিনিট।" },
-    "kef-apt-rl": { name: "Europcar — কেফলাভিক টার্মিনাল", address: "আগমন হল", accessNote: "টার্মিনালে কাউন্টার।" },
+    "kef-apt-dl": { name: "Sixt — কেফলাভিক", address: "বিমানবন্দরের কাছে", accessNote: "টার্মিনাল থেকে শাটল, প্রায় ৫ মিনিট।" },
+    "kef-apt-rl": { name: "Europcar — কেফলাভিক", address: "আগমন হল", accessNote: "টার্মিনালে কাউন্টার।" },
     "rek-city-ew": { name: "Avis — রেইকিয়াভিক কেন্দ্র", address: "রেইকিয়াভিক কেন্দ্র", accessNote: "শহরের শাখা।" },
   },
 };
