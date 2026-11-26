@@ -636,13 +636,13 @@ const pack: ContentPack = {
   },
   agencies: {
     "lis-apt-dl": { name: "Budget — Aeropuerto de Lisboa", address: "Vestíbulo de llegadas, terminal 1", accessNote: "Mostrador en la terminal, vehículos en el aparcamiento P2." },
-    "lis-apt-rl": { name: "Centauro — Lisboa Aeropuerto (lanzadera)", address: "Oficina fuera del aeropuerto", accessNote: "Lanzadera gratuita desde la terminal 1, unos 10 minutos." },
+    "lis-apt-rl": { name: "Centauro — Lisboa Aeropuerto", address: "Oficina fuera del aeropuerto", accessNote: "Lanzadera gratuita desde la terminal 1, unos 10 minutos." },
     "lis-city-dl": { name: "Budget — Lisboa Santa Apolónia", address: "Cerca de la estación de Santa Apolónia", accessNote: "Oficina en la ciudad." },
     "fco-apt-dl": { name: "Hertz — Roma Fiumicino", address: "Zona de alquiler de coches", accessNote: "Mostradores accesibles a pie desde las terminales." },
-    "fco-apt-ew": { name: "Dollar — Fiumicino (lanzadera)", address: "Oficina fuera del aeropuerto", accessNote: "Lanzadera cada 20 minutos aproximadamente." },
+    "fco-apt-ew": { name: "Dollar — Fiumicino", address: "Oficina fuera del aeropuerto", accessNote: "Lanzadera cada 20 minutos aproximadamente." },
     "rom-city-dl": { name: "Hertz — Roma Termini", address: "Cerca de la estación Termini", accessNote: "Oficina en la ciudad; consulta con el ayuntamiento la circulación por la ZTL." },
-    "kef-apt-dl": { name: "Sixt — Keflavík (lanzadera)", address: "Cerca del aeropuerto", accessNote: "Lanzadera desde la terminal, unos 5 minutos." },
-    "kef-apt-rl": { name: "Europcar — terminal de Keflavík", address: "Vestíbulo de llegadas", accessNote: "Mostrador en la terminal." },
+    "kef-apt-dl": { name: "Sixt — Keflavík", address: "Cerca del aeropuerto", accessNote: "Lanzadera desde la terminal, unos 5 minutos." },
+    "kef-apt-rl": { name: "Europcar — Keflavík", address: "Vestíbulo de llegadas", accessNote: "Mostrador en la terminal." },
     "rek-city-ew": { name: "Avis — Reikiavik centro", address: "Centro de Reikiavik", accessNote: "Oficina en la ciudad." },
   },
 };

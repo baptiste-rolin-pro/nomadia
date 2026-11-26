@@ -636,13 +636,13 @@ const pack: ContentPack = {
   },
   agencies: {
     "lis-apt-dl": { name: "Budget — 里斯本机场", address: "1 号航站楼到达大厅", accessNote: "柜台在航站楼内，车辆停在 P2 停车场。" },
-    "lis-apt-rl": { name: "Centauro — 里斯本机场（接驳车）", address: "机场外门店", accessNote: "1 号航站楼有免费接驳车，约 10 分钟。" },
+    "lis-apt-rl": { name: "Centauro — 里斯本机场", address: "机场外门店", accessNote: "1 号航站楼有免费接驳车，约 10 分钟。" },
     "lis-city-dl": { name: "Budget — 里斯本圣阿波罗尼亚", address: "圣阿波罗尼亚车站附近", accessNote: "市区门店。" },
     "fco-apt-dl": { name: "Hertz — 罗马菲乌米奇诺", address: "租车区", accessNote: "从航站楼步行可达柜台。" },
-    "fco-apt-ew": { name: "Dollar — 菲乌米奇诺（接驳车）", address: "机场外门店", accessNote: "接驳车约每 20 分钟一班。" },
+    "fco-apt-ew": { name: "Dollar — 菲乌米奇诺", address: "机场外门店", accessNote: "接驳车约每 20 分钟一班。" },
     "rom-city-dl": { name: "Hertz — 罗马特米尼", address: "特米尼车站附近", accessNote: "市区门店；进入 ZTL 限行区的规定请向市政部门确认。" },
-    "kef-apt-dl": { name: "Sixt — 凯夫拉维克（接驳车）", address: "机场附近", accessNote: "航站楼有接驳车，约 5 分钟。" },
-    "kef-apt-rl": { name: "Europcar — 凯夫拉维克航站楼", address: "到达大厅", accessNote: "柜台在航站楼内。" },
+    "kef-apt-dl": { name: "Sixt — 凯夫拉维克", address: "机场附近", accessNote: "航站楼有接驳车，约 5 分钟。" },
+    "kef-apt-rl": { name: "Europcar — 凯夫拉维克", address: "到达大厅", accessNote: "柜台在航站楼内。" },
     "rek-city-ew": { name: "Avis — 雷克雅未克市中心", address: "雷克雅未克市中心", accessNote: "市区门店。" },
   },
 };

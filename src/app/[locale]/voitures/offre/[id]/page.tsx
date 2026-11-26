@@ -16,6 +16,7 @@ import { inline } from "@/components/content/rich-text";
 import { getMessages } from "@/i18n/messages";
 import { ClientMessages, getI18n } from "@/i18n/request";
 import { toLocale } from "@/i18n/config";
+import { agencyWithAccess } from "@/lib/providers/agency-label";
 
 export const dynamic = "force-dynamic";
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
@@ -93,7 +94,8 @@ export default async function CarOfferPage({ params, searchParams }: { params: P
                 <div>
                   <dt className="font-semibold">{t.dropoff}</dt>
                   <dd>
-                    {offer.returnAgency.name}
+                    {/* Retour dans une autre agence : son type d'accès (navette…) n'est décrit nulle part ailleurs. */}
+                    {offer.returnAgency.id === offer.pickupAgency.id ? offer.returnAgency.name : agencyWithAccess(offer.returnAgency, locale)}
                     <br />
                     {f.t(t.whenShort, { date: f.date(civilDateOf(offer.dropoff.local)), time: f.time(offer.dropoff.local) })}
                     <br />

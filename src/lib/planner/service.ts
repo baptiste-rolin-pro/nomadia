@@ -7,6 +7,7 @@ import { nowMs } from "@/lib/clock";
 import { civilDateOf } from "@/lib/dates";
 import { getCarOffer, getFlightOffer, getHotelProperty, getHotelRate, modeFor, verticalOf } from "@/lib/providers/registry";
 import { carSearchUrl, flightSearchUrl, hotelSearchUrl } from "@/lib/providers/bookable";
+import { agencyWithAccess } from "@/lib/providers/agency-label";
 import type { Viewer } from "@/lib/viewer";
 import { isReceptionLimited, itemsInvalidatedByDates, type PlannerItem } from "@/lib/planner/analyze";
 import { audit } from "@/lib/audit";
@@ -145,7 +146,8 @@ export async function snapshotFromOffer(ref: string, locale: Locale = DEFAULT_LO
       title: `${offer.category} — ${offer.supplier.name}`,
       snapshot: {
         subtitle: `${offer.exampleModel} · ${offer.pickupAgency.name}`,
-        segments: [{ label: `${offer.category}, ${offer.pickupAgency.name}`, start: offer.pickup, end: offer.dropoff, kind: "car" }],
+        // Type d'accès (navette…) une seule fois, dans le segment (repris par la chronologie et le calendrier).
+        segments: [{ label: `${offer.category}, ${agencyWithAccess(offer.pickupAgency, locale)}`, start: offer.pickup, end: offer.dropoff, kind: "car" }],
         agencyHours: { pickup: `${offer.pickupAgency.opens}-${offer.pickupAgency.closes}`, dropoff: `${offer.returnAgency.opens}-${offer.returnAgency.closes}` },
         searchUrl: carSearchUrl(offer),
         detailUrl: `/voitures/offre/${encodeURIComponent(ref)}`,

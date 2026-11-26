@@ -636,13 +636,13 @@ const pack: ContentPack = {
   },
   agencies: {
     "lis-apt-dl": { name: "Budget — लिस्बन हवाई अड्डा", address: "आगमन हॉल, टर्मिनल 1", accessNote: "टर्मिनल में काउंटर, वाहन P2 पार्किंग में।" },
-    "lis-apt-rl": { name: "Centauro — लिस्बन हवाई अड्डा (शटल)", address: "हवाई अड्डे के बाहर शाखा", accessNote: "टर्मिनल 1 से मुफ़्त शटल, लगभग 10 मिनट।" },
+    "lis-apt-rl": { name: "Centauro — लिस्बन हवाई अड्डा", address: "हवाई अड्डे के बाहर शाखा", accessNote: "टर्मिनल 1 से मुफ़्त शटल, लगभग 10 मिनट।" },
     "lis-city-dl": { name: "Budget — लिस्बन सांता अपोलोनिया", address: "सांता अपोलोनिया स्टेशन के पास", accessNote: "शहर में शाखा।" },
     "fco-apt-dl": { name: "Hertz — रोम फ़्यूमिचीनो", address: "कार किराया क्षेत्र", accessNote: "टर्मिनलों से पैदल पहुँचने योग्य काउंटर।" },
-    "fco-apt-ew": { name: "Dollar — फ़्यूमिचीनो (शटल)", address: "हवाई अड्डे के बाहर शाखा", accessNote: "लगभग हर 20 मिनट पर शटल।" },
+    "fco-apt-ew": { name: "Dollar — फ़्यूमिचीनो", address: "हवाई अड्डे के बाहर शाखा", accessNote: "लगभग हर 20 मिनट पर शटल।" },
     "rom-city-dl": { name: "Hertz — रोमा तेर्मीनी", address: "तेर्मीनी स्टेशन के पास", accessNote: "शहर में शाखा; ZTL क्षेत्र में गाड़ी चलाने के नियम नगर प्रशासन से जाँचें।" },
-    "kef-apt-dl": { name: "Sixt — केफ़्लाविक (शटल)", address: "हवाई अड्डे के पास", accessNote: "टर्मिनल से शटल, लगभग 5 मिनट।" },
-    "kef-apt-rl": { name: "Europcar — केफ़्लाविक टर्मिनल", address: "आगमन हॉल", accessNote: "टर्मिनल में काउंटर।" },
+    "kef-apt-dl": { name: "Sixt — केफ़्लाविक", address: "हवाई अड्डे के पास", accessNote: "टर्मिनल से शटल, लगभग 5 मिनट।" },
+    "kef-apt-rl": { name: "Europcar — केफ़्लाविक", address: "आगमन हॉल", accessNote: "टर्मिनल में काउंटर।" },
     "rek-city-ew": { name: "Avis — रेक्याविक केंद्र", address: "रेक्याविक केंद्र", accessNote: "शहर में शाखा।" },
   },
 };

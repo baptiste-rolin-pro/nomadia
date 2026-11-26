@@ -636,13 +636,13 @@ const pack: ContentPack = {
   },
   agencies: {
     "lis-apt-dl": { name: "Budget — аэропорт Лиссабона", address: "Зал прилёта, терминал 1", accessNote: "Стойка в терминале, автомобили на парковке P2." },
-    "lis-apt-rl": { name: "Centauro — аэропорт Лиссабона (шаттл)", address: "Пункт за пределами аэропорта", accessNote: "Бесплатный шаттл от терминала 1, около 10 минут." },
+    "lis-apt-rl": { name: "Centauro — аэропорт Лиссабона", address: "Пункт за пределами аэропорта", accessNote: "Бесплатный шаттл от терминала 1, около 10 минут." },
     "lis-city-dl": { name: "Budget — Лиссабон, Санта-Аполония", address: "У вокзала Санта-Аполония", accessNote: "Пункт в городе." },
     "fco-apt-dl": { name: "Hertz — Рим, Фьюмичино", address: "Зона проката автомобилей", accessNote: "До стоек можно дойти пешком от терминалов." },
-    "fco-apt-ew": { name: "Dollar — Фьюмичино (шаттл)", address: "Пункт за пределами аэропорта", accessNote: "Шаттл примерно каждые 20 минут." },
+    "fco-apt-ew": { name: "Dollar — Фьюмичино", address: "Пункт за пределами аэропорта", accessNote: "Шаттл примерно каждые 20 минут." },
     "rom-city-dl": { name: "Hertz — Рим, Термини", address: "У вокзала Термини", accessNote: "Пункт в городе; правила въезда в зону ZTL уточняйте в мэрии." },
-    "kef-apt-dl": { name: "Sixt — Кеблавик (шаттл)", address: "Рядом с аэропортом", accessNote: "Шаттл от терминала, около 5 минут." },
-    "kef-apt-rl": { name: "Europcar — терминал Кеблавика", address: "Зал прилёта", accessNote: "Стойка в терминале." },
+    "kef-apt-dl": { name: "Sixt — Кеблавик", address: "Рядом с аэропортом", accessNote: "Шаттл от терминала, около 5 минут." },
+    "kef-apt-rl": { name: "Europcar — Кеблавик", address: "Зал прилёта", accessNote: "Стойка в терминале." },
     "rek-city-ew": { name: "Avis — центр Рейкьявика", address: "Центр Рейкьявика", accessNote: "Пункт в городе." },
   },
 };
