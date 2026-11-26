@@ -8,6 +8,7 @@ import { brandMarkFor } from "@/lib/content/brand-marks";
  * - Le monogramme garde les couleurs de Nomadia (aucune imitation des couleurs de la marque).
  * - `decorative` : le nom est déjà écrit à côté ; la marque est masquée aux lecteurs d'écran (pas d'annonce en double),
  *   l'attribut alt reste le nom (affiché si l'image ne charge pas).
+ * - Compagnie : logo cherché par code IATA (`code`) ; loueur : par slug de l'annuaire (`slug`).
  * - Sans hook : utilisable dans les composants serveur comme dans les composants client.
  */
 const SIZES = {
@@ -18,12 +19,12 @@ const SIZES = {
 
 export function BrandMark({ name, slug, code, size = "sm", decorative = false, className = "" }: { name: string; slug?: string | null; code?: string; size?: keyof typeof SIZES; decorative?: boolean; className?: string }) {
   const s = SIZES[size];
-  const mark = brandMarkFor(slug);
+  const mark = brandMarkFor(slug, code);
   if (mark) {
     return (
       <span data-brand-mark="logo" aria-hidden={decorative || undefined} className={`inline-flex shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-white ring-1 ring-line ${s.chip} ${className}`}>
         {/* eslint-disable-next-line @next/next/no-img-element -- fichier statique déjà optimisé, servi tel quel ; <img> empêche toute exécution de script du SVG */}
-        <img src={mark.src} alt={name} width={Math.round((s.px * mark.width) / mark.height)} height={s.px} loading="lazy" decoding="async" className={`w-auto object-contain ${s.img}`} />
+        <img src={mark.src} alt={name} width={Math.round(s.px * mark.ratio)} height={s.px} loading="lazy" decoding="async" className={`w-auto object-contain ${s.img}`} />
       </span>
     );
   }

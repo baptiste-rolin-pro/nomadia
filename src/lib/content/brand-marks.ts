@@ -1,55 +1,51 @@
 /**
  * Table compacte des logos pour les composants client (billets, annuaire filtrable) : seulement ce qu'il faut pour
- * afficher l'image sans décalage de mise en page. Licences, crédits et liens Commons : brand-logos.ts (fichier
- * serveur, plus lourd). Les deux tables sont identiques (vérifié par tests/unit/brand-logos.test.ts).
+ * afficher l'image sans décalage de mise en page (nom du fichier, rapport largeur / hauteur). Licences, crédits et
+ * liens Commons : brand-logos.ts (fichier serveur, plus lourd). Les deux tables concordent (tests/unit/brand-logos.test.ts).
  */
-/** slug de l'annuaire → [largeur, hauteur] du viewBox du fichier public/logos/brands/<slug>.svg (« png » : fichier PNG). */
-export const BRAND_MARKS: Record<string, readonly [number, number, "png"?]> = {
-  "air-france": [189, 18],
-  "transavia-france": [160, 28],
-  "tap-air-portugal": [239, 118],
-  "ita-airways": [480, 200],
-  "icelandair": [2300, 600],
-  "royal-air-maroc": [2492, 1711],
-  "aegean-airlines": [225, 46],
-  "japan-airlines": [235, 63],
-  "all-nippon-airways": [300, 78],
-  "garuda-indonesia": [1472, 169],
-  "air-canada": [160, 21],
-  "air-transat": [235, 52],
-  "klm": [350, 204],
-  "lufthansa": [3326, 586],
-  "sas": [114, 40],
-  "wideroe": [255, 75],
-  "easyjet": [397, 89],
-  "vueling": [768, 249],
-  "ryanair": [79, 10],
-  "wizz-air": [130, 60],
-  "sky-express": [675, 410],
-  "singapore-airlines": [468, 48],
-  "iberia": [400, 88],
-  "hertz": [612, 296],
-  "avis": [590, 180],
-  "europcar": [620, 158],
-  "sixt": [1000, 410],
-  "enterprise": [251, 53],
-  "budget": [849, 180],
-  "alamo": [1094, 504],
-  "thrifty": [479, 132],
-  "nissan-rent-a-car": [355, 108, "png"],
+
+/** Compagnies de l'annuaire qui ont un logo : code IATA → [slug = nom du fichier, largeur ÷ hauteur, « png » si PNG]. */
+const AIRLINES: Record<string, readonly [string, number, "png"?]> = {
+  AF: ["air-france", 10.5],
+  TO: ["transavia-france", 5.71],
+  TP: ["tap-air-portugal", 2.03],
+  AZ: ["ita-airways", 2.4],
+  FI: ["icelandair", 3.83],
+  AT: ["royal-air-maroc", 1.46],
+  A3: ["aegean-airlines", 4.89],
+  JL: ["japan-airlines", 3.72],
+  NH: ["all-nippon-airways", 3.85],
+  GA: ["garuda-indonesia", 8.71],
+  AC: ["air-canada", 7.67],
+  TS: ["air-transat", 4.49],
+  KL: ["klm", 1.72],
+  LH: ["lufthansa", 5.68],
+  SK: ["sas", 2.85],
+  WF: ["wideroe", 3.42],
+  U2: ["easyjet", 4.46],
+  VY: ["vueling", 3.08],
+  FR: ["ryanair", 8.18],
+  W6: ["wizz-air", 2.17],
+  GQ: ["sky-express", 1.65],
+  SQ: ["singapore-airlines", 9.81],
+  IB: ["iberia", 4.54],
 };
 
-/** Code IATA → slug, pour les compagnies de l'annuaire qui ont un logo. */
-const AIRLINE_SLUGS: Record<string, string> = {
-  AF: "air-france", TO: "transavia-france", TP: "tap-air-portugal", AZ: "ita-airways", FI: "icelandair", AT: "royal-air-maroc", A3: "aegean-airlines", JL: "japan-airlines", NH: "all-nippon-airways", GA: "garuda-indonesia", AC: "air-canada", TS: "air-transat", KL: "klm", LH: "lufthansa", SK: "sas", WF: "wideroe", U2: "easyjet", VY: "vueling", FR: "ryanair", W6: "wizz-air", GQ: "sky-express", SQ: "singapore-airlines", IB: "iberia",
+/** Loueurs de l'annuaire qui ont un logo : slug = nom du fichier → [largeur ÷ hauteur, « png » si PNG]. */
+const RENTERS: Record<string, readonly [number, "png"?]> = {
+  hertz: [2.06],
+  avis: [3.27],
+  europcar: [3.92],
+  sixt: [2.44],
+  enterprise: [4.74],
+  budget: [4.71],
+  alamo: [2.17],
+  thrifty: [3.63],
+  "nissan-rent-a-car": [3.29, "png"],
 };
 
-export function brandMarkFor(slug: string | null | undefined): { src: string; width: number; height: number } | null {
-  if (!slug || !Object.hasOwn(BRAND_MARKS, slug)) return null;
-  const [width, height, ext = "svg"] = BRAND_MARKS[slug]!;
-  return { src: `/logos/brands/${slug}.${ext}`, width, height };
-}
-
-export function airlineMarkSlug(iata: string): string | undefined {
-  return Object.hasOwn(AIRLINE_SLUGS, iata) ? AIRLINE_SLUGS[iata] : undefined;
+/** Logo d'une compagnie (par code IATA) ou d'un loueur (par slug) ; null sans logo du domaine public (monogramme). */
+export function brandMarkFor(slug?: string | null, iata?: string): { src: string; ratio: number } | null {
+  const m = iata ? (Object.hasOwn(AIRLINES, iata) ? AIRLINES[iata] : undefined) : slug && Object.hasOwn(RENTERS, slug) ? ([slug, ...RENTERS[slug]!] as const) : undefined;
+  return m ? { src: `/logos/brands/${m[0]}.${m[2] ?? "svg"}`, ratio: m[1] } : null;
 }

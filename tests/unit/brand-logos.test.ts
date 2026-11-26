@@ -14,7 +14,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { AIRLINES, RENTERS } from "@/lib/content/directory";
 import { BRAND_LOGOS, LOGOS_RETRIEVED_ON, PD_BASES, PD_LICENSES, REJECTED_BRAND_LOGOS } from "@/lib/content/brand-logos";
-import { BRAND_MARKS, airlineMarkSlug, brandMarkFor } from "@/lib/content/brand-marks";
+import { brandMarkFor } from "@/lib/content/brand-marks";
 import { BrandMark } from "@/components/ui/brand-mark";
 
 const DIR = join(process.cwd(), "public/logos/brands");
@@ -82,23 +82,23 @@ describe("logos : fichiers et licences", () => {
 });
 
 describe("logos : table compacte des composants client", () => {
-  it("reprend exactement le manifeste (fichier, dimensions arrondies)", () => {
-    expect(Object.keys(BRAND_MARKS).sort()).toEqual(Object.keys(BRAND_LOGOS).sort());
-    for (const [slug, logo] of Object.entries(BRAND_LOGOS)) {
-      const m = brandMarkFor(slug)!;
-      expect(m.src, slug).toBe(logo.src);
-      expect(m.width, slug).toBe(Math.round(logo.width));
-      expect(m.height, slug).toBe(Math.round(logo.height));
+  it("reprend exactement le manifeste : compagnies par code IATA, loueurs par slug, même fichier, même rapport largeur / hauteur", () => {
+    const check = (slug: string, m: ReturnType<typeof brandMarkFor>) => {
+      const logo = BRAND_LOGOS[slug];
+      if (!logo) return expect(m, slug).toBeNull();
+      expect(m?.src, slug).toBe(logo.src);
+      expect(Math.abs(m!.ratio / (logo.width / logo.height) - 1), slug).toBeLessThan(0.005);
+    };
+    for (const a of AIRLINES) check(a.slug, brandMarkFor(a.slug, a.iata));
+    for (const r of RENTERS) check(r.slug, brandMarkFor(r.slug));
+    // Une compagnie se cherche par son code, jamais par son slug seul (pas de logo de compagnie pris pour un loueur).
+    expect(brandMarkFor("air-france")).toBeNull();
+    for (const bad of ["constructor", "toString", "__proto__"]) {
+      expect(brandMarkFor(bad)).toBeNull();
+      expect(brandMarkFor(null, bad)).toBeNull();
     }
-    expect(brandMarkFor("toyota-rent-a-car")).toBeNull();
-    expect(brandMarkFor("constructor")).toBeNull();
+    expect(brandMarkFor(null, "ZZ")).toBeNull();
     expect(brandMarkFor(null)).toBeNull();
-  });
-
-  it("code IATA → logo de la compagnie de l'annuaire, et rien pour une compagnie sans logo", () => {
-    for (const a of AIRLINES) expect(airlineMarkSlug(a.iata), a.iata).toBe(a.slug in BRAND_LOGOS ? a.slug : undefined);
-    expect(airlineMarkSlug("toString")).toBeUndefined();
-    expect(airlineMarkSlug("ZZ")).toBeUndefined();
   });
 });
 
@@ -112,7 +112,7 @@ describe("BrandMark", () => {
   });
 
   it("sans logo : monogramme Nomadia (code IATA, sinon initiales), nommé pour les lecteurs d'écran", () => {
-    const airline = renderToStaticMarkup(createElement(BrandMark, { name: "FlySafair", slug: airlineMarkSlug("FA"), code: "FA" }));
+    const airline = renderToStaticMarkup(createElement(BrandMark, { name: "FlySafair", slug: "flysafair", code: "FA" }));
     expect(airline).toContain('aria-label="FlySafair"');
     expect(airline).toContain(">FA<");
     expect(airline).not.toContain("<img");

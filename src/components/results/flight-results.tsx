@@ -11,7 +11,6 @@ import { SliceSummary } from "@/components/results/flight-slice";
 import { AddToTripButton } from "@/components/results/add-to-trip";
 import { Badge, EmptyState } from "@/components/ui/misc";
 import { BrandMark } from "@/components/ui/brand-mark";
-import { airlineMarkSlug } from "@/lib/content/brand-marks";
 import { track } from "@/lib/analytics-client";
 import { useI18n } from "@/i18n/client";
 
@@ -182,7 +181,7 @@ function FlightCard({ offer, query, tripId }: { offer: FlightOffer; query: strin
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           <span className="flex flex-wrap items-center gap-1.5" data-testid="ticket-brand-marks">
             {carriers.map((c) => (
-              <BrandMark key={c.code} name={c.name} slug={airlineMarkSlug(c.code)} code={c.code} decorative />
+              <BrandMark key={c.code} name={c.name} code={c.code} decorative />
             ))}
           </span>
           <p className="font-semibold leading-snug" data-testid="ticket-airlines">
