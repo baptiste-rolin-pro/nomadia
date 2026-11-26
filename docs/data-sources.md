@@ -41,7 +41,7 @@ Ce qui est publié est limité, par destination, à quelques faits (un aéroport
 
 - Chaque section affiche : « Informations relevées le 21 novembre 2026, à titre indicatif. Liaisons, compagnies et agences évoluent : vérifiez auprès de l'opérateur avant de réserver. Aucun partenariat avec les marques citées. » (traduit dans les 10 langues).
 - Une compagnie relevée peut commercialiser un vol opéré par une autre (partage de code) : la section le précise sous les liaisons.
-- Aucune de ces marques n'est un fournisseur de démonstration : les offres de démonstration restent fictives (vérifié par `tests/unit/practical.test.ts`).
+- Depuis le 2026-11-26, les offres simulées de démonstration citent certaines de ces marques (celles qui ont une fiche d'annuaire), à titre d'illustration : voir « Offres simulées avec de vraies marques » ci-dessous. Les marques citées sans fiche ne sont jamais utilisées (vérifié par `tests/unit/practical.test.ts`).
 - **Doutes signalés, données conservées telles que relevées** :
   - Bali, SIN–DPS : « Jetstar ». La filiale singapourienne Jetstar Asia, qui exploitait ce type de ligne depuis Singapour, a annoncé l'arrêt de ses vols à l'été 2025 (connaissance antérieure au relevé, non revérifiée). La mention peut correspondre à une autre compagnie de la marque ou à un code commercial : citée sans lien vers l'annuaire.
   - Bali, SIN–DPS : « KLM » relève probablement d'un partage de code.
@@ -51,10 +51,23 @@ Ce qui est publié est limité, par destination, à quelques faits (un aéroport
 
 Rédigées d'après des faits publics connus (codes IATA / OACI, pays, site officiel, résumé neutre d'une ligne), **sans** reprendre l'annuaire du fichier ; `indexable: false`, aucun logo, aucun partenariat. Sites officiels de Toyota Rent a Car, SKY express, Airlink et Centauro confirmés par une consultation de leur page d'accueil le 2026-11-21 ; les autres viennent de faits connus.
 
-- Compagnies : Ryanair (FR / RYR), Wizz Air (W6 / WZZ), Sky Express (GQ / SEH), Singapore Airlines (SQ / SIA), Airlink (4Z / LNK), FlySafair (FA / SFR).
+- Compagnies : Ryanair (FR / RYR), Wizz Air (W6 / WZZ), Sky Express (GQ / SEH), Singapore Airlines (SQ / SIA), Airlink (4Z / LNK), FlySafair (FA / SFR) ; Iberia (IB / IBE), ajoutée le 2026-11-26 pour les correspondances simulées via Madrid (mêmes règles de rédaction, site officiel non reconsulté).
 - Loueurs : Alamo, Centauro, Dollar, Thrifty, Toyota Rent a Car, Nissan Rent-A-Car.
 
 Marques citées **en texte simple, sans fiche** (code ou site officiel non établis avec certitude, ou entité ambiguë) : Klass Wagen, Wheego, Autovia, Rent Smart 24, Fair Car, Locationauto, Ace et U-Save (l'entité exploitant ces noms à Marrakech n'est pas établie), OptimoRent, FunchalDrive Rent-a-car, Madeira Rent, CarQ, Lets Drive, TRAC Astra, EasyRent Bali, keddy by Europcar (sous-marque, site non vérifié), Tempest Car Hire, CemAir (code OACI non établi avec certitude), Jetstar (voir les doutes ci-dessus).
+
+## Offres simulées avec de vraies marques : justification de la mention
+
+Décision du propriétaire du projet (2026-11-26) : les offres de démonstration utilisent de vraies compagnies aériennes et de vrais loueurs (noms et codes IATA de l'annuaire) avec des vols, horaires, prix et agences simulés ; les hôtels gardent des noms inventés. Les étiquettes par offre (« compagnie fictive », « Établissement fictif », « Démo » dans les noms) sont retirées.
+
+Pourquoi une mention reste obligatoire, et où :
+
+- **Ne pas tromper le visiteur** : un horaire, un prix ou une disponibilité attribués à une vraie compagnie pourraient être pris pour une offre réelle (pratique commerciale trompeuse, art. L. 121-2 du Code de la consommation ; directive 2005/29/CE). Une seule ligne discrète mais visible, au-dessus de la liste des résultats de `/vols`, `/hotels` et `/voitures` et en tête des fiches d'offre, dans les 10 langues : « Offres simulées : horaires, prix et disponibilités sont fictifs. Aucun lien avec les compagnies, loueurs et marques cités. »
+- **Ne pas laisser croire à un partenariat** : la même ligne, la fenêtre « À propos de la démo » (« Vraies marques, offres simulées », réaffichée une fois aux visiteurs qui l'avaient fermée) et les annuaires (« Aucun partenariat implicite », « aucun partenariat ni lien avec ces compagnies / loueurs ») le disent ; aucun logo, aucun lien de réservation vers une marque.
+- **Ne jamais produire un faux titre de transport** : les documents qui portent un nom de compagnie ou de loueur (confirmation de réservation, récapitulatif imprimable, version imprimable du voyage, export `.ics`, emails) portent « DÉMONSTRATION – document sans valeur, aucune réservation réelle » (bandeau en tête, filigrane sur les pages imprimables). Les numéros de vol sont générés dans la plage 9000-9999 et aucun horaire réel n'est reproduit.
+- **Pas d'indexation** : le site de démonstration reste non indexé (`robots` inchangé).
+
+Ce qui n'est pas fait : aucune donnée de vol réel (horaires, numéros, fréquences) n'est reprise ; aucune marque d'hôtel ; aucun accord des marques n'a été demandé, d'où l'usage limité au nom, à titre d'illustration, avec la mention ci-dessus. À revoir avant toute ouverture commerciale ou toute indexation.
 
 ## Mettre à jour
 

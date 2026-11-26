@@ -50,7 +50,7 @@ test("hôtels : prix total, par nuit, sur place, puis chambre et tarif précis",
   await page.goto(`/hotels?dest=city:ROM&arr=${inDays(60)}&dep=${inDays(64)}&ch=2-7`);
   await dismissCookies(page);
   const card = page.locator("section[aria-label=\"Résultats d'hébergements\"] article").first();
-  await expect(card).toContainText("Établissement fictif");
+  await expect(card).not.toContainText("fictif");
   await expect(card).toContainText("/ nuit / chambre");
   await page.getByRole("button", { name: "Afficher le plan" }).click();
   await expect(page.getByRole("img", { name: /Plan schématique/ })).toBeVisible();

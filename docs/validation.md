@@ -2,7 +2,23 @@
 
 Toutes les vérifications ci-dessous ont été **réellement exécutées** le 2026-11-09 sur Windows 11, Node.js 26.13, npm 11.20, Chromium (Playwright 1.65). Rien n'est déclaré réussi sans exécution.
 
-Dernière passe : **informations pratiques des destinations** (2026-11-21, branche `feat/destination-practical-info`, section dédiée ci-dessous). Passes précédentes : multilingue (2026-11-21) ; assistant local, Claude en repli (2026-11-12) ; assistant IA et retrait du bouton « Démo » (2026-11-11) ; hero vidéo (2026-11-11). Le tableau « Résultats » date de la passe « préparation Vercel » (2026-11-10) ; les trois dernières lignes datent de la passe initiale et n'ont pas été relancées.
+Dernière passe : **vraies marques, offres simulées** (2026-11-26, branche `feat/real-brands-demo`, section dédiée ci-dessous). Passes précédentes : informations pratiques des destinations (2026-11-21) ; multilingue (2026-11-21) ; assistant local, Claude en repli (2026-11-12) ; assistant IA et retrait du bouton « Démo » (2026-11-11) ; hero vidéo (2026-11-11). Le tableau « Résultats » date de la passe « préparation Vercel » (2026-11-10) ; les trois dernières lignes datent de la passe initiale et n'ont pas été relancées.
+
+## Vraies marques, offres simulées (2026-11-26)
+
+Exécuté sur Windows 11, Node.js 26.13, Chromium (Playwright 1.65), dans un arbre de travail séparé (`git worktree`) partant de `ad20f53`, après vérification qu'aucun serveur ne tenait les ports 3000 / 3005 / 3100 / 3101 (avant et après).
+
+| Vérification | Commande | Résultat |
+| --- | --- | --- |
+| Types | `npx tsc --noEmit` | OK, code de sortie 0 |
+| Lint | `npx eslint .` | OK, 0 erreur, 0 avertissement |
+| Tests unitaires | `npx vitest run` | **495/495** (18 fichiers ; +22 : `tests/unit/real-brands.test.ts`) : compagnies et loueurs de démonstration présents dans l'annuaire (même nom, même code IATA, y compris chaque compagnie commercialisante et opérante des vols générés) ; vols directs depuis Paris limités aux compagnies relevées ; numéros `XX 9000-9999` ; partages de code AF/KL et SAS→KLM seulement ; aucune étiquette « démo / fictif » (10 langues) dans les noms, numéros, agences et établissements ; aller-retour des références ; références d'avant la passe (vol, aller simple Lisbonne → Rome) régénérées au même prix ; référence inconnue → « offre introuvable ». Parité des 10 langues verte. |
+| Build | `npx next build` | OK, **816 pages** (806 avant : +1 fiche Iberia × 10 langues), aucun avertissement |
+| Parcours | `npx playwright test` | **87/87** en 3,8 min (+5 : `real-brands.spec.ts` : mention unique au-dessus des résultats de `/vols`, `/hotels`, `/voitures` en français et en anglais, nom réel de compagnie et de loueur sur les billets, aucune étiquette ; annuaires ; confirmation et récapitulatif imprimable avec « DÉMONSTRATION – document sans valeur, aucune réservation réelle » en français puis en anglais, filigrane, mode impression ; version imprimable du voyage). Mis à jour : `demo-notice.spec.ts` (« Vraies marques, offres simulées »), `search.spec.ts` (plus d'« Établissement fictif »). |
+
+**Relevé avant / après** (script jetable hors dépôt : 8 aéroports français × 3 destinations × 10 dates × 2 cabines × aller-retour, aller simple et retour simple ; 36 couples de lieux de location × 3 horaires × 2 âges ; 3 villes × 4 dates d'hôtel) : **21 100 offres de vol identiques** (références, prix, horaires, tarifs), hôtels identiques, **768 offres de voiture identiques** (prix, dépôt, conditions) ; 1 212 offres de voiture d'avant disparaissent : uniquement des allers simples entre deux pays (Lisbonne ↔ Rome, Lisbonne ↔ Keflavík, Rome ↔ Reykjavik), qui associeraient désormais deux loueurs différents.
+
+**Poids** (fichiers JS initiaux de la page — racine, mise en page, page — d'après `page_client-reference-manifest.js`, gzip niveau 9, avant = `ad20f53`) : `/vols` 207 627 → 207 657 o (+30), `/hotels` 206 244 → 206 229 (−15), `/voitures` 207 867 → 207 868 (+1), fiches d'offre +1 o.
 
 ## Informations pratiques des destinations (2026-11-21)
 
